@@ -217,6 +217,25 @@ body {
   animation: adventure-fade-in 0.5s ease;
 }
 
+.event-card-noise {
+  background-image:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.2), transparent 60%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.03) 0px,
+      rgba(255, 255, 255, 0.03) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  mix-blend-mode: overlay;
+  opacity: 0.6;
+}
+
+@keyframes event-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -10px; }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .text-psychedelic {
     animation: psychedelic-shift 8s linear infinite;
@@ -232,5 +251,9 @@ body {
 
   .tunnel-ring {
     animation: tunnel-ring-fly 0.9s cubic-bezier(0.15, 0.6, 0.25, 1) forwards;
+  }
+
+  .event-float {
+    animation: event-float 6s ease-in-out infinite;
   }
 }
