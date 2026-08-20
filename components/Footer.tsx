@@ -20,6 +20,9 @@ export default function Footer() {
           <Link href="/login" className="transition-colors hover:text-foreground">
             Ambassador login
           </Link>
+          <Link href="/ssbd-admin" className="transition-colors hover:text-foreground">
+            SSBD Admin
+          </Link>
           <a
             href="https://www.wearewhoa.art"
             className="transition-colors hover:text-foreground"
