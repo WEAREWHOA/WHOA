@@ -179,6 +179,44 @@ body {
   to { rotate: 360deg; }
 }
 
+.tunnel-overlay {
+  background: radial-gradient(circle at 50% 50%, #ffffff 0%, #ff2fb0 14%, #7b2ff7 32%, #29e6ff 52%, #0a0116 78%);
+  animation: tunnel-flash 0.9s ease-out forwards;
+}
+
+.tunnel-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3rem;
+  height: 3rem;
+  margin: -1.5rem 0 0 -1.5rem;
+  border-radius: 9999px;
+  border: 3px solid #ffffff;
+  opacity: 0;
+}
+
+@keyframes tunnel-flash {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+@keyframes tunnel-ring-fly {
+  0% { scale: 0.2; opacity: 0.9; }
+  55% { opacity: 0.7; }
+  100% { scale: 22; opacity: 0; }
+}
+
+@keyframes adventure-fade-in {
+  from { opacity: 0; translate: 0 12px; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+.adventure-fade {
+  animation: adventure-fade-in 0.5s ease;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .text-psychedelic {
     animation: psychedelic-shift 8s linear infinite;
@@ -190,5 +228,9 @@ body {
 
   .whoa-sphere-spin {
     animation: whoa-sphere-rotate 22s linear infinite;
+  }
+
+  .tunnel-ring {
+    animation: tunnel-ring-fly 0.9s cubic-bezier(0.15, 0.6, 0.25, 1) forwards;
   }
 }

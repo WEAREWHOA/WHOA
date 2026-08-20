@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import HubButton from "@/components/home/HubButton";
 import WhoaSphere from "@/components/home/WhoaSphere";
+import TunnelTransition from "@/components/home/TunnelTransition";
 
 interface HubStop {
   label: string;
@@ -12,11 +14,14 @@ interface HubStop {
   big?: boolean;
   halfWidth: number;
   halfHeight: number;
+  tunnel?: boolean;
 }
+
+const TUNNEL_DURATION_MS = 900;
 
 const STOPS: HubStop[] = [
   { label: "BRAND AMBASSADORS", href: "/ambassadors", accent: "#ff2fb0", rotate: -4, halfWidth: 120, halfHeight: 45 },
-  { label: "SAME SAME BUT WHOA", href: "/same-same-but-whoa", accent: "#7b2ff7", rotate: 3, halfWidth: 125, halfHeight: 45 },
+  { label: "SAME SAME BUT WHOA", href: "/same-same-but-whoa", accent: "#7b2ff7", rotate: 3, halfWidth: 125, halfHeight: 45, tunnel: true },
   { label: "SHOP THE WHOADEGA", href: "/shop", accent: "#29e6ff", rotate: -2, big: true, halfWidth: 165, halfHeight: 55 },
   { label: "MUSIC COLLECTIVE", href: "/music-collective", accent: "#baff29", rotate: 5, halfWidth: 110, halfHeight: 45 },
   { label: "ART COLLECTIVE", href: "/art-collective", accent: "#fff229", rotate: -5, halfWidth: 95, halfHeight: 45 },
@@ -66,6 +71,14 @@ export default function OrbitField() {
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const sizeRef = useRef(DEFAULT_SIZE);
   const sphereRadiusRef = useRef(DEFAULT_SPHERE_RADIUS);
+  const router = useRouter();
+  const [tunneling, setTunneling] = useState(false);
+
+  function handleTunnelNavigate(href: string) {
+    if (tunneling) return;
+    setTunneling(true);
+    setTimeout(() => router.push(href), TUNNEL_DURATION_MS);
+  }
 
   useEffect(() => {
     const container = containerRef.current;
@@ -117,6 +130,8 @@ export default function OrbitField() {
 
   return (
     <div ref={containerRef} className="absolute inset-0">
+      <TunnelTransition active={tunneling} />
+
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
         <WhoaSphere ref={sphereRef} />
       </div>
@@ -137,6 +152,7 @@ export default function OrbitField() {
               rotate={stop.rotate}
               big={stop.big}
               delay={i * 0.35}
+              onNavigate={stop.tunnel ? handleTunnelNavigate : undefined}
             />
           </div>
         </div>
