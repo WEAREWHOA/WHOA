@@ -26,7 +26,7 @@ const STOPS: HubStop[] = [
   { label: "MUSIC COLLECTIVE", href: "/music-collective", accent: "#baff29", rotate: 5, halfWidth: 110, halfHeight: 45 },
   { label: "ART COLLECTIVE", href: "/art-collective", accent: "#fff229", rotate: -5, halfWidth: 95, halfHeight: 45 },
   { label: "EVENT CALENDAR", href: "/events", accent: "#ff8a29", rotate: 4, halfWidth: 100, halfHeight: 45 },
-  { label: "WHOA", href: "https://www.wearewhoa.art", accent: "#ffffff", rotate: 0, big: true, halfWidth: 110, halfHeight: 55 },
+  { label: "ENTER WHOA", href: "https://www.wearewhoa.art", accent: "#ffffff", rotate: 0, big: true, halfWidth: 140, halfHeight: 55 },
 ];
 
 // Every stop shares one angular velocity, so the angular gap between any
