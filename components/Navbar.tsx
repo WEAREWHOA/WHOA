@@ -1,10 +1,10 @@
 import Link from "next/link";
-import CartIndicator from "@/components/cart/CartIndicator";
 
 const links = [
   { href: "/shop", label: "Shop" },
-  { href: "/ambassadors#how-it-works", label: "Ambassadors" },
-  { href: "/ambassadors#faq", label: "FAQ" },
+  { href: "/art-collective", label: "Art" },
+  { href: "/music-collective", label: "Music" },
+  { href: "/events", label: "Events" },
 ];
 
 export default function Navbar() {
@@ -24,18 +24,8 @@ export default function Navbar() {
         </nav>
 
         <div className="flex items-center gap-4">
-          <CartIndicator />
-          <Link
-            href="/login"
-            className="hidden text-sm font-medium text-muted transition-colors hover:text-foreground sm:inline"
-          >
-            Log in
-          </Link>
-          <Link
-            href="/apply"
-            className="btn-flame rounded-full px-5 py-2 text-sm"
-          >
-            Become an ambassador
+          <Link href="/login" className="btn-flame rounded-full px-5 py-2 text-sm">
+            Log In / Sign Up
           </Link>
         </div>
       </div>

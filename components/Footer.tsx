@@ -4,13 +4,8 @@ export default function Footer() {
   return (
     <footer className="border-t border-border">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="font-display text-xl tracking-wide">
-            WHOA<span className="text-flame">.</span>
-          </div>
-          <p className="mt-1 text-sm text-muted">
-            The ambassador program for the WHOA community.
-          </p>
+        <div className="font-display text-xl tracking-wide">
+          WHOA<span className="text-flame">.</span>
         </div>
 
         <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
