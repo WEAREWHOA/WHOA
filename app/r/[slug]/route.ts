@@ -1,21 +1,29 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getLinkBySlug, recordLinkClick } from "@/lib/store";
-import { STOREFRONT_URL } from "@/lib/site";
+import { REF_COOKIE, REF_COOKIE_DAYS } from "@/lib/attribution";
 
-export async function GET(_req: NextRequest, ctx: RouteContext<"/r/[slug]">) {
+export async function GET(req: NextRequest, ctx: RouteContext<"/r/[slug]">) {
   const { slug } = await ctx.params;
   const link = await getLinkBySlug(slug);
 
   if (!link) {
-    return NextResponse.redirect(STOREFRONT_URL, 302);
+    return NextResponse.redirect(new URL("/shop", req.url), 302);
   }
 
   await recordLinkClick(link.slug);
 
-  const destination = new URL(STOREFRONT_URL);
-  destination.searchParams.set("ref", link.ambassadorCode);
-  destination.searchParams.set("promo", link.ambassadorCode);
-  destination.searchParams.set("tag", link.slug);
+  const response = NextResponse.redirect(
+    new URL(`/shop?tag=${encodeURIComponent(link.slug)}`, req.url),
+    302,
+  );
 
-  return NextResponse.redirect(destination.toString(), 302);
+  response.cookies.set(REF_COOKIE, link.ambassadorCode, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: REF_COOKIE_DAYS * 24 * 60 * 60,
+    path: "/",
+  });
+
+  return response;
 }

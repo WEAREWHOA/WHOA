@@ -1,8 +1,9 @@
 import Link from "next/link";
+import CartIndicator from "@/components/cart/CartIndicator";
 
 const links = [
-  { href: "/#how-it-works", label: "How it works" },
-  { href: "/#tiers", label: "Tiers" },
+  { href: "/shop", label: "Shop" },
+  { href: "/#how-it-works", label: "Ambassadors" },
   { href: "/#faq", label: "FAQ" },
 ];
 
@@ -12,9 +13,6 @@ export default function Navbar() {
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
         <Link href="/" className="font-display text-2xl tracking-wide">
           WHOA<span className="text-flame">.</span>
-          <span className="ml-2 hidden text-xs font-sans font-medium tracking-[0.2em] text-muted sm:inline">
-            AMBASSADORS
-          </span>
         </Link>
 
         <nav className="hidden items-center gap-8 text-sm font-medium text-muted md:flex">
@@ -25,7 +23,8 @@ export default function Navbar() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
+          <CartIndicator />
           <Link
             href="/login"
             className="hidden text-sm font-medium text-muted transition-colors hover:text-foreground sm:inline"
@@ -36,7 +35,7 @@ export default function Navbar() {
             href="/apply"
             className="btn-flame rounded-full px-5 py-2 text-sm"
           >
-            Apply now
+            Become an ambassador
           </Link>
         </div>
       </div>
