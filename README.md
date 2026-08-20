@@ -1,12 +1,13 @@
-# WHOA Ambassador Program
+# WHOA
 
-A Next.js (App Router) app for the WHOA ambassador program: create a
-password-protected account, get a code plus multiple trackable links, and
-watch clicks/orders/commission roll in on a personal portal.
+A Next.js (App Router) storefront for WHOA, backed by Square for products,
+inventory, and payments, plus a password-protected ambassador program:
+create an account, get a code plus multiple trackable links, and watch
+clicks/orders/commission roll in on a personal portal.
 
 ## Mechanics
 
-- Customers get **15% off** with an ambassador's code or any of their links.
+- Customers get **15% off** when they arrive via an ambassador's code or link.
 - Ambassadors earn a flat **10% commission** on every sale, at every tier.
 - Tiers (**Rookie → Rising → Icon**) unlock perks and recognition as order
   count grows — they never change the commission rate.
@@ -16,6 +17,18 @@ watch clicks/orders/commission roll in on a personal portal.
 
 ## Routes
 
+**Storefront**
+
+- `/shop` — product grid, pulled live from Square's Catalog + Inventory APIs
+- `/shop/[itemId]` — product detail with a variation picker and add-to-cart
+- `/cart` — cart (client-side, persisted to `localStorage`)
+- `/checkout` — name/email + a Square Web Payments SDK card form; the 15%
+  ambassador discount and referral attribution apply automatically if the
+  visitor arrived via a `/r/[slug]` link
+- `/order-confirmed` — confirmation after a successful payment
+
+**Ambassador program**
+
 - `/` — marketing landing page: hero, how-it-works, tiers, portal preview, FAQ, apply CTA
 - `/apply` — creates a password-protected ambassador account (name, email,
   Instagram, password); approval is instant
@@ -23,10 +36,11 @@ watch clicks/orders/commission roll in on a personal portal.
 - `/portal/[code]` — the ambassador dashboard (session-protected — only the
   logged-in owner can view it): code, live stats, tier progress, recent
   orders, the links manager, caption/resource pack, payout settings, logout
-- `/r/[slug]` — a trackable link. Logs a click on that specific link and
-  302-redirects to the storefront (`STOREFRONT_URL`, defaults to
-  `https://www.wearewhoa.art`) with `?ref=<code>&promo=<code>&tag=<slug>`
-  attached
+- `/r/[slug]` — a trackable link. Logs a click on that specific link, sets a
+  30-day `whoa_ref` cookie identifying the ambassador, and redirects to
+  `/shop`. Any purchase made while that cookie is present gets the 15%
+  discount applied in Square and a 10% commission recorded for the
+  ambassador — this is the real, working order-attribution loop, not a stub.
 
 A seeded demo ambassador is available for exploring a populated portal:
 **code `WHOA-DEMO15`, password `whoa-demo-2026`**.
@@ -45,18 +59,23 @@ npm run build
 
 ## Environment variables
 
-| Variable                     | Default                     | Purpose                                              |
-| ----------------------------- | ---------------------------- | ----------------------------------------------------- |
-| `STOREFRONT_URL`             | `https://www.wearewhoa.art`  | Where `/r/[slug]` redirects customers to             |
-| `NEXT_PUBLIC_SUPABASE_URL`   | —                             | Supabase project URL (Settings → API)                |
-| `SUPABASE_SERVICE_ROLE_KEY`  | —                             | Supabase `service_role` secret key (server-side only) |
+| Variable                        | Default    | Purpose                                                                 |
+| --------------------------------- | ------------ | -------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | —          | Supabase project URL (Settings → API)                                  |
+| `SUPABASE_SERVICE_ROLE_KEY`     | —          | Supabase `service_role` secret key (server-side only)                  |
+| `SQUARE_ACCESS_TOKEN`           | —          | Square API access token (Developer Dashboard → your app → Credentials) |
+| `SQUARE_LOCATION_ID`            | —          | Square location ID that the storefront reads/sells from                |
+| `SQUARE_ENVIRONMENT`            | `sandbox`  | `sandbox` or `production`                                              |
+| `NEXT_PUBLIC_SQUARE_APPLICATION_ID` | —      | Square Application ID — public, used by the Web Payments SDK client-side |
+| `NEXT_PUBLIC_SQUARE_LOCATION_ID`    | —      | Same value as `SQUARE_LOCATION_ID` — also needed client-side for the card form |
+| `NEXT_PUBLIC_SQUARE_ENVIRONMENT`    | `sandbox` | `sandbox` or `production` — picks which Square.js script gets loaded |
 
 ## Data layer & auth
 
-Ambassador records, sessions, and links live in Supabase (`lib/store.ts`,
-`lib/auth.ts`, via `lib/supabase.ts`), read and written only from trusted
-server code (Server Components, Server Actions, Route Handlers) using the
-`service_role` key — it's never sent to the browser.
+Ambassador records, sessions, links, and commission records live in Supabase
+(`lib/store.ts`, `lib/auth.ts`, via `lib/supabase.ts`), read and written only
+from trusted server code (Server Components, Server Actions, Route
+Handlers) using the `service_role` key — it's never sent to the browser.
 
 Passwords are hashed with bcrypt (`lib/auth.ts`) and never stored or
 returned in plain text; the public `getByCode`/`getByEmail` queries in
@@ -90,24 +109,43 @@ revoked by deleting its row (which logout does).
 import time, so `npm run build` / `npm run lint` succeed even without these
 vars set — only requests that actually touch the store need them.
 
-## Closing the order-attribution loop
+## Square integration
 
-Today, `/r/[slug]` tracks the click and hands off `ref`/`promo`/`tag` params
-to the storefront, and account creation/login/payout settings/link creation
-are all wired end-to-end — but nothing reports real *orders* back into an
-ambassador's stats yet, since this app doesn't control checkout on the
-actual storefront. Two realistic ways to close that loop:
+Inventory and POS stay in Square — this app only reads the catalog and
+inventory, and writes orders/payments back to Square, exactly as if a
+cashier had rung up the sale. Nothing about products or stock is managed
+here.
 
-1. **Storefront webhook.** If the storefront is Shopify (or similar), add a
-   webhook on `orders/create` that reads the `ref`/`promo`/`tag` params
-   captured at checkout (e.g. via a cookie set when `/r/[slug]` redirects)
-   and POSTs the order back to this app to append to the ambassador's
-   `orders` list.
-2. **Dedicated affiliate platform.** Point the program at a platform built
-   for this (e.g. Social Ladder, Refersion, Rewardful) and have this app act
-   as the branded application/portal front-end, syncing codes and reading
-   back attributed orders via that platform's API instead of tracking orders
-   itself.
+- `lib/square.ts` — a lazily-created Square SDK client (`getSquare()`), same
+  pattern as `lib/supabase.ts`, so missing credentials don't break the build.
+- `lib/catalog.ts` — `listProducts()`/`getProduct()` call
+  `catalog.searchItems`, batch-fetch item/variation images, and
+  `inventory.batchGetCounts` for stock levels.
+- `app/checkout/actions.ts` — on checkout, creates a real Square `Order`
+  (with a `FIXED_PERCENTAGE` 15% discount attached if a `whoa_ref` cookie
+  is present), then a `Payment` against that order using the token from the
+  Web Payments SDK. If an ambassador referred the sale, a row is appended to
+  Supabase's `orders` table with the sale amount and 10% commission —
+  this is what powers the live stats on `/portal/[code]`.
+
+**Setup:**
+
+1. Go to [developer.squareup.com/apps](https://developer.squareup.com/apps),
+   sign in with your Square account, and create (or open) an app.
+2. Under **Credentials**, copy the **Access Token** (sandbox while testing;
+   production once ready) and note your **Location ID**.
+3. Set the environment variables above — `SQUARE_ACCESS_TOKEN` and
+   `SQUARE_LOCATION_ID` stay server-only; `NEXT_PUBLIC_SQUARE_APPLICATION_ID`,
+   `NEXT_PUBLIC_SQUARE_LOCATION_ID`, and `NEXT_PUBLIC_SQUARE_ENVIRONMENT` are
+   safe to expose (the Web Payments SDK needs them in the browser).
+4. Make sure the products you want to sell are marked available at that
+   location in Square and have inventory tracking enabled if you want stock
+   counts to show.
+
+The Web Payments SDK handles card data directly in the browser (a token is
+all that ever reaches this app's server), so this integration doesn't touch
+raw card numbers and stays PCI-compliant the same way Square's own
+checkout does.
 
 ## Theme
 

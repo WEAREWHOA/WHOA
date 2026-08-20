@@ -38,3 +38,28 @@ export interface AmbassadorStats {
   totalSales: number;
   totalCommission: number;
 }
+
+export interface ProductVariation {
+  id: string;
+  name: string;
+  priceCents: number;
+  inStock: number | null;
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl: string | null;
+  variations: ProductVariation[];
+}
+
+export interface CartLine {
+  variationId: string;
+  productId: string;
+  productName: string;
+  variationName: string;
+  priceCents: number;
+  quantity: number;
+  imageUrl: string | null;
+}

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Bebas_Neue, Inter, Geist_Mono } from "next/font/google";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import SiteChrome from "@/components/SiteChrome";
+import { CartProvider } from "@/components/cart/CartProvider";
 import "./globals.css";
 
 const bebas = Bebas_Neue({
@@ -21,9 +21,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "WHOA Ambassador Program",
+  title: "WHOA",
   description:
-    "Join the WHOA Ambassador Program. Share your code, give your people 15% off, and earn 10% commission on every sale — no caps, no catch.",
+    "Shop WHOA, and share it — join the ambassador program, give your people 15% off, and earn 10% commission on every sale.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -33,9 +33,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${bebas.variable} ${inter.variable} ${geistMono.variable} h-full antialiased dark`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        <Navbar />
-        <main className="flex flex-1 flex-col">{children}</main>
-        <Footer />
+        <CartProvider>
+          <SiteChrome>{children}</SiteChrome>
+        </CartProvider>
       </body>
     </html>
   );
