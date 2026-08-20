@@ -1,5 +1,5 @@
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
-import ArtistCard from "@/components/artcollective/ArtistCard";
+import ArtCollectiveGrid from "@/components/artcollective/ArtCollectiveGrid";
 import { ARTISTS } from "@/lib/artists";
 
 export default function ArtCollectivePage() {
@@ -19,11 +19,7 @@ export default function ArtCollectivePage() {
         </p>
       </div>
 
-      <div className="relative z-10 mt-14 flex w-full max-w-6xl flex-wrap items-start justify-center gap-x-8 gap-y-14">
-        {ARTISTS.map((artist, i) => (
-          <ArtistCard key={artist.slug} artist={artist} delay={i * 0.45} />
-        ))}
-      </div>
+      <ArtCollectiveGrid artists={ARTISTS} />
     </section>
   );
 }
