@@ -1,5 +1,5 @@
 import { getSupabase } from "./supabase";
-import type { Ambassador, AmbassadorStats, Order, PayoutSettings } from "./types";
+import type { Ambassador, AmbassadorLink, AmbassadorStats, Order, PayoutSettings } from "./types";
 
 interface AmbassadorRow {
   code: string;
@@ -7,10 +7,10 @@ interface AmbassadorRow {
   email: string;
   instagram: string | null;
   created_at: string;
-  clicks: number;
   payout_method: PayoutSettings["method"] | null;
   payout_destination: string | null;
   orders?: OrderRow[];
+  links?: LinkRow[];
 }
 
 interface OrderRow {
@@ -20,6 +20,20 @@ interface OrderRow {
   sale_amount: number;
   commission: number;
 }
+
+interface LinkRow {
+  id: string;
+  label: string;
+  slug: string;
+  clicks: number;
+  created_at: string;
+}
+
+// Explicit column list (no password_hash) — this is the select used
+// everywhere an Ambassador is returned to the app. Credentials are only
+// ever fetched separately, by the two getCredentials* functions below.
+const AMBASSADOR_PUBLIC_SELECT =
+  "code, name, email, instagram, created_at, payout_method, payout_destination, orders(*), links(*)";
 
 function mapOrder(row: OrderRow): Order {
   return {
@@ -31,6 +45,16 @@ function mapOrder(row: OrderRow): Order {
   };
 }
 
+function mapLink(row: LinkRow): AmbassadorLink {
+  return {
+    id: row.id,
+    label: row.label,
+    slug: row.slug,
+    clicks: row.clicks,
+    createdAt: row.created_at,
+  };
+}
+
 function mapAmbassador(row: AmbassadorRow): Ambassador {
   return {
     code: row.code,
@@ -38,8 +62,8 @@ function mapAmbassador(row: AmbassadorRow): Ambassador {
     email: row.email,
     instagram: row.instagram ?? undefined,
     createdAt: row.created_at,
-    clicks: row.clicks,
     orders: (row.orders ?? []).map(mapOrder),
+    links: (row.links ?? []).map(mapLink),
     payout:
       row.payout_method && row.payout_destination
         ? { method: row.payout_method, destination: row.payout_destination }
@@ -47,12 +71,8 @@ function mapAmbassador(row: AmbassadorRow): Ambassador {
   };
 }
 
-const AMBASSADOR_WITH_ORDERS = "*, orders(*)";
-
-function slugFromName(name: string): string {
-  const first = name.trim().split(/\s+/)[0] ?? "";
-  const slug = first.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
-  return slug || "AMBASSADOR";
+function slugify(text: string): string {
+  return text.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
 }
 
 async function codeExists(code: string): Promise<boolean> {
@@ -64,8 +84,13 @@ async function codeExists(code: string): Promise<boolean> {
   return data !== null;
 }
 
-async function generateCode(name: string): Promise<string> {
-  const base = slugFromName(name);
+async function linkSlugExists(slug: string): Promise<boolean> {
+  const { data } = await getSupabase().from("links").select("slug").eq("slug", slug).maybeSingle();
+  return data !== null;
+}
+
+async function generateAmbassadorCode(name: string): Promise<string> {
+  const base = slugify(name.trim().split(/\s+/)[0] ?? "") || "AMBASSADOR";
   const preferred = `WHOA-${base}15`;
   if (!(await codeExists(preferred))) return preferred;
 
@@ -78,52 +103,143 @@ async function generateCode(name: string): Promise<string> {
   return candidate;
 }
 
+async function generateLinkSlug(ambassadorCode: string, label: string): Promise<string> {
+  const base = `${ambassadorCode}-${slugify(label) || "LINK"}`;
+  if (!(await linkSlugExists(base))) return base;
+
+  let suffix = 2;
+  let candidate = `${base}${suffix}`;
+  while (await linkSlugExists(candidate)) {
+    suffix += 1;
+    candidate = `${base}${suffix}`;
+  }
+  return candidate;
+}
+
 export async function createAmbassador(input: {
   name: string;
   email: string;
   instagram?: string;
+  passwordHash: string;
 }): Promise<Ambassador> {
-  const code = await generateCode(input.name);
-  const { data, error } = await getSupabase()
-    .from("ambassadors")
-    .insert({
-      code,
-      name: input.name.trim(),
-      email: input.email.trim().toLowerCase(),
-      instagram: input.instagram?.trim() || null,
-    })
-    .select(AMBASSADOR_WITH_ORDERS)
-    .single();
+  const code = await generateAmbassadorCode(input.name);
+  const supabase = getSupabase();
 
-  if (error || !data) {
-    throw new Error(`Failed to create ambassador: ${error?.message ?? "unknown error"}`);
+  const { error: ambassadorError } = await supabase.from("ambassadors").insert({
+    code,
+    name: input.name.trim(),
+    email: input.email.trim().toLowerCase(),
+    instagram: input.instagram?.trim() || null,
+    password_hash: input.passwordHash,
+  });
+
+  if (ambassadorError) {
+    throw new Error(`Failed to create ambassador: ${ambassadorError.message}`);
   }
 
-  return mapAmbassador(data as AmbassadorRow);
+  const { error: linkError } = await supabase.from("links").insert({
+    id: `link_${code.toLowerCase()}_default`,
+    ambassador_code: code,
+    label: "Default",
+    slug: code,
+  });
+
+  if (linkError) {
+    throw new Error(`Failed to create default link: ${linkError.message}`);
+  }
+
+  const ambassador = await getByCode(code);
+  if (!ambassador) {
+    throw new Error("Failed to load ambassador after creation");
+  }
+  return ambassador;
 }
 
 export async function getByCode(code: string): Promise<Ambassador | undefined> {
   const { data } = await getSupabase()
     .from("ambassadors")
-    .select(AMBASSADOR_WITH_ORDERS)
+    .select(AMBASSADOR_PUBLIC_SELECT)
     .eq("code", code.trim().toUpperCase())
     .maybeSingle();
 
-  return data ? mapAmbassador(data as AmbassadorRow) : undefined;
+  return data ? mapAmbassador(data as unknown as AmbassadorRow) : undefined;
 }
 
 export async function getByEmail(email: string): Promise<Ambassador | undefined> {
   const { data } = await getSupabase()
     .from("ambassadors")
-    .select(AMBASSADOR_WITH_ORDERS)
+    .select(AMBASSADOR_PUBLIC_SELECT)
     .eq("email", email.trim().toLowerCase())
     .maybeSingle();
 
-  return data ? mapAmbassador(data as AmbassadorRow) : undefined;
+  return data ? mapAmbassador(data as unknown as AmbassadorRow) : undefined;
 }
 
-export async function recordClick(code: string): Promise<boolean> {
-  const { error } = await getSupabase().rpc("increment_ambassador_clicks", { p_code: code });
+// Credentials are fetched only here, never as part of the public Ambassador
+// shape, so a password hash can't accidentally end up rendered or logged.
+export async function getCredentialsByCode(
+  code: string,
+): Promise<{ code: string; passwordHash: string } | undefined> {
+  const { data } = await getSupabase()
+    .from("ambassadors")
+    .select("code, password_hash")
+    .eq("code", code.trim().toUpperCase())
+    .maybeSingle();
+
+  return data?.password_hash ? { code: data.code, passwordHash: data.password_hash } : undefined;
+}
+
+export async function getCredentialsByEmail(
+  email: string,
+): Promise<{ code: string; passwordHash: string } | undefined> {
+  const { data } = await getSupabase()
+    .from("ambassadors")
+    .select("code, password_hash")
+    .eq("email", email.trim().toLowerCase())
+    .maybeSingle();
+
+  return data?.password_hash ? { code: data.code, passwordHash: data.password_hash } : undefined;
+}
+
+export async function createLink(ambassadorCode: string, label: string): Promise<AmbassadorLink> {
+  const trimmedLabel = label.trim().slice(0, 40);
+  if (!trimmedLabel) {
+    throw new Error("Link label is required");
+  }
+
+  const slug = await generateLinkSlug(ambassadorCode, trimmedLabel);
+  const { data, error } = await getSupabase()
+    .from("links")
+    .insert({
+      id: `link_${slug.toLowerCase()}`,
+      ambassador_code: ambassadorCode,
+      label: trimmedLabel,
+      slug,
+    })
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    throw new Error(`Failed to create link: ${error?.message ?? "unknown error"}`);
+  }
+
+  return mapLink(data as LinkRow);
+}
+
+export async function getLinkBySlug(
+  slug: string,
+): Promise<{ ambassadorCode: string; slug: string; label: string } | undefined> {
+  const { data } = await getSupabase()
+    .from("links")
+    .select("slug, label, ambassador_code")
+    .eq("slug", slug.trim().toUpperCase())
+    .maybeSingle();
+
+  return data ? { ambassadorCode: data.ambassador_code, slug: data.slug, label: data.label } : undefined;
+}
+
+export async function recordLinkClick(slug: string): Promise<boolean> {
+  const { error } = await getSupabase().rpc("increment_link_clicks", { p_slug: slug });
   return !error;
 }
 
@@ -137,8 +253,9 @@ export async function setPayout(code: string, payout: PayoutSettings): Promise<b
 }
 
 export function getStats(ambassador: Ambassador): AmbassadorStats {
+  const clicks = ambassador.links.reduce((sum, l) => sum + l.clicks, 0);
   const orderCount = ambassador.orders.length;
   const totalSales = ambassador.orders.reduce((sum, o) => sum + o.saleAmount, 0);
   const totalCommission = ambassador.orders.reduce((sum, o) => sum + o.commission, 0);
-  return { clicks: ambassador.clicks, orderCount, totalSales, totalCommission };
+  return { clicks, orderCount, totalSales, totalCommission };
 }

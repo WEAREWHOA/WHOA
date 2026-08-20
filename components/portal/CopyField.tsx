@@ -6,10 +6,12 @@ export default function CopyField({
   label,
   value,
   mono = false,
+  compact = false,
 }: {
-  label: string;
+  label?: string;
   value: string;
   mono?: boolean;
+  compact?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -25,8 +27,12 @@ export default function CopyField({
 
   return (
     <div>
-      <p className="text-xs text-muted">{label}</p>
-      <div className="mt-2 flex items-center gap-2 rounded-lg border border-border-strong bg-surface-raised px-4 py-3">
+      {label && <p className="text-xs text-muted">{label}</p>}
+      <div
+        className={`flex items-center gap-2 rounded-lg border border-border-strong bg-surface-raised ${
+          compact ? "mt-1.5 px-3 py-2" : "mt-2 px-4 py-3"
+        }`}
+      >
         <span
           className={`flex-1 truncate text-sm ${mono ? "font-mono-code text-flame" : ""}`}
         >

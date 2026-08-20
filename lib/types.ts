@@ -13,14 +13,22 @@ export interface PayoutSettings {
   destination: string;
 }
 
+export interface AmbassadorLink {
+  id: string;
+  label: string;
+  slug: string;
+  clicks: number;
+  createdAt: string;
+}
+
 export interface Ambassador {
   code: string;
   name: string;
   email: string;
   instagram?: string;
   createdAt: string;
-  clicks: number;
   orders: Order[];
+  links: AmbassadorLink[];
   payout: PayoutSettings | null;
 }
 
