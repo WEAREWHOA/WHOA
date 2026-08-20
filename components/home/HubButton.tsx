@@ -10,6 +10,7 @@ export default function HubButton({
   accent,
   delay = 0,
   big = false,
+  onNavigate,
 }: {
   href: string;
   label: string;
@@ -17,10 +18,11 @@ export default function HubButton({
   accent: string;
   delay?: number;
   big?: boolean;
+  onNavigate?: (href: string) => void;
 }) {
-  const ref = useRef<HTMLAnchorElement>(null);
+  const ref = useRef<HTMLAnchorElement & HTMLButtonElement>(null);
 
-  function handlePointerMove(e: PointerEvent<HTMLAnchorElement>) {
+  function handlePointerMove(e: PointerEvent<HTMLAnchorElement | HTMLButtonElement>) {
     const el = ref.current;
     if (!el || e.pointerType === "touch") return;
     const rect = el.getBoundingClientRect();
@@ -35,24 +37,42 @@ export default function HubButton({
     el.style.transform = `rotate(${rotate}deg)`;
   }
 
+  const style = {
+    transform: `rotate(${rotate}deg)`,
+    borderColor: accent,
+    boxShadow: `0 0 40px -14px ${accent}`,
+    animationDelay: `${delay}s`,
+    "--accent": accent,
+  } as React.CSSProperties;
+
+  const className = `hub-bob group relative flex items-center justify-center rounded-full border-2 bg-black/40 text-center font-display tracking-wide backdrop-blur-sm transition-shadow duration-300 hover:shadow-[0_0_60px_-8px_var(--accent)] ${
+    big ? "px-10 py-8 text-2xl sm:text-3xl" : "px-7 py-5 text-lg sm:text-xl"
+  }`;
+
+  if (onNavigate) {
+    return (
+      <button
+        type="button"
+        ref={ref}
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
+        onClick={() => onNavigate(href)}
+        style={style}
+        className={className}
+      >
+        {label}
+      </button>
+    );
+  }
+
   return (
     <Link
       ref={ref}
       href={href}
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
-      style={
-        {
-          transform: `rotate(${rotate}deg)`,
-          borderColor: accent,
-          boxShadow: `0 0 40px -14px ${accent}`,
-          animationDelay: `${delay}s`,
-          "--accent": accent,
-        } as React.CSSProperties
-      }
-      className={`hub-bob group relative flex items-center justify-center rounded-full border-2 bg-black/40 text-center font-display tracking-wide backdrop-blur-sm transition-shadow duration-300 hover:shadow-[0_0_60px_-8px_var(--accent)] ${
-        big ? "px-10 py-8 text-2xl sm:text-3xl" : "px-7 py-5 text-lg sm:text-xl"
-      }`}
+      style={style}
+      className={className}
     >
       {label}
     </Link>

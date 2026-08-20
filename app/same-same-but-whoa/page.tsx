@@ -1,5 +1,11 @@
-import ComingSoon from "@/components/home/ComingSoon";
+import PsychedelicBackground from "@/components/home/PsychedelicBackground";
+import AdventureGame from "@/components/adventure/AdventureGame";
 
 export default function SameSameButWhoaPage() {
-  return <ComingSoon title="Same Same But WHOA" accent="#7b2ff7" />;
+  return (
+    <section className="relative flex flex-1 flex-col items-center justify-center overflow-hidden px-6 py-20">
+      <PsychedelicBackground />
+      <AdventureGame />
+    </section>
+  );
 }

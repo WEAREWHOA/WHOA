@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import HubButton from "@/components/home/HubButton";
+import WhoaSphere from "@/components/home/WhoaSphere";
+import TunnelTransition from "@/components/home/TunnelTransition";
 
 interface HubStop {
   label: string;
@@ -9,69 +12,98 @@ interface HubStop {
   accent: string;
   rotate: number;
   big?: boolean;
+  halfWidth: number;
+  halfHeight: number;
+  tunnel?: boolean;
 }
 
+const TUNNEL_DURATION_MS = 900;
+
 const STOPS: HubStop[] = [
-  { label: "BRAND AMBASSADORS", href: "/ambassadors", accent: "#ff2fb0", rotate: -4 },
-  { label: "SAME SAME BUT WHOA", href: "/same-same-but-whoa", accent: "#7b2ff7", rotate: 3 },
-  { label: "SHOP THE WHOADEGA", href: "/shop", accent: "#29e6ff", rotate: -2, big: true },
-  { label: "MUSIC COLLECTIVE", href: "/music-collective", accent: "#baff29", rotate: 5 },
-  { label: "ART COLLECTIVE", href: "/art-collective", accent: "#fff229", rotate: -5 },
-  { label: "EVENTS", href: "/events", accent: "#ff8a29", rotate: 4 },
-  { label: "WHOA", href: "/whoa", accent: "#ffffff", rotate: 0, big: true },
+  { label: "BRAND AMBASSADORS", href: "/ambassadors", accent: "#ff2fb0", rotate: -4, halfWidth: 120, halfHeight: 45 },
+  { label: "SAME SAME BUT WHOA", href: "/same-same-but-whoa", accent: "#7b2ff7", rotate: 3, halfWidth: 125, halfHeight: 45, tunnel: true },
+  { label: "SHOP THE WHOADEGA", href: "/shop", accent: "#29e6ff", rotate: -2, big: true, halfWidth: 165, halfHeight: 55 },
+  { label: "MUSIC COLLECTIVE", href: "/music-collective", accent: "#baff29", rotate: 5, halfWidth: 110, halfHeight: 45 },
+  { label: "ART COLLECTIVE", href: "/art-collective", accent: "#fff229", rotate: -5, halfWidth: 95, halfHeight: 45 },
+  { label: "EVENTS", href: "/events", accent: "#ff8a29", rotate: 4, halfWidth: 70, halfHeight: 45 },
+  { label: "WHOA", href: "/whoa", accent: "#ffffff", rotate: 0, big: true, halfWidth: 110, halfHeight: 55 },
 ];
 
 // Every stop shares one angular velocity, so the angular gap between any
 // two buttons never changes — they can drift as a formation but can never
-// converge and collide, regardless of their individual orbit radius.
+// converge and collide, whatever radius each one ends up on.
 const ANGULAR_SPEED = 0.00007;
-const RADIUS_FRACS = STOPS.map((_, i) => 0.3 + i * 0.062);
-const ELLIPSE_SQUASH = 0.6;
-const DEFAULT_SIZE = { width: 1200, height: 800 };
+const MARGIN = 16;
+const RING_STEP = 56;
+const SPHERE_CLEARANCE = 34;
 
-function orbitRadius(i: number, size: { width: number; height: number }) {
-  const base = Math.min(size.width, size.height);
-  const radiusX = RADIUS_FRACS[i] * base;
-  return { radiusX, radiusY: radiusX * ELLIPSE_SQUASH };
+const DEFAULT_SIZE = { width: 1200, height: 800 };
+const DEFAULT_SPHERE_RADIUS = 130;
+
+function orbitRadii(
+  size: { width: number; height: number },
+  sphereRadius: number,
+): { radiusX: number; radiusY: number }[] {
+  const halfW = size.width / 2;
+  const halfH = size.height / 2;
+
+  return STOPS.map((stop, i) => {
+    // Clearance from the sphere needs the button's own footprint, or a
+    // button wider/taller than the gap would still graze the sphere.
+    const minR = sphereRadius + Math.max(stop.halfWidth, stop.halfHeight) + SPHERE_CLEARANCE;
+    const raw = minR + i * RING_STEP;
+
+    // Staying inside the viewport is a hard ceiling — it always wins over
+    // sphere clearance, however little room that leaves on a narrow phone.
+    const availX = Math.max(0, halfW - stop.halfWidth - MARGIN);
+    const availY = Math.max(0, halfH - stop.halfHeight - MARGIN);
+
+    return {
+      radiusX: Math.min(raw, availX),
+      radiusY: Math.min(raw, availY),
+    };
+  });
 }
 
 export default function OrbitField() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const sphereRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const ringRefs = useRef<(HTMLDivElement | null)[]>([]);
   const sizeRef = useRef(DEFAULT_SIZE);
+  const sphereRadiusRef = useRef(DEFAULT_SPHERE_RADIUS);
+  const router = useRouter();
+  const [tunneling, setTunneling] = useState(false);
+
+  function handleTunnelNavigate(href: string) {
+    if (tunneling) return;
+    setTunneling(true);
+    setTimeout(() => router.push(href), TUNNEL_DURATION_MS);
+  }
 
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    function layoutRings() {
-      STOPS.forEach((_, i) => {
-        const ring = ringRefs.current[i];
-        if (!ring) return;
-        const { radiusX, radiusY } = orbitRadius(i, sizeRef.current);
-        ring.style.width = `${radiusX * 2}px`;
-        ring.style.height = `${radiusY * 2}px`;
-      });
-    }
-
     function measure() {
       const rect = container!.getBoundingClientRect();
       sizeRef.current = { width: rect.width, height: rect.height };
-      layoutRings();
+      if (sphereRef.current) {
+        sphereRadiusRef.current = sphereRef.current.getBoundingClientRect().width / 2;
+      }
     }
 
     measure();
     window.addEventListener("resize", measure);
 
     function place(t: number) {
+      const radii = orbitRadii(sizeRef.current, sphereRadiusRef.current);
       STOPS.forEach((_, i) => {
         const el = itemRefs.current[i];
         if (!el) return;
         const phase = (i / STOPS.length) * Math.PI * 2;
         const angle = phase + t * ANGULAR_SPEED;
-        const { radiusX, radiusY } = orbitRadius(i, sizeRef.current);
+        const { radiusX, radiusY } = radii[i];
         const x = Math.cos(angle) * radiusX;
         const y = Math.sin(angle) * radiusY;
         el.style.transform = `translate(${x}px, ${y}px)`;
@@ -98,26 +130,11 @@ export default function OrbitField() {
 
   return (
     <div ref={containerRef} className="absolute inset-0">
-      {STOPS.map((stop, i) => {
-        const { radiusX, radiusY } = orbitRadius(i, DEFAULT_SIZE);
-        return (
-          <div
-            key={`ring-${stop.href}`}
-            ref={(el) => {
-              ringRefs.current[i] = el;
-            }}
-            aria-hidden
-            className="orbit-ring pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
-            style={
-              {
-                width: `${radiusX * 2}px`,
-                height: `${radiusY * 2}px`,
-                "--ring-accent": stop.accent,
-              } as React.CSSProperties
-            }
-          />
-        );
-      })}
+      <TunnelTransition active={tunneling} />
+
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+        <WhoaSphere ref={sphereRef} />
+      </div>
 
       {STOPS.map((stop, i) => (
         <div
@@ -135,6 +152,7 @@ export default function OrbitField() {
               rotate={stop.rotate}
               big={stop.big}
               delay={i * 0.35}
+              onNavigate={stop.tunnel ? handleTunnelNavigate : undefined}
             />
           </div>
         </div>
