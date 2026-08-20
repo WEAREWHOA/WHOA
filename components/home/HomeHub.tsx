@@ -1,19 +1,9 @@
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
-import HubButton from "@/components/home/HubButton";
-
-const buttons = [
-  { label: "BRAND AMBASSADORS", href: "/ambassadors", accent: "#ff2fb0", rotate: -4 },
-  { label: "SAME SAME BUT WHOA", href: "/same-same-but-whoa", accent: "#7b2ff7", rotate: 3 },
-  { label: "SHOP THE WHOADEGA", href: "/shop", accent: "#29e6ff", rotate: -2, big: true },
-  { label: "MUSIC COLLECTIVE", href: "/music-collective", accent: "#baff29", rotate: 5 },
-  { label: "ART COLLECTIVE", href: "/art-collective", accent: "#fff229", rotate: -5 },
-  { label: "EVENTS", href: "/events", accent: "#ff8a29", rotate: 4 },
-  { label: "WHOA", href: "/whoa", accent: "#ffffff", rotate: 0, big: true },
-];
+import Pond from "@/components/home/Pond";
 
 export default function HomeHub() {
   return (
-    <section className="relative flex min-h-[90vh] flex-col items-center justify-center overflow-hidden px-6 py-20 text-center">
+    <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 py-16 text-center">
       <PsychedelicBackground />
 
       <span className="text-xs font-semibold tracking-[0.3em] text-white/70 uppercase">
@@ -24,13 +14,9 @@ export default function HomeHub() {
         WHOA.
       </h1>
 
-      <p className="mt-6 max-w-md text-sm text-white/60">Pick your path.</p>
+      <p className="mt-4 max-w-md text-sm text-white/60">Follow a flamingo to pick your path.</p>
 
-      <div className="mt-14 flex max-w-4xl flex-wrap items-center justify-center gap-5 sm:gap-6">
-        {buttons.map((btn, i) => (
-          <HubButton key={btn.href} {...btn} delay={i * 0.35} />
-        ))}
-      </div>
+      <Pond />
     </section>
   );
 }
