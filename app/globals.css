@@ -127,3 +127,39 @@ body {
 .animate-flicker {
   animation: flicker 3s ease-in-out infinite;
 }
+
+.text-psychedelic {
+  background-image: linear-gradient(
+    90deg,
+    #ff2fb0,
+    #7b2ff7,
+    #29e6ff,
+    #baff29,
+    #fff229,
+    #ff8a29,
+    #ff2fb0
+  );
+  background-size: 300% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+@keyframes psychedelic-shift {
+  to { background-position: 300% 0; }
+}
+
+@keyframes hub-bob {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -12px; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .text-psychedelic {
+    animation: psychedelic-shift 8s linear infinite;
+  }
+
+  .hub-bob {
+    animation: hub-bob 5s ease-in-out infinite;
+  }
+}

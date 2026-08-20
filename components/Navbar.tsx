@@ -3,8 +3,8 @@ import CartIndicator from "@/components/cart/CartIndicator";
 
 const links = [
   { href: "/shop", label: "Shop" },
-  { href: "/#how-it-works", label: "Ambassadors" },
-  { href: "/#faq", label: "FAQ" },
+  { href: "/ambassadors#how-it-works", label: "Ambassadors" },
+  { href: "/ambassadors#faq", label: "FAQ" },
 ];
 
 export default function Navbar() {
