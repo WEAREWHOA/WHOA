@@ -2,15 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
-import FlamingoIcon from "@/components/home/FlamingoIcon";
+import CaterpillarIcon from "@/components/home/CaterpillarIcon";
 
-interface FlamingoDef {
+interface HubStop {
   label: string;
   href: string;
   accent: string;
 }
 
-const FLAMINGOS: FlamingoDef[] = [
+const STOPS: HubStop[] = [
   { label: "BRAND AMBASSADORS", href: "/ambassadors", accent: "#ff2fb0" },
   { label: "SAME SAME BUT WHOA", href: "/same-same-but-whoa", accent: "#7b2ff7" },
   { label: "SHOP THE WHOADEGA", href: "/shop", accent: "#29e6ff" },
@@ -39,7 +39,7 @@ export default function Pond() {
     let raf = 0;
 
     function tick(t: number) {
-      FLAMINGOS.forEach((_, i) => {
+      STOPS.forEach((_, i) => {
         const el = itemRefs.current[i];
         if (!el) return;
         const { xFrac, yFrac } = wanderPosition(i, t);
@@ -61,11 +61,11 @@ export default function Pond() {
       <div className="pond-water absolute inset-0" aria-hidden />
       <div className="pond-ripple absolute inset-0" aria-hidden />
 
-      {FLAMINGOS.map((f, i) => {
+      {STOPS.map((stop, i) => {
         const { xFrac, yFrac } = wanderPosition(i, 0);
         return (
           <div
-            key={f.href}
+            key={stop.href}
             ref={(el) => {
               itemRefs.current[i] = el;
             }}
@@ -79,11 +79,11 @@ export default function Pond() {
             }
           >
             <Link
-              href={f.href}
-              style={{ "--accent": f.accent } as React.CSSProperties}
-              className="flamingo-btn group block translate-x-[-50%] translate-y-[-50%] scale-100 transition-[scale,filter] duration-300 hover:scale-[1.14] hover:drop-shadow-[0_0_30px_var(--accent)] focus-visible:scale-[1.14] focus-visible:drop-shadow-[0_0_30px_var(--accent)] focus-visible:outline-none"
+              href={stop.href}
+              style={{ "--accent": stop.accent } as React.CSSProperties}
+              className="caterpillar-btn group block translate-x-[-50%] translate-y-[-50%] scale-100 transition-[scale,filter] duration-300 hover:scale-[1.14] hover:drop-shadow-[0_0_30px_var(--accent)] focus-visible:scale-[1.14] focus-visible:drop-shadow-[0_0_30px_var(--accent)] focus-visible:outline-none"
             >
-              <FlamingoIcon accent={f.accent} label={f.label} />
+              <CaterpillarIcon accent={stop.accent} label={stop.label} />
             </Link>
           </div>
         );
