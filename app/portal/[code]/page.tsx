@@ -1,17 +1,25 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getByCode, getStats } from "@/lib/store";
 import { getSiteOrigin } from "@/lib/site";
+import { getSessionAmbassadorCode } from "@/lib/auth";
 import CopyField from "@/components/portal/CopyField";
 import StatsGrid from "@/components/portal/StatsGrid";
 import TierProgress from "@/components/portal/TierProgress";
 import OrdersTable from "@/components/portal/OrdersTable";
 import ResourcePack from "@/components/portal/ResourcePack";
 import PayoutSettings from "@/components/portal/PayoutSettings";
+import LinksManager from "@/components/portal/LinksManager";
+import LogoutButton from "@/components/portal/LogoutButton";
 import { getTier } from "@/lib/tiers";
 
 export default async function PortalDashboardPage(props: PageProps<"/portal/[code]">) {
   const { code } = await props.params;
   const searchParams = await props.searchParams;
+
+  const sessionCode = await getSessionAmbassadorCode();
+  if (!sessionCode || sessionCode.toUpperCase() !== code.toUpperCase()) {
+    redirect("/login");
+  }
 
   const ambassador = await getByCode(code);
   if (!ambassador) notFound();
@@ -19,11 +27,11 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
   const stats = getStats(ambassador);
   const tier = getTier(stats.orderCount);
   const origin = await getSiteOrigin();
-  const specialLink = `${origin}/r/${ambassador.code}`;
   const firstName = ambassador.name.trim().split(/\s+/)[0];
 
   const isNew = searchParams?.new === "1";
   const payoutSaved = searchParams?.saved === "1";
+  const linkAdded = searchParams?.linkAdded === "1";
 
   return (
     <section className="mx-auto w-full max-w-5xl px-6 py-16">
@@ -42,17 +50,19 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
             Welcome back, <span className="text-flame">{firstName}</span>
           </h1>
         </div>
-        <span
-          className="w-fit rounded-full px-4 py-1.5 text-sm font-semibold"
-          style={{ backgroundColor: tier.color, color: "#14100c" }}
-        >
-          {tier.label} tier
-        </span>
+        <div className="flex items-center gap-4">
+          <span
+            className="w-fit rounded-full px-4 py-1.5 text-sm font-semibold"
+            style={{ backgroundColor: tier.color, color: "#14100c" }}
+          >
+            {tier.label} tier
+          </span>
+          <LogoutButton />
+        </div>
       </div>
 
-      <div className="mt-10 grid gap-4 sm:grid-cols-2">
+      <div className="mt-10">
         <CopyField label="Your code" value={ambassador.code} mono />
-        <CopyField label="Your special link" value={specialLink} />
       </div>
 
       <div className="mt-8">
@@ -65,7 +75,11 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        <LinksManager code={ambassador.code} origin={origin} links={ambassador.links} added={linkAdded} />
         <ResourcePack code={ambassador.code} />
+      </div>
+
+      <div className="mt-8">
         <PayoutSettings code={ambassador.code} payout={ambassador.payout} saved={payoutSaved} />
       </div>
     </section>

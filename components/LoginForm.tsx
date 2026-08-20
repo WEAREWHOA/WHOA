@@ -2,8 +2,10 @@ import Link from "next/link";
 import { loginAction } from "@/lib/actions";
 
 const errorMessages: Record<string, string> = {
-  missing: "Enter your ambassador code or the email you applied with.",
+  missing: "Enter your ambassador code (or email) and your password.",
   notfound: "We couldn't find an ambassador with that code or email.",
+  invalid: "Incorrect password.",
+  exists: "An account with that email already exists — log in below.",
 };
 
 export default function LoginForm({
@@ -24,7 +26,7 @@ export default function LoginForm({
         Welcome <span className="text-flame">back</span>
       </h1>
       <p className="mt-3 text-sm text-muted">
-        Log in with your ambassador code or the email you applied with.
+        Log in with your ambassador code (or email) and your password.
       </p>
 
       {message && (
@@ -37,33 +39,29 @@ export default function LoginForm({
         <input type="hidden" name="from" value={from} />
 
         <div>
-          <label htmlFor="code" className="text-sm font-medium">
-            Ambassador code
+          <label htmlFor="identifier" className="text-sm font-medium">
+            Code or email
           </label>
           <input
-            id="code"
-            name="code"
+            id="identifier"
+            name="identifier"
             type="text"
+            required
             placeholder="WHOA-DEMO15"
             className="font-mono-code mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
           />
         </div>
 
-        <div className="flex items-center gap-3 text-xs text-muted">
-          <span className="h-px flex-1 bg-border" />
-          or
-          <span className="h-px flex-1 bg-border" />
-        </div>
-
         <div>
-          <label htmlFor="email" className="text-sm font-medium">
-            Email
+          <label htmlFor="password" className="text-sm font-medium">
+            Password
           </label>
           <input
-            id="email"
-            name="email"
-            type="email"
-            placeholder="you@example.com"
+            id="password"
+            name="password"
+            type="password"
+            required
+            placeholder="••••••••"
             className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
           />
         </div>
@@ -72,6 +70,11 @@ export default function LoginForm({
           Log in
         </button>
       </form>
+
+      <p className="mt-4 text-center text-xs text-muted">
+        Try the demo: <span className="font-mono-code">WHOA-DEMO15</span> /{" "}
+        <span className="font-mono-code">whoa-demo-2026</span>
+      </p>
 
       <p className="mt-6 text-center text-sm text-muted">
         Not an ambassador yet?{" "}
