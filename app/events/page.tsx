@@ -12,7 +12,7 @@ export default function EventsPage() {
           Where to find us
         </span>
         <h1 className="text-psychedelic font-display mt-3 text-5xl tracking-wide sm:text-6xl">
-          Events
+          Event Calendar
         </h1>
         <p className="mt-3 max-w-md text-sm text-white/60">
           Hover a flyer to RSVP. Tap it on mobile.
