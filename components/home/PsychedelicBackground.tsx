@@ -14,6 +14,16 @@ interface Blob {
   parallax: number;
 }
 
+interface Star {
+  xFrac: number;
+  yFrac: number;
+  radius: number;
+  baseAlpha: number;
+  twinkleSpeed: number;
+  twinklePhase: number;
+  parallax: number;
+}
+
 const BLOBS: Blob[] = [
   { baseXFrac: 0.2, baseYFrac: 0.25, radius: 420, hue: 320, hueSpeed: 6, driftSpeed: 0.6, driftAmount: 60, phase: 0, parallax: 40 },
   { baseXFrac: 0.8, baseYFrac: 0.2, radius: 380, hue: 265, hueSpeed: 8, driftSpeed: 0.5, driftAmount: 70, phase: 1.4, parallax: -30 },
@@ -21,6 +31,25 @@ const BLOBS: Blob[] = [
   { baseXFrac: 0.25, baseYFrac: 0.78, radius: 400, hue: 190, hueSpeed: 7, driftSpeed: 0.55, driftAmount: 65, phase: 3.8, parallax: -45 },
   { baseXFrac: 0.5, baseYFrac: 0.5, radius: 340, hue: 40, hueSpeed: 9, driftSpeed: 0.7, driftAmount: 45, phase: 5.1, parallax: 25 },
 ];
+
+function makeStars(count: number): Star[] {
+  const stars: Star[] = [];
+  for (let i = 0; i < count; i++) {
+    const seed = i * 97.13;
+    stars.push({
+      xFrac: (Math.sin(seed) * 0.5 + 0.5 + i * 0.0131) % 1,
+      yFrac: (Math.cos(seed * 1.7) * 0.5 + 0.5 + i * 0.0247) % 1,
+      radius: 0.6 + ((i * 37) % 10) / 10,
+      baseAlpha: 0.35 + ((i * 53) % 10) / 16,
+      twinkleSpeed: 0.6 + ((i * 13) % 10) / 6,
+      twinklePhase: (i * 71) % 628,
+      parallax: 6 + (i % 3) * 4,
+    });
+  }
+  return stars;
+}
+
+const STARS = makeStars(140);
 
 export default function PsychedelicBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -71,11 +100,26 @@ export default function PsychedelicBackground() {
       pointer.x += (pointerTarget.x - pointer.x) * 0.04;
       pointer.y += (pointerTarget.y - pointer.y) * 0.04;
 
+      const t = time / 1000;
+
       ctx!.clearRect(0, 0, width, height);
+      ctx!.fillStyle = "#0a0116";
+      ctx!.fillRect(0, 0, width, height);
+
+      ctx!.filter = "none";
+      ctx!.globalCompositeOperation = "source-over";
+      for (const star of STARS) {
+        const x = star.xFrac * width + pointer.x * star.parallax;
+        const y = star.yFrac * height + pointer.y * star.parallax;
+        const alpha = star.baseAlpha * (0.55 + 0.45 * Math.sin(t * star.twinkleSpeed + star.twinklePhase));
+        ctx!.fillStyle = `rgba(255, 255, 255, ${Math.max(alpha, 0).toFixed(3)})`;
+        ctx!.beginPath();
+        ctx!.arc(x, y, star.radius, 0, Math.PI * 2);
+        ctx!.fill();
+      }
+
       ctx!.filter = "blur(90px)";
       ctx!.globalCompositeOperation = "lighten";
-
-      const t = time / 1000;
 
       for (const blob of BLOBS) {
         const x = blob.baseXFrac * width + Math.sin(t * blob.driftSpeed + blob.phase) * blob.driftAmount + pointer.x * blob.parallax;
