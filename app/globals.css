@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0a0806;
+  --surface: #14100c;
+  --surface-raised: #1c1610;
+  --foreground: #f7f0e6;
+  --muted: #a89686;
+  --border: rgba(247, 240, 230, 0.1);
+  --border-strong: rgba(247, 240, 230, 0.18);
+
+  --flame-1: #ff2f1a;
+  --flame-2: #ff7a00;
+  --flame-3: #ffb800;
+
+  --tier-rookie: #b08968;
+  --tier-rising: #ff7a00;
+  --tier-icon: #ffd23f;
+
+  --font-display: var(--font-bebas);
+  --font-body: var(--font-inter);
+  --font-mono: var(--font-geist-mono);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+
+  --color-flame-1: var(--flame-1);
+  --color-flame-2: var(--flame-2);
+  --color-flame-3: var(--flame-3);
+
+  --color-tier-rookie: var(--tier-rookie);
+  --color-tier-rising: var(--tier-rising);
+  --color-tier-icon: var(--tier-icon);
+
+  --font-display: var(--font-display);
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-mono);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-body);
+}
+
+::selection {
+  background: var(--flame-2);
+  color: #14100c;
+}
+
+.text-flame {
+  background-image: linear-gradient(
+    100deg,
+    var(--flame-1) 0%,
+    var(--flame-2) 55%,
+    var(--flame-3) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.bg-flame {
+  background-image: linear-gradient(
+    100deg,
+    var(--flame-1) 0%,
+    var(--flame-2) 55%,
+    var(--flame-3) 100%
+  );
+}
+
+.bg-flame-radial {
+  background-image: radial-gradient(
+    circle at 30% 20%,
+    rgba(255, 122, 0, 0.35) 0%,
+    rgba(255, 47, 26, 0.12) 35%,
+    transparent 70%
+  );
+}
+
+.btn-flame {
+  background-image: linear-gradient(100deg, var(--flame-1) 0%, var(--flame-2) 100%);
+  color: #14100c;
+  font-weight: 700;
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.btn-flame:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.card-surface {
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: 0.01em;
+}
+
+.font-mono-code {
+  font-family: var(--font-mono);
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
+.animate-flicker {
+  animation: flicker 3s ease-in-out infinite;
+}
