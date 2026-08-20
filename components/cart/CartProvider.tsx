@@ -8,6 +8,7 @@ const CART_STORAGE_KEY = "whoa_cart";
 let cart: CartLine[] = [];
 let hydrated = false;
 const listeners = new Set<() => void>();
+const EMPTY_CART: CartLine[] = [];
 
 function notify() {
   for (const listener of listeners) listener();
@@ -43,7 +44,7 @@ function getSnapshot(): CartLine[] {
 }
 
 function getServerSnapshot(): CartLine[] {
-  return [];
+  return EMPTY_CART;
 }
 
 function setCart(next: CartLine[]) {
