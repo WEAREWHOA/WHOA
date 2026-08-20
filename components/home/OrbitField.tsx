@@ -22,11 +22,11 @@ const TUNNEL_DURATION_MS = 900;
 const STOPS: HubStop[] = [
   { label: "BRAND AMBASSADORS", href: "/ambassadors", accent: "#ff2fb0", rotate: -4, halfWidth: 120, halfHeight: 45 },
   { label: "SAME SAME BUT WHOA", href: "/same-same-but-whoa", accent: "#7b2ff7", rotate: 3, halfWidth: 125, halfHeight: 45, tunnel: true },
-  { label: "SHOP THE WHOADEGA", href: "/shop", accent: "#29e6ff", rotate: -2, big: true, halfWidth: 165, halfHeight: 55 },
+  { label: "SHOP THE WHOADEGA", href: "https://www.wearewhoa.art/s/shop", accent: "#29e6ff", rotate: -2, big: true, halfWidth: 165, halfHeight: 55 },
   { label: "MUSIC COLLECTIVE", href: "/music-collective", accent: "#baff29", rotate: 5, halfWidth: 110, halfHeight: 45 },
   { label: "ART COLLECTIVE", href: "/art-collective", accent: "#fff229", rotate: -5, halfWidth: 95, halfHeight: 45 },
   { label: "EVENTS", href: "/events", accent: "#ff8a29", rotate: 4, halfWidth: 70, halfHeight: 45 },
-  { label: "WHOA", href: "/whoa", accent: "#ffffff", rotate: 0, big: true, halfWidth: 110, halfHeight: 55 },
+  { label: "WHOA", href: "https://www.wearewhoa.art", accent: "#ffffff", rotate: 0, big: true, halfWidth: 110, halfHeight: 55 },
 ];
 
 // Every stop shares one angular velocity, so the angular gap between any
