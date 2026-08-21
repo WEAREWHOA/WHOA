@@ -90,7 +90,7 @@ revoked by deleting its row (which logout does).
 **Setup:**
 
 1. Create a Supabase project (or use an existing one).
-2. Run both migrations against it, **in order** — paste each into the
+2. Run all four migrations against it, **in order** — paste each into the
    Supabase SQL Editor, or apply them with the Supabase CLI if the project
    is linked (`supabase db push`):
    - `supabase/migrations/0001_init.sql` — creates `ambassadors` and
@@ -100,7 +100,14 @@ revoked by deleting its row (which logout does).
      `ambassadors`, creates `sessions` and `links`, an
      `increment_link_clicks` function, and gives the demo ambassador a
      password + a default link.
-   Both enable RLS with no public policies — only the `service_role` key
+   - `supabase/migrations/0003_square_sync.sql` — creates `square_products`,
+     `square_product_variations`, `square_inventory_counts`,
+     `square_orders`, and `square_order_line_items` (see
+     [Square ↔ Supabase sync](#square--supabase-sync) below).
+   - `supabase/migrations/0004_vendor_slug.sql` — adds `vendor_slug` to
+     `ambassadors`, linking an account to a vendor for the dashboard's
+     Vendor tab.
+   All four enable RLS with no public policies — only the `service_role` key
    (which is what this app uses) can read or write.
 3. Set `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (from
    Settings → API in the Supabase dashboard) as environment variables —
@@ -204,9 +211,34 @@ Square's rate limits.
    `/api/admin/square/backfill`.)
 
 From then on, catalog/inventory/order changes in Square flow into Supabase
-automatically. Per-vendor filtering (matching each product to the artist
-whose name is in its title) is a separate follow-up step, not part of this
-sync.
+automatically.
+
+### Per-vendor matching
+
+Each Square product's vendor name lives at the end of its title (e.g. "Tie
+Dye Hoodie - WHOADY"), not in a dedicated field. `lib/vendorMatch.ts` checks
+whether a product's title ends with one of the names in `lib/artists.ts`
+(longest name first, so "Sol Search" can't be shadowed by a shorter partial
+match) and stores the matching artist's slug as `square_products.owner_code`
+during every catalog sync.
+
+That mapping powers two things:
+
+- **Art Collective** (`/art-collective/[slug]`) — pulls that vendor's live
+  products, prices, and stock straight from the synced tables
+  (`lib/vendor.ts`'s `getVendorProducts`) instead of hardcoded content.
+  Force-dynamic rendering, since price/stock can change at any time.
+- **Dashboard Vendor tab** — an ambassador account with a linked
+  `vendor_slug` (see below) sees real sales totals, items sold, and
+  inventory for just their own products (`getVendorStats`), computed from
+  synced order line items. Without a linked vendor, the tab still shows the
+  original "Not Activated" placeholder.
+
+**Linking an account to a vendor**: there's no self-serve claim flow yet —
+use the "Link an ambassador to a vendor" tool at the bottom of
+`/admin/square-sync` (same `SQUARE_ADMIN_SECRET` auth), or set
+`ambassadors.vendor_slug` directly in the Supabase table editor. The vendor
+slug is the artist's URL slug from `/art-collective/<slug>`.
 
 ## Theme
 
