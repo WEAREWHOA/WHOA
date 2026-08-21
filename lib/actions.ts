@@ -41,6 +41,17 @@ export async function logoutAction() {
   redirect("/login");
 }
 
+// Temporary instant-access entry point: skips the real login form and
+// drops the visitor straight into the seeded demo ambassador's dashboard.
+// Remove this (and point the nav button back at /login) once real login
+// should be shown again.
+const DEMO_AMBASSADOR_CODE = "WHOA-DEMO15";
+
+export async function demoLoginAction() {
+  await createSession(DEMO_AMBASSADOR_CODE);
+  redirect(`/portal/${DEMO_AMBASSADOR_CODE}`);
+}
+
 export async function createLinkAction(formData: FormData) {
   const code = String(formData.get("code") || "").trim();
   const label = String(formData.get("label") || "").trim();
