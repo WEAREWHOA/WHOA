@@ -2,14 +2,12 @@ import { notFound, redirect } from "next/navigation";
 import { getByCode, getStats } from "@/lib/store";
 import { getSiteOrigin } from "@/lib/site";
 import { getSessionAmbassadorCode } from "@/lib/auth";
-import CopyField from "@/components/portal/CopyField";
-import StatsGrid from "@/components/portal/StatsGrid";
-import TierProgress from "@/components/portal/TierProgress";
-import OrdersTable from "@/components/portal/OrdersTable";
-import ResourcePack from "@/components/portal/ResourcePack";
-import PayoutSettings from "@/components/portal/PayoutSettings";
-import LinksManager from "@/components/portal/LinksManager";
 import LogoutButton from "@/components/portal/LogoutButton";
+import DashboardTabs from "@/components/dashboard/DashboardTabs";
+import AmbassadorTab from "@/components/dashboard/tabs/AmbassadorTab";
+import CustomerTab from "@/components/dashboard/tabs/CustomerTab";
+import VendorTab from "@/components/dashboard/tabs/VendorTab";
+import SsbdTab from "@/components/dashboard/tabs/SsbdTab";
 import { getTier } from "@/lib/tiers";
 
 export default async function PortalDashboardPage(props: PageProps<"/portal/[code]">) {
@@ -44,44 +42,34 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <span className="text-xs font-semibold tracking-[0.2em] text-muted uppercase">
-            Ambassador portal
+            WHOA dashboard
           </span>
           <h1 className="font-display mt-2 text-4xl tracking-wide sm:text-5xl">
             Welcome back, <span className="text-flame">{firstName}</span>
           </h1>
+          <p className="mt-2 max-w-lg text-sm text-muted">
+            One login, every side of WHOA — ambassador tools, your purchases, vendor sales, and
+            what you&apos;re bringing to SSBD, all in one place.
+          </p>
         </div>
-        <div className="flex items-center gap-4">
-          <span
-            className="w-fit rounded-full px-4 py-1.5 text-sm font-semibold"
-            style={{ backgroundColor: tier.color, color: "#14100c" }}
-          >
-            {tier.label} tier
-          </span>
-          <LogoutButton />
-        </div>
+        <LogoutButton />
       </div>
 
-      <div className="mt-10">
-        <CopyField label="Your code" value={ambassador.code} mono />
-      </div>
-
-      <div className="mt-8">
-        <StatsGrid stats={stats} />
-      </div>
-
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_1.2fr]">
-        <TierProgress orderCount={stats.orderCount} />
-        <OrdersTable orders={ambassador.orders} />
-      </div>
-
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        <LinksManager code={ambassador.code} origin={origin} links={ambassador.links} added={linkAdded} />
-        <ResourcePack code={ambassador.code} />
-      </div>
-
-      <div className="mt-8">
-        <PayoutSettings code={ambassador.code} payout={ambassador.payout} saved={payoutSaved} />
-      </div>
+      <DashboardTabs
+        ambassador={
+          <AmbassadorTab
+            ambassador={ambassador}
+            stats={stats}
+            tier={tier}
+            origin={origin}
+            linkAdded={linkAdded}
+            payoutSaved={payoutSaved}
+          />
+        }
+        customer={<CustomerTab />}
+        vendor={<VendorTab />}
+        ssbd={<SsbdTab />}
+      />
     </section>
   );
 }

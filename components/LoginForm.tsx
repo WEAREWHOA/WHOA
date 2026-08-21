@@ -20,13 +20,14 @@ export default function LoginForm({
   return (
     <div className="card-surface w-full max-w-md rounded-2xl p-8 sm:p-10">
       <span className="text-xs font-semibold tracking-[0.2em] text-muted uppercase">
-        Ambassador login
+        WHOA dashboard login
       </span>
       <h1 className="font-display mt-3 text-4xl tracking-wide">
         Welcome <span className="text-flame">back</span>
       </h1>
       <p className="mt-3 text-sm text-muted">
-        Log in with your ambassador code (or email) and your password.
+        One login for everything — ambassador tools, purchases, vendor sales, and SSBD. Log in
+        with your code (or email) and your password.
       </p>
 
       {message && (
