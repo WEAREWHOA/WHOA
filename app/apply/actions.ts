@@ -40,8 +40,7 @@ export async function applyAction(formData: FormData) {
     // untouched and only treat genuine failures as errors.
     unstable_rethrow(err);
     console.error("applyAction failed:", err);
-    const detail = err instanceof Error ? err.message : String(err);
-    redirect(`/apply?error=server&detail=${encodeURIComponent(detail.slice(0, 200))}`);
+    redirect("/apply?error=server");
   }
 
   redirect(target);
