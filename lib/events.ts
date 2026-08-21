@@ -14,6 +14,10 @@ export interface EventInfo {
   venue: string;
   location: string;
   category: EventCategory;
+  // ISO yyyy-mm-dd. startDate/endDate power the calendar view; dateLabel is
+  // still what's shown on the flyer card.
+  startDate: string;
+  endDate?: string;
   lineup?: string[];
   details?: string[];
   tags?: string[];
@@ -32,6 +36,7 @@ export const EVENTS: EventInfo[] = [
     venue: "The WHOAdega",
     location: "4847 Newport Ave, San Diego",
     category: "whoadega",
+    startDate: "2026-07-15",
     details: ["Special guest DJs"],
     tags: ["Free Entry", "All Ages"],
     accent: "#29e6ff",
@@ -46,6 +51,7 @@ export const EVENTS: EventInfo[] = [
     venue: "The WHOAdega × SH!FT Gallery",
     location: "4847 Newport Ave, San Diego",
     category: "whoadega",
+    startDate: "2026-07-22",
     lineup: ["Hunthux", "Blue Jade", "Anzio", "Kayristin", "+ Special Guest"],
     accent: "#ff2fb0",
     gradient: ["#0a0116", "#3a0a3a", "#ff2fb0"],
@@ -59,6 +65,7 @@ export const EVENTS: EventInfo[] = [
     venue: "The WHOAdega",
     location: "4847 Newport Ave, San Diego",
     category: "whoadega",
+    startDate: "2026-07-29",
     details: ["Hosted by Wasani featuring Divina"],
     tags: ["Free Entry", "All Ages"],
     accent: "#ff7a00",
@@ -73,6 +80,7 @@ export const EVENTS: EventInfo[] = [
     venue: "SH!FT Gallery Takeover",
     location: "4847 Newport Ave, San Diego, CA 92107",
     category: "shows",
+    startDate: "2026-08-05",
     details: ["Opening Night Celebration", "HABITAAT music video premiere"],
     lineup: ["Wasani Whoa", "Mad Maxime", "Just George", "Ivy Nyx"],
     accent: "#fff229",
@@ -87,6 +95,8 @@ export const EVENTS: EventInfo[] = [
     venue: "Pop Up Shop",
     location: "3119 Mariners Way, San Diego, CA",
     category: "festivals",
+    startDate: "2026-10-16",
+    endDate: "2026-10-18",
     lineup: ["Rebelution", "Kolohe Kai", "The Offspring", "+ 30 more"],
     details: [
       "Fri — Rebelution, Steel Pulse, The Movement + more",
@@ -106,6 +116,8 @@ export const EVENTS: EventInfo[] = [
     venue: "Lake Perris, CA",
     location: "Lake Perris, CA",
     category: "festivals",
+    startDate: "2026-09-25",
+    endDate: "2026-09-27",
     lineup: ["LSDREAM", "Of The Trees", "Tape B", "+ Gramatik"],
     details: [
       "75+ workshops · 40+ art installations",
