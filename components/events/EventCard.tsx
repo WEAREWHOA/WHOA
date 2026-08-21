@@ -1,10 +1,18 @@
 "use client";
 
-import { useRef, type PointerEvent } from "react";
+import { useRef, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
 import type { EventInfo } from "@/lib/events";
 import { toggleRsvp, useRsvpSet } from "@/components/events/useRsvp";
 
-export default function EventCard({ event, delay = 0 }: { event: EventInfo; delay?: number }) {
+export default function EventCard({
+  event,
+  delay = 0,
+  onOpen,
+}: {
+  event: EventInfo;
+  delay?: number;
+  onOpen?: (event: EventInfo, rect: DOMRect) => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const rsvped = useRsvpSet();
   const isIn = rsvped.has(event.id);
@@ -24,11 +32,28 @@ export default function EventCard({ event, delay = 0 }: { event: EventInfo; dela
     el.style.transform = `rotate(${event.rotate}deg)`;
   }
 
+  function handleOpen() {
+    const el = ref.current;
+    if (!el || !onOpen) return;
+    onOpen(event, el.getBoundingClientRect());
+  }
+
+  function handleKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleOpen();
+    }
+  }
+
   const [c1, c2, c3] = event.gradient;
 
   return (
     <div
       ref={ref}
+      role="button"
+      tabIndex={0}
+      onClick={handleOpen}
+      onKeyDown={handleKeyDown}
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
       style={
@@ -38,7 +63,7 @@ export default function EventCard({ event, delay = 0 }: { event: EventInfo; dela
           "--accent": event.accent,
         } as React.CSSProperties
       }
-      className="event-card event-float group relative w-full max-w-sm shrink-0 overflow-hidden rounded-2xl border border-white/15 text-left shadow-[0_20px_50px_-20px_rgba(0,0,0,0.8)] transition-shadow duration-300 hover:shadow-[0_25px_65px_-15px_var(--accent)]"
+      className="event-card event-float group relative w-full max-w-sm shrink-0 cursor-pointer overflow-hidden rounded-2xl border border-white/15 text-left shadow-[0_20px_50px_-20px_rgba(0,0,0,0.8)] transition-shadow duration-300 hover:shadow-[0_25px_65px_-15px_var(--accent)]"
     >
       <div
         aria-hidden
@@ -102,7 +127,10 @@ export default function EventCard({ event, delay = 0 }: { event: EventInfo; dela
       <div className="event-card-rsvp relative z-20 bg-black/70 p-4 backdrop-blur-sm">
         <button
           type="button"
-          onClick={() => toggleRsvp(event.id)}
+          onClick={(e: MouseEvent<HTMLButtonElement>) => {
+            e.stopPropagation();
+            toggleRsvp(event.id);
+          }}
           className={`w-full scale-100 rounded-full px-4 py-3 text-sm font-semibold tracking-wide uppercase transition-[scale,background-color,color] duration-300 group-hover:scale-[1.04] ${
             isIn ? "bg-white text-black" : "btn-flame"
           }`}
@@ -114,6 +142,7 @@ export default function EventCard({ event, delay = 0 }: { event: EventInfo; dela
             href={event.href}
             target="_blank"
             rel="noreferrer"
+            onClick={(e: MouseEvent<HTMLAnchorElement>) => e.stopPropagation()}
             className="mt-0 block max-h-0 overflow-hidden text-center text-xs text-white/70 underline underline-offset-2 transition-[max-height,margin-top] duration-300 group-hover:mt-2 group-hover:max-h-8 group-focus-within:mt-2 group-focus-within:max-h-8 hover:text-white"
           >
             Full lineup & tickets

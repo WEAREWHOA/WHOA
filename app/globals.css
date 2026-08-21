@@ -236,6 +236,44 @@ body {
   50% { translate: 0 -10px; }
 }
 
+.event-modal-pos {
+  perspective: 1800px;
+  transition:
+    left 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    top 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    width 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    height 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.event-modal-flip {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.event-modal-flip.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.event-modal-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+}
+
+.event-modal-face-back {
+  transform: rotateY(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .event-modal-pos,
+  .event-modal-flip {
+    transition: none !important;
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .text-psychedelic {
     animation: psychedelic-shift 8s linear infinite;
