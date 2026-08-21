@@ -14,8 +14,8 @@ const PERMISSION_ROWS = [
   {
     field: "perm_vendor",
     permission: "vendor",
-    label: "Art / Vendor",
-    hint: "Vendor Sales tab — needs a vendor slug set below to show data.",
+    label: "Artist/Vendor",
+    hint: "ARTIST/VENDOR tab — needs a vendor slug set below to show data.",
   },
   {
     field: "perm_music",
