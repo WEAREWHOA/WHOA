@@ -98,16 +98,18 @@ function slugify(text: string): string {
 }
 
 async function codeExists(code: string): Promise<boolean> {
-  const { data } = await getSupabase()
+  const { data, error } = await getSupabase()
     .from("ambassadors")
     .select("code")
     .eq("code", code)
     .maybeSingle();
+  if (error) throw new Error(`Failed to check code availability: ${error.message}`);
   return data !== null;
 }
 
 async function linkSlugExists(slug: string): Promise<boolean> {
-  const { data } = await getSupabase().from("links").select("slug").eq("slug", slug).maybeSingle();
+  const { data, error } = await getSupabase().from("links").select("slug").eq("slug", slug).maybeSingle();
+  if (error) throw new Error(`Failed to check link slug availability: ${error.message}`);
   return data !== null;
 }
 
@@ -321,11 +323,13 @@ export async function createLink(ambassadorCode: string, label: string): Promise
 export async function getLinkBySlug(
   slug: string,
 ): Promise<{ ambassadorCode: string; slug: string; label: string } | undefined> {
-  const { data } = await getSupabase()
+  const { data, error } = await getSupabase()
     .from("links")
     .select("slug, label, ambassador_code")
     .eq("slug", slug.trim().toUpperCase())
     .maybeSingle();
+
+  if (error) throw new Error(`Failed to look up link by slug: ${error.message}`);
 
   return data ? { ambassadorCode: data.ambassador_code, slug: data.slug, label: data.label } : undefined;
 }

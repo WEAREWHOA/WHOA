@@ -4,7 +4,18 @@ import { REF_COOKIE, REF_COOKIE_DAYS } from "@/lib/attribution";
 
 export async function GET(req: NextRequest, ctx: RouteContext<"/r/[slug]">) {
   const { slug } = await ctx.params;
-  const link = await getLinkBySlug(slug);
+
+  // This is a public link real customers click, often from a printed flyer
+  // or social bio — a transient Supabase hiccup should never show them a
+  // broken page. Log it and fall back to a plain /shop redirect (losing
+  // just the referral attribution for that one click) rather than 500ing.
+  let link: Awaited<ReturnType<typeof getLinkBySlug>>;
+  try {
+    link = await getLinkBySlug(slug);
+  } catch (err) {
+    console.error("getLinkBySlug failed:", err);
+    return NextResponse.redirect(new URL("/shop", req.url), 302);
+  }
 
   if (!link) {
     return NextResponse.redirect(new URL("/shop", req.url), 302);
