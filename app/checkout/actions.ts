@@ -27,7 +27,14 @@ export async function checkoutAction(input: {
 
   const store = await cookies();
   const refCode = store.get(REF_COOKIE)?.value;
-  const ambassador = refCode ? await getByCode(refCode) : undefined;
+  // A referral-lookup hiccup should never block a real payment — worst
+  // case, this one order just doesn't get the ambassador discount/commission.
+  const ambassador = refCode
+    ? await getByCode(refCode).catch((err) => {
+        console.error("Referral lookup failed during checkout:", err);
+        return undefined;
+      })
+    : undefined;
 
   const locationId = getSquareLocationId();
   const square = getSquare();

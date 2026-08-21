@@ -6,7 +6,14 @@ import CheckoutForm from "@/components/checkout/CheckoutForm";
 export default async function CheckoutPage() {
   const store = await cookies();
   const refCode = store.get(REF_COOKIE)?.value;
-  const ambassador = refCode ? await getByCode(refCode) : undefined;
+  // A referral-lookup hiccup should never block checkout itself — worst
+  // case, this one customer just doesn't see the ambassador discount.
+  const ambassador = refCode
+    ? await getByCode(refCode).catch((err) => {
+        console.error("Referral lookup failed on checkout page:", err);
+        return undefined;
+      })
+    : undefined;
 
   return (
     <section className="mx-auto w-full max-w-2xl px-6 py-16">
