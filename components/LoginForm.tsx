@@ -6,12 +6,14 @@ const loginErrors: Record<string, string> = {
   notfound: "We couldn't find an ambassador with that code or email.",
   invalid: "Incorrect password.",
   exists: "An account with that email already exists — log in below.",
+  server: "Something went wrong on our end — please try again.",
 };
 
 const signupErrors: Record<string, string> = {
   missing: "Enter a valid email to continue.",
   "weak-password": "Password must be at least 8 characters.",
   exists: "An account with that email already exists — log in instead.",
+  server: "Something went wrong creating your account — please try again.",
 };
 
 export default function LoginForm({

@@ -1,6 +1,6 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import {
   createAmbassador,
   createLink,
@@ -21,21 +21,32 @@ export async function loginAction(formData: FormData) {
     redirect(`${from}?error=missing`);
   }
 
-  const credentials = identifier.includes("@")
-    ? await getCredentialsByEmail(identifier)
-    : await getCredentialsByCode(identifier);
+  let target: string;
+  try {
+    const credentials = identifier.includes("@")
+      ? await getCredentialsByEmail(identifier)
+      : await getCredentialsByCode(identifier);
 
-  if (!credentials) {
-    redirect(`${from}?error=notfound`);
+    if (!credentials) {
+      redirect(`${from}?error=notfound`);
+    }
+
+    const valid = await verifyPassword(password, credentials.passwordHash);
+    if (!valid) {
+      redirect(`${from}?error=invalid`);
+    }
+
+    await createSession(credentials.code);
+    target = `/portal/${credentials.code}`;
+  } catch (err) {
+    // redirect()/notFound() work by throwing — let those pass through
+    // untouched and only treat genuine failures as errors.
+    unstable_rethrow(err);
+    console.error("loginAction failed:", err);
+    redirect(`${from}?error=server`);
   }
 
-  const valid = await verifyPassword(password, credentials.passwordHash);
-  if (!valid) {
-    redirect(`${from}?error=invalid`);
-  }
-
-  await createSession(credentials.code);
-  redirect(`/portal/${credentials.code}`);
+  redirect(target);
 }
 
 export async function logoutAction() {
@@ -59,17 +70,26 @@ export async function registerAction(formData: FormData) {
     redirect("/login?mode=signup&error=weak-password");
   }
 
-  const existing = await getByEmail(email);
-  if (existing) {
-    redirect("/login?mode=signup&error=exists");
+  let target: string;
+  try {
+    const existing = await getByEmail(email);
+    if (existing) {
+      redirect("/login?mode=signup&error=exists");
+    }
+
+    const name = email.split("@")[0]?.replace(/[._-]+/g, " ").trim() || "Member";
+    const passwordHash = await hashPassword(password);
+    const ambassador = await createAmbassador({ name, email, passwordHash });
+
+    await createSession(ambassador.code);
+    target = `/portal/${ambassador.code}?new=1`;
+  } catch (err) {
+    unstable_rethrow(err);
+    console.error("registerAction failed:", err);
+    redirect("/login?mode=signup&error=server");
   }
 
-  const name = email.split("@")[0]?.replace(/[._-]+/g, " ").trim() || "Member";
-  const passwordHash = await hashPassword(password);
-  const ambassador = await createAmbassador({ name, email, passwordHash });
-
-  await createSession(ambassador.code);
-  redirect(`/portal/${ambassador.code}?new=1`);
+  redirect(target);
 }
 
 export async function createLinkAction(formData: FormData) {

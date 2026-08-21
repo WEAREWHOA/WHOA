@@ -1,6 +1,6 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { createAmbassador, getByEmail } from "@/lib/store";
 import { createSession, hashPassword } from "@/lib/auth";
 
@@ -23,14 +23,25 @@ export async function applyAction(formData: FormData) {
     redirect("/apply?error=password-mismatch");
   }
 
-  const existing = await getByEmail(email);
-  if (existing) {
-    redirect("/login?error=exists");
+  let target: string;
+  try {
+    const existing = await getByEmail(email);
+    if (existing) {
+      redirect("/login?error=exists");
+    }
+
+    const passwordHash = await hashPassword(password);
+    const ambassador = await createAmbassador({ name, email, instagram, passwordHash });
+
+    await createSession(ambassador.code);
+    target = `/portal/${ambassador.code}?new=1`;
+  } catch (err) {
+    // redirect()/notFound() work by throwing — let those pass through
+    // untouched and only treat genuine failures as errors.
+    unstable_rethrow(err);
+    console.error("applyAction failed:", err);
+    redirect("/apply?error=server");
   }
 
-  const passwordHash = await hashPassword(password);
-  const ambassador = await createAmbassador({ name, email, instagram, passwordHash });
-
-  await createSession(ambassador.code);
-  redirect(`/portal/${ambassador.code}?new=1`);
+  redirect(target);
 }
