@@ -11,7 +11,11 @@ const errorMessages: Record<string, string> = {
 export default async function ApplyPage(props: PageProps<"/apply">) {
   const params = await props.searchParams;
   const error = typeof params?.error === "string" ? params.error : undefined;
+  const detail = typeof params?.detail === "string" ? params.detail : undefined;
   const message = error ? errorMessages[error] : undefined;
+  // Temporary: surface the raw error so we can pin down the Vercel/Supabase
+  // misconfiguration without dashboard log access. Remove once resolved.
+  const debugDetail = error === "server" ? detail : undefined;
 
   return (
     <section className="bg-flame-radial flex flex-1 items-center justify-center px-6 py-20">
@@ -30,6 +34,11 @@ export default async function ApplyPage(props: PageProps<"/apply">) {
         {message && (
           <p className="mt-6 rounded-lg border border-flame-1/40 bg-flame-1/10 px-4 py-3 text-sm text-flame-3">
             {message}
+            {debugDetail && (
+              <span className="mt-1 block font-mono text-xs break-words text-flame-3/80">
+                {debugDetail}
+              </span>
+            )}
           </p>
         )}
 

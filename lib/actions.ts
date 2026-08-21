@@ -43,7 +43,8 @@ export async function loginAction(formData: FormData) {
     // untouched and only treat genuine failures as errors.
     unstable_rethrow(err);
     console.error("loginAction failed:", err);
-    redirect(`${from}?error=server`);
+    const detail = err instanceof Error ? err.message : String(err);
+    redirect(`${from}?error=server&detail=${encodeURIComponent(detail.slice(0, 200))}`);
   }
 
   redirect(target);
@@ -86,7 +87,8 @@ export async function registerAction(formData: FormData) {
   } catch (err) {
     unstable_rethrow(err);
     console.error("registerAction failed:", err);
-    redirect("/login?mode=signup&error=server");
+    const detail = err instanceof Error ? err.message : String(err);
+    redirect(`/login?mode=signup&error=server&detail=${encodeURIComponent(detail.slice(0, 200))}`);
   }
 
   redirect(target);
