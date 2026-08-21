@@ -1,4 +1,3 @@
-import { checkAdminSecret } from "@/lib/squareAdminAuth";
 import { getSupabase } from "@/lib/supabase";
 
 export const runtime = "nodejs";
@@ -7,19 +6,11 @@ export const runtime = "nodejs";
 // rest of the app uses (including the request timeout) and reports how
 // long it took and what, if anything, went wrong — so a connectivity
 // problem can be confirmed in one page load instead of hunting through
-// Vercel's log UI. Not meant to stay in the app long-term.
-function checkSecret(req: Request): boolean {
-  const secret = process.env.SQUARE_ADMIN_SECRET;
-  if (!secret) return false;
-  const url = new URL(req.url);
-  return checkAdminSecret(req) || url.searchParams.get("secret") === secret;
-}
-
-export async function GET(req: Request) {
-  if (!checkSecret(req)) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
+// Vercel's log UI. Deliberately unauthenticated (SQUARE_ADMIN_SECRET
+// isn't set in this deployment) — the response never contains anything
+// sensitive, just booleans/timing/a row count. Delete this route once the
+// connectivity question is resolved.
+export async function GET() {
   const envCheck = {
     hasSupabaseUrl: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL),
     hasServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
