@@ -37,8 +37,19 @@ async function callAdminRoute(path: string, secret: string): Promise<string> {
 
 export default function SquareSyncAdminPage() {
   const [secret, setSecret] = useState("");
+  const [locationsState, setLocationsState] = useState<StepState>(IDLE);
   const [webhookState, setWebhookState] = useState<StepState>(IDLE);
   const [backfillState, setBackfillState] = useState<StepState>(IDLE);
+
+  async function handleListLocations() {
+    setLocationsState({ loading: true, result: null, error: null });
+    try {
+      const result = await callAdminRoute("/api/admin/square/locations", secret);
+      setLocationsState({ loading: false, result, error: null });
+    } catch (err) {
+      setLocationsState({ loading: false, result: null, error: (err as Error).message });
+    }
+  }
 
   async function handleRegisterWebhook() {
     setWebhookState({ loading: true, result: null, error: null });
@@ -71,8 +82,8 @@ export default function SquareSyncAdminPage() {
         Square <span className="text-flame">sync setup</span>
       </h1>
       <p className="mt-3 max-w-lg text-sm text-muted">
-        Two buttons, run once, in order. This page just calls the same setup endpoints the README
-        describes — it exists so you don&apos;t need a terminal.
+        A few buttons, run once, in order. This page just calls the same setup endpoints the
+        README describes — it exists so you don&apos;t need a terminal.
       </p>
 
       <div className="card-surface mt-8 rounded-2xl p-6">
@@ -81,7 +92,7 @@ export default function SquareSyncAdminPage() {
         </label>
         <p className="mt-1 text-xs text-muted">
           The same value you set as <code className="font-mono-code">SQUARE_ADMIN_SECRET</code> in
-          Vercel. Nothing is saved anywhere — it&apos;s only used to authorize the two calls below.
+          Vercel. Nothing is saved anywhere — it&apos;s only used to authorize the calls below.
         </p>
         <input
           id="secret"
@@ -91,6 +102,37 @@ export default function SquareSyncAdminPage() {
           placeholder="Paste your SQUARE_ADMIN_SECRET value"
           className="mt-3 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
         />
+      </div>
+
+      <div className="card-surface mt-6 rounded-2xl p-6">
+        <h2 className="font-display text-2xl">Find your Location ID</h2>
+        <p className="mt-2 text-sm text-muted">
+          Only needs <code className="font-mono-code">SQUARE_ACCESS_TOKEN</code> to already be set
+          in Vercel — no need to hunt through Square&apos;s dashboard for it. Copy the{" "}
+          <code className="font-mono-code">id</code> from the result below into Vercel as{" "}
+          <code className="font-mono-code">SQUARE_LOCATION_ID</code> and{" "}
+          <code className="font-mono-code">NEXT_PUBLIC_SQUARE_LOCATION_ID</code> (same value, both
+          names), then redeploy.
+        </p>
+        <button
+          type="button"
+          disabled={!canRun || locationsState.loading}
+          onClick={handleListLocations}
+          className="btn-flame mt-4 rounded-full px-6 py-3 text-sm font-semibold tracking-wide uppercase disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {locationsState.loading ? "Looking up…" : "List locations"}
+        </button>
+
+        {locationsState.error && (
+          <p className="mt-4 rounded-lg border border-flame-1/40 bg-flame-1/10 px-4 py-3 text-sm text-flame-3">
+            {locationsState.error}
+          </p>
+        )}
+        {locationsState.result && (
+          <pre className="mt-4 overflow-x-auto rounded-lg border border-border-strong bg-surface-raised p-4 text-xs">
+            {locationsState.result}
+          </pre>
+        )}
       </div>
 
       <div className="card-surface mt-6 rounded-2xl p-6">
