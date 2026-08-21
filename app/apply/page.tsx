@@ -5,6 +5,7 @@ const errorMessages: Record<string, string> = {
   missing: "Enter your name and a valid email to continue.",
   "weak-password": "Password must be at least 8 characters.",
   "password-mismatch": "Passwords don't match.",
+  server: "Something went wrong creating your account — please try again.",
 };
 
 export default async function ApplyPage(props: PageProps<"/apply">) {
