@@ -20,18 +20,13 @@ export default function LoginForm({
   from,
   mode = "login",
   error,
-  detail,
 }: {
   from: string;
   mode?: "login" | "signup";
   error?: string;
-  detail?: string;
 }) {
   const isSignup = mode === "signup";
   const message = error ? (isSignup ? signupErrors[error] : loginErrors[error]) : undefined;
-  // Temporary: surface the raw error so we can pin down the Vercel/Supabase
-  // misconfiguration without dashboard log access. Remove once resolved.
-  const debugDetail = error === "server" ? detail : undefined;
 
   return (
     <div className="card-surface w-full max-w-md rounded-2xl p-8 sm:p-10">
@@ -71,11 +66,6 @@ export default function LoginForm({
           {message && (
             <p className="mt-6 rounded-lg border border-flame-1/40 bg-flame-1/10 px-4 py-3 text-sm text-flame-3">
               {message}
-              {debugDetail && (
-                <span className="mt-1 block font-mono text-xs break-words text-flame-3/80">
-                  {debugDetail}
-                </span>
-              )}
             </p>
           )}
 
@@ -127,11 +117,6 @@ export default function LoginForm({
           {message && (
             <p className="mt-6 rounded-lg border border-flame-1/40 bg-flame-1/10 px-4 py-3 text-sm text-flame-3">
               {message}
-              {debugDetail && (
-                <span className="mt-1 block font-mono text-xs break-words text-flame-3/80">
-                  {debugDetail}
-                </span>
-              )}
             </p>
           )}
 
