@@ -26,6 +26,10 @@ clicks/orders/commission roll in on a personal portal.
   ambassador discount and referral attribution apply automatically if the
   visitor arrived via a `/r/[slug]` link
 - `/order-confirmed` — confirmation after a successful payment
+- `/pos` — staff point-of-sale register: PIN-gated (showcase-grade, not real
+  access control — see [Staff POS](#staff-pos) below), tap-to-add products,
+  running ticket, and a real Square charge via the same Web Payments SDK
+  flow as `/checkout`
 
 **Ambassador program**
 
@@ -155,6 +159,35 @@ The Web Payments SDK handles card data directly in the browser (a token is
 all that ever reaches this app's server), so this integration doesn't touch
 raw card numbers and stays PCI-compliant the same way Square's own
 checkout does.
+
+## Staff POS
+
+A showcase register at `/pos` for demonstrating this app as a full
+front-of-house replacement for Square's own POS app — same underlying
+Square account, card processing, and order/payment flow as `/checkout`
+(`app/checkout/actions.ts`'s `checkoutAction` is reused as-is), just with a
+tap-to-add product grid and running ticket instead of an online cart.
+
+- `components/pos/PosPinGate.tsx` / `usePosAuth.ts` — a 4-digit PIN gate
+  (`2222`), same soft-gate posture as `/ssbd-admin`'s crew password: fine
+  for keeping a register off the open web, not real access control. No
+  per-staff accounts yet — "for now, one shared PIN."
+- `components/pos/PosTerminal.tsx` — product search/grid (tap a
+  single-variation product to add it directly; multi-variation products
+  expand inline to pick one), a running ticket with quantity steppers, and
+  a payment step embedding the same Web Payments SDK card form as
+  `/checkout`.
+- **This charges real cards on your live Square account** — there's no
+  sandbox/demo-mode toggle, so be deliberate about what you run through it
+  in a live demo.
+
+Because `/pos` reuses `checkoutAction` unmodified, an in-person sale here
+behaves exactly like an online one: if a `whoa_ref` referral cookie happens
+to be set in that browser, the same 15%/10% ambassador discount and
+commission would apply. That's fine for a showcase register used from a
+clean browser, but worth knowing if this becomes the real in-store
+register — a follow-up would separate POS sales from online attribution
+explicitly rather than relying on the cookie being absent.
 
 ## Square ↔ Supabase sync
 
