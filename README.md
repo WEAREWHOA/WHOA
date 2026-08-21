@@ -69,6 +69,8 @@ npm run build
 | `NEXT_PUBLIC_SQUARE_APPLICATION_ID` | —      | Square Application ID — public, used by the Web Payments SDK client-side |
 | `NEXT_PUBLIC_SQUARE_LOCATION_ID`    | —      | Same value as `SQUARE_LOCATION_ID` — also needed client-side for the card form |
 | `NEXT_PUBLIC_SQUARE_ENVIRONMENT`    | `sandbox` | `sandbox` or `production` — picks which Square.js script gets loaded |
+| `SQUARE_WEBHOOK_SIGNATURE_KEY`  | —          | Signing secret for `/api/webhooks/square`, returned when the webhook subscription is created — see [Square ↔ Supabase sync](#square--supabase-sync) |
+| `SQUARE_ADMIN_SECRET`           | —          | Shared secret gating the one-time `/api/admin/square/*` setup endpoints — pick any long random string |
 
 ## Data layer & auth
 
@@ -146,6 +148,62 @@ The Web Payments SDK handles card data directly in the browser (a token is
 all that ever reaches this app's server), so this integration doesn't touch
 raw card numbers and stays PCI-compliant the same way Square's own
 checkout does.
+
+## Square ↔ Supabase sync
+
+Square stays the system of record for POS, checkout, and payments — nothing
+above changes. This adds a read-optimized mirror of Square's catalog,
+inventory, and order history in Supabase, kept in sync via webhooks instead
+of calling Square's API on every request. It's what will power per-vendor
+sales/inventory views (e.g. the dashboard's Vendor tab) without hammering
+Square's rate limits.
+
+- `supabase/migrations/0003_square_sync.sql` — `square_products`,
+  `square_product_variations`, `square_inventory_counts`, `square_orders`,
+  `square_order_line_items`. Same RLS posture as every other table here:
+  service-role-only, no public policies.
+- `lib/squareSync.ts` — shared upsert logic (`syncFullCatalog`,
+  `syncInventoryForVariations`, `syncOrder`, `backfillOrders`), used by both
+  the webhook handler and the one-time backfill.
+- `app/api/webhooks/square/route.ts` — verifies Square's
+  `x-square-hmacsha256-signature` header (via the SDK's
+  `WebhooksHelper.verifySignature`, HMAC-SHA256 over the notification URL +
+  raw body) before processing anything. On `catalog.version.updated` it
+  does a full catalog resync (simpler and more robust than diffing the
+  payload); on `inventory.count.updated` it refreshes just the affected
+  variations; on `order.updated` it re-fetches and upserts that one order.
+  Unhandled event types are acked and ignored.
+- `app/api/admin/square/register-webhook/route.ts` and
+  `app/api/admin/square/backfill/route.ts` — one-time setup endpoints,
+  gated by `SQUARE_ADMIN_SECRET` (sent as `Authorization: Bearer <secret>`).
+  Not meant to be called repeatedly, and safe to re-run if you do — every
+  sync step is an upsert.
+
+**Setup (after the env vars above are already in place):**
+
+1. Deploy this branch so `/api/webhooks/square` and `/api/admin/square/*`
+   exist in production.
+2. Set `SQUARE_ADMIN_SECRET` to any long random string, in Vercel.
+3. Register the webhook subscription:
+   ```bash
+   curl -X POST https://yourdomain/api/admin/square/register-webhook \
+     -H "Authorization: Bearer $SQUARE_ADMIN_SECRET"
+   ```
+   The response includes `signatureKey` — copy that into Vercel as
+   `SQUARE_WEBHOOK_SIGNATURE_KEY` and redeploy so the webhook handler can
+   verify incoming events.
+4. Run the one-time historical backfill:
+   ```bash
+   curl -X POST https://yourdomain/api/admin/square/backfill \
+     -H "Authorization: Bearer $SQUARE_ADMIN_SECRET"
+   ```
+   This can take a while on a large catalog/order history — it's safe to
+   call again if it times out, since every step upserts.
+
+From then on, catalog/inventory/order changes in Square flow into Supabase
+automatically. Per-vendor filtering (matching each product to the artist
+whose name is in its title) is a separate follow-up step, not part of this
+sync.
 
 ## Theme
 
