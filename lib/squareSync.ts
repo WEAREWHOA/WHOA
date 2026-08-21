@@ -46,13 +46,20 @@ export async function syncFullCatalog(): Promise<{ productIds: string[]; variati
       }
     }
 
+    // One upsert per page instead of one per row — a catalog of any real
+    // size was doing hundreds of sequential round-trips here, which is
+    // what was pushing this well past Vercel's 60s function limit on
+    // every catalog.version.updated webhook.
+    const productRows: Record<string, unknown>[] = [];
+    const variationRows: Record<string, unknown>[] = [];
+
     for (const item of items) {
       if (item.type !== "ITEM" || !item.itemData || !item.id) continue;
       const data = item.itemData;
       const firstImageId = data.imageIds?.[0];
-
       const name = data.name ?? "Untitled";
-      const { error: productError } = await supabase.from("square_products").upsert({
+
+      productRows.push({
         id: item.id,
         name,
         description: data.descriptionPlaintext ?? data.description ?? null,
@@ -60,26 +67,36 @@ export async function syncFullCatalog(): Promise<{ productIds: string[]; variati
         owner_code: matchVendorSlug(name) ?? null,
         updated_at: new Date().toISOString(),
       });
-      if (productError) {
-        throw new Error(`Failed to sync product ${item.id}: ${productError.message}`);
-      }
       productIds.push(item.id);
 
       for (const variation of data.variations ?? []) {
         if (variation.type !== "ITEM_VARIATION" || !variation.itemVariationData || !variation.id) continue;
         const varData = variation.itemVariationData;
 
-        const { error: variationError } = await supabase.from("square_product_variations").upsert({
+        variationRows.push({
           id: variation.id,
           product_id: item.id,
           name: varData.name ?? "Default",
           price_cents: Number(varData.priceMoney?.amount ?? 0),
           updated_at: new Date().toISOString(),
         });
-        if (variationError) {
-          throw new Error(`Failed to sync variation ${variation.id}: ${variationError.message}`);
-        }
         variationIds.push(variation.id);
+      }
+    }
+
+    if (productRows.length > 0) {
+      const { error: productError } = await supabase.from("square_products").upsert(productRows);
+      if (productError) {
+        throw new Error(`Failed to sync products: ${productError.message}`);
+      }
+    }
+
+    if (variationRows.length > 0) {
+      const { error: variationError } = await supabase
+        .from("square_product_variations")
+        .upsert(variationRows);
+      if (variationError) {
+        throw new Error(`Failed to sync variations: ${variationError.message}`);
       }
     }
 
@@ -98,24 +115,27 @@ export async function syncInventoryForVariations(variationIds: string[]): Promis
   if (locationIds.length === 0) return;
 
   // Square caps batchGetCounts at 1000 catalog object ids per request; we
-  // chunk well under that to keep individual calls fast.
+  // chunk well under that to keep individual calls fast. One upsert per
+  // chunk (not per row) for the same reason as syncFullCatalog above.
   for (const ids of chunk(variationIds, 100)) {
     const page = await square.inventory.batchGetCounts({
       catalogObjectIds: ids,
       locationIds,
     });
 
-    for (const count of page.data) {
-      if (!count.catalogObjectId || !count.locationId) continue;
-
-      const { error } = await supabase.from("square_inventory_counts").upsert({
+    const rows = page.data
+      .filter((count) => count.catalogObjectId && count.locationId)
+      .map((count) => ({
         variation_id: count.catalogObjectId,
         location_id: count.locationId,
         quantity: Number(count.quantity ?? 0),
         updated_at: new Date().toISOString(),
-      });
+      }));
+
+    if (rows.length > 0) {
+      const { error } = await supabase.from("square_inventory_counts").upsert(rows);
       if (error) {
-        throw new Error(`Failed to sync inventory for ${count.catalogObjectId}: ${error.message}`);
+        throw new Error(`Failed to sync inventory counts: ${error.message}`);
       }
     }
   }
