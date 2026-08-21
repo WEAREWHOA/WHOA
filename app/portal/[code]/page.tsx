@@ -5,6 +5,7 @@ import { getSiteOrigin } from "@/lib/site";
 import { getSessionAmbassadorCode } from "@/lib/auth";
 import { getArtist } from "@/lib/artists";
 import { getVendorProducts, getVendorStats } from "@/lib/vendor";
+import { getCustomerHistory } from "@/lib/squareCustomers";
 import LogoutButton from "@/components/portal/LogoutButton";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import AmbassadorTab from "@/components/dashboard/tabs/AmbassadorTab";
@@ -36,6 +37,8 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
   const [vendorProducts, vendorStats] = vendorArtist
     ? await Promise.all([getVendorProducts(vendorArtist.slug), getVendorStats(vendorArtist.slug)])
     : [undefined, undefined];
+
+  const customerHistory = await getCustomerHistory(account);
 
   const isNew = searchParams?.new === "1";
   const payoutSaved = searchParams?.saved === "1";
@@ -76,7 +79,7 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
       </div>
 
       <DashboardTabs
-        customer={<CustomerTab />}
+        customer={<CustomerTab linked={customerHistory.linked} orders={customerHistory.orders} />}
         ambassador={
           <AmbassadorTab
             ambassador={account}

@@ -3,10 +3,10 @@
 import { useState, type ReactNode } from "react";
 
 const ALL_TABS = [
-  { id: "customer", label: "Customer" },
-  { id: "ambassador", label: "Brand Ambassadors" },
-  { id: "vendor", label: "Vendor Sales" },
-  { id: "music", label: "Music" },
+  { id: "customer", label: "CUSTOMER" },
+  { id: "ambassador", label: "BRAND AMBASSADORS" },
+  { id: "vendor", label: "ARTIST/VENDOR" },
+  { id: "music", label: "MUSIC" },
   { id: "ssbd", label: "SSBD" },
 ] as const;
 

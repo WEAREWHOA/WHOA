@@ -46,6 +46,7 @@ export interface Ambassador {
   vendorSlug?: string;
   permissions: AccountPermissions;
   isSuperAdmin: boolean;
+  squareCustomerId?: string;
 }
 
 export interface AmbassadorStats {

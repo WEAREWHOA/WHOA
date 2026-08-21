@@ -41,7 +41,7 @@ export default function VendorTab({
           <span className="text-3xl" aria-hidden>
             🔒
           </span>
-          <h3 className="font-display text-2xl">Vendor Sales — Not Activated</h3>
+          <h3 className="font-display text-2xl">Artist/Vendor — Not Activated</h3>
           <p className="max-w-sm text-sm text-muted">
             Once your vendor account is approved, this tab unlocks live sales totals,
             best-selling items, and payout history from what you sell at the WHOADEGA and
@@ -78,7 +78,7 @@ export default function VendorTab({
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <span className="text-xs font-semibold tracking-[0.2em] text-muted uppercase">Vendor</span>
+          <span className="text-xs font-semibold tracking-[0.2em] text-muted uppercase">Artist/Vendor</span>
           <h3 className="font-display text-2xl">{vendorName}</h3>
         </div>
       </div>

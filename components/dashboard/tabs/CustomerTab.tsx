@@ -1,18 +1,49 @@
-const PURCHASES = [
-  { id: "1", item: "WHOA Wednesday Tee — Black, M", date: "Jul 15, 2026", total: "$32.00", status: "Picked up" },
-  { id: "2", item: "WHOADEGA Hoodie — Charcoal, L", date: "Jul 22, 2026", total: "$58.00", status: "Shipped" },
-  { id: "3", item: "Sticker Pack (5)", date: "Aug 5, 2026", total: "$12.00", status: "Picked up" },
-];
+import { formatCents } from "@/lib/money";
+import type { CustomerOrderSummary } from "@/lib/squareCustomers";
 
-export default function CustomerTab() {
+const STATE_LABELS: Record<string, string> = {
+  OPEN: "Open",
+  COMPLETED: "Completed",
+};
+
+function lineSummary(order: CustomerOrderSummary): string {
+  if (order.lines.length === 0) return "No items on file";
+  return order.lines.map((l) => (l.quantity > 1 ? `${l.name} × ${l.quantity}` : l.name)).join(", ");
+}
+
+function formatDate(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+export default function CustomerTab({
+  linked,
+  orders,
+}: {
+  linked: boolean;
+  orders: CustomerOrderSummary[];
+}) {
+  if (!linked) {
+    return (
+      <div className="border-flame-2/40 bg-flame-2/10 rounded-xl border px-5 py-4 text-sm text-muted">
+        We couldn&apos;t find a Square customer profile matching your email yet. Once you&apos;ve
+        made a purchase (in person or online) with this same email, your history will show up
+        here automatically.
+      </div>
+    );
+  }
+
+  if (orders.length === 0) {
+    return (
+      <div className="border-border rounded-xl border px-5 py-4 text-sm text-muted">
+        Your Square account is linked, but there&apos;s no purchase history on file yet.
+      </div>
+    );
+  }
+
   return (
     <div>
-      <div className="border-flame-2/40 bg-flame-2/10 rounded-xl border px-5 py-4 text-sm text-muted">
-        Preview — this will show your real purchase history from the WHOADEGA POS once your
-        account is linked to Square customer records. Example data below.
-      </div>
-
-      <div className="card-surface mt-6 overflow-hidden rounded-2xl border border-border">
+      <div className="card-surface overflow-hidden rounded-2xl border border-border">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-border text-xs text-muted uppercase">
             <tr>
@@ -23,12 +54,12 @@ export default function CustomerTab() {
             </tr>
           </thead>
           <tbody>
-            {PURCHASES.map((p) => (
-              <tr key={p.id} className="border-b border-border last:border-0">
-                <td className="px-5 py-3">{p.item}</td>
-                <td className="px-5 py-3 text-muted">{p.date}</td>
-                <td className="px-5 py-3">{p.total}</td>
-                <td className="px-5 py-3 text-muted">{p.status}</td>
+            {orders.map((order) => (
+              <tr key={order.id} className="border-b border-border last:border-0">
+                <td className="px-5 py-3">{lineSummary(order)}</td>
+                <td className="px-5 py-3 text-muted">{formatDate(order.createdAt)}</td>
+                <td className="px-5 py-3">{formatCents(order.totalCents)}</td>
+                <td className="px-5 py-3 text-muted">{STATE_LABELS[order.state] ?? order.state}</td>
               </tr>
             ))}
           </tbody>

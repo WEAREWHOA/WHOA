@@ -124,7 +124,11 @@ revoked by deleting its row (which logout does).
      `is_super_admin` to `ambassadors` (backfilling every existing row to
      `perm_ambassador = true`, since pre-migration every account was one).
      See [Backend Portal & permissions](#backend-portal--permissions).
-   All five enable RLS with no public policies — only the `service_role` key
+   - `supabase/migrations/0006_square_customer_id.sql` — adds
+     `square_customer_id` to `ambassadors`, caching the Square Customer
+     match used by the Customer tab. See
+     [Square Customers matching](#square-customers-matching).
+   All six enable RLS with no public policies — only the `service_role` key
    (which is what this app uses) can read or write.
 3. **Bootstrap the first Super Admin** — there's no self-serve way to grant
    `is_super_admin` (by design), so after signing up your own account at
@@ -150,17 +154,22 @@ stayed to avoid a riskier rename — every field/type comment calls out that
 it's really "account" now). What's different per account is which
 dashboard tabs are unlocked:
 
-- **Customer** — always visible, no permission needed. Currently shows
-  placeholder purchase history (see the note in `CustomerTab.tsx`);
-  matching an account to its real Square order history by email is real,
-  separate follow-up work, not yet built.
+Tab labels are ALL CAPS in the UI (CUSTOMER, BRAND AMBASSADORS,
+ARTIST/VENDOR, MUSIC, SSBD); referred to here in normal case for
+readability.
+
+- **Customer** — always visible, no permission needed. Shows real Square
+  purchase history, matched by email — see
+  [Square Customers matching](#square-customers-matching).
 - **Brand Ambassador** (`perm_ambassador`) — referral code/link, live
   stats, links manager, payouts. Granted automatically by `/apply`; a plain
   `/login?mode=signup` account starts without it.
-- **Art / Vendor** (`perm_vendor`) — the Vendor Sales tab, scoped to
-  whichever artist `vendor_slug` points at (see
-  [migration 0004](#data-layer--auth)). Needs both the permission and a
-  vendor slug set to show real data.
+- **Artist/Vendor** (`perm_vendor`) — sales/inventory scoped to whichever
+  artist `vendor_slug` points at (see [migration 0004](#data-layer--auth)).
+  Needs both the permission and a vendor slug set to show real data.
+  Managing the artist's own listings (editing/uploading their catalog
+  items, links, etc.) from this tab is a planned follow-up, not yet built
+  — today it's read-only sales/inventory.
 - **Music** (`perm_music`) — reserved for musicians; ships as a "coming
   soon" placeholder (`MusicTab.tsx`) since there's no Square sales data
   for music-collective artists yet, same honesty-over-fake-data posture as
@@ -182,6 +191,33 @@ server-side regardless of what the UI shows — the same guard used by both
 Super Admin pages (`lib/superAdmin.ts`). There's deliberately no self-serve
 way to become the first Super Admin — see step 3 in
 [Data layer & auth](#data-layer--auth) above.
+
+## Square Customers matching
+
+WHOA had a large existing base of Square customers with purchase history
+long before this account system existed. So that history shows up
+automatically for anyone who signs up (or already has an account) with the
+same email — no manual linking step.
+
+- `lib/squareCustomers.ts` — `findSquareCustomerIdByEmail()` calls
+  Square's Customers Search API with an **exact** email match (never
+  fuzzy — a wrong fuzzy match would show one person's purchase history to
+  someone else, which is worse than showing nothing).
+  `getOrdersForSquareCustomer()` calls Square's Orders Search API filtered
+  by that customer id — the authoritative source, not the
+  `square_orders` sync mirror (which has no customer id column and only
+  covers orders synced since the webhook existed, not historical ones).
+- `getCustomerHistory()` runs on every `/portal/[code]` load for the
+  logged-in account: if `square_customer_id` isn't cached yet
+  ([migration 0006](#data-layer--auth)), it looks the email up once and
+  saves the match so future loads skip straight to fetching orders. Never
+  throws — a Square API hiccup degrades to "no purchase history shown,"
+  not a broken dashboard.
+- `components/dashboard/tabs/CustomerTab.tsx` shows the real order list
+  (items, date, total, Square order state) when linked, an honest "no
+  Square profile found for this email yet" message when not, and "linked
+  but nothing on file yet" when linked with zero orders — no fabricated
+  data in any state.
 
 ## Square integration
 
