@@ -40,20 +40,33 @@ export default async function ArtistPage(props: PageProps<"/art-collective/[slug
         <p className="max-w-2xl text-lg text-foreground/90">{artist.tagline}</p>
         <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted">{artist.bio}</p>
 
-        <a
-          href={artist.instagram}
-          target="_blank"
-          rel="noreferrer"
-          style={{ borderColor: artist.accent, "--accent": artist.accent } as React.CSSProperties}
-          className="mt-6 inline-flex items-center gap-2 rounded-full border-2 px-5 py-2.5 text-sm font-semibold tracking-wide uppercase transition-shadow hover:shadow-[0_0_30px_-8px_var(--accent)]"
-        >
-          Follow on Instagram
-        </a>
+        {artist.instagram && (
+          <a
+            href={artist.instagram}
+            target="_blank"
+            rel="noreferrer"
+            style={{ borderColor: artist.accent, "--accent": artist.accent } as React.CSSProperties}
+            className="mt-6 inline-flex items-center gap-2 rounded-full border-2 px-5 py-2.5 text-sm font-semibold tracking-wide uppercase transition-shadow hover:shadow-[0_0_30px_-8px_var(--accent)]"
+          >
+            Follow on Instagram
+          </a>
+        )}
 
         <h2 className="font-display mt-14 text-3xl tracking-wide">Shop {artist.name}</h2>
-        <p className="mt-1 text-sm text-muted">
-          Every piece is one-of-one. DM the artist on Instagram to inquire or arrange pickup at the WHOADEGA.
-        </p>
+
+        {artist.pieces.length === 0 ? (
+          <p className="mt-1 text-sm text-muted">
+            Products from this vendor are being synced from our shop — check back soon, or{" "}
+            <Link href="/shop" className="text-flame font-medium">
+              browse everything in the meantime
+            </Link>
+            .
+          </p>
+        ) : (
+          <p className="mt-1 text-sm text-muted">
+            Every piece is one-of-one. DM the artist on Instagram to inquire or arrange pickup at the WHOADEGA.
+          </p>
+        )}
 
         <div className="mt-6 grid gap-6 sm:grid-cols-2">
           {artist.pieces.map((piece) => (
