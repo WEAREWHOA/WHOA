@@ -3,11 +3,13 @@
 import { useState } from "react";
 import EventCard from "@/components/events/EventCard";
 import EventModal from "@/components/events/EventModal";
+import EventsCalendar from "@/components/events/EventsCalendar";
 import { EVENT_CATEGORIES, type EventCategory, type EventInfo } from "@/lib/events";
 
 const CLOSE_DURATION = 520;
 
 export default function EventsGrid({ events }: { events: EventInfo[] }) {
+  const [view, setView] = useState<"cards" | "calendar">("cards");
   const [filter, setFilter] = useState<EventCategory | "all">("all");
   const [openEvent, setOpenEvent] = useState<EventInfo | null>(null);
   const [originRect, setOriginRect] = useState<DOMRect | null>(null);
@@ -32,7 +34,15 @@ export default function EventsGrid({ events }: { events: EventInfo[] }) {
 
   return (
     <>
-      <div className="relative z-10 mt-10 flex flex-wrap items-center justify-center gap-2">
+      <button
+        type="button"
+        onClick={() => setView(view === "cards" ? "calendar" : "cards")}
+        className="relative z-10 mt-8 rounded-full border-2 border-white/40 px-6 py-2 text-sm font-semibold tracking-wide text-white uppercase transition-colors hover:border-white hover:bg-white/10"
+      >
+        {view === "cards" ? "Calendar view" : "Flyer view"}
+      </button>
+
+      <div className="relative z-10 mt-6 flex flex-wrap items-center justify-center gap-2">
         <button
           type="button"
           onClick={() => setFilter("all")}
@@ -56,11 +66,17 @@ export default function EventsGrid({ events }: { events: EventInfo[] }) {
         ))}
       </div>
 
-      <div className="relative z-10 mt-10 flex w-full max-w-6xl flex-wrap items-start justify-center gap-x-8 gap-y-14">
-        {filtered.map((event, i) => (
-          <EventCard key={event.id} event={event} delay={i * 0.45} onOpen={handleOpen} />
-        ))}
-      </div>
+      {view === "cards" ? (
+        <div className="relative z-10 mt-10 flex w-full max-w-6xl flex-wrap items-start justify-center gap-x-8 gap-y-14">
+          {filtered.map((event, i) => (
+            <EventCard key={event.id} event={event} delay={i * 0.45} onOpen={handleOpen} />
+          ))}
+        </div>
+      ) : (
+        <div className="relative z-10 mt-10 flex w-full justify-center px-2">
+          <EventsCalendar events={filtered} onOpen={handleOpen} />
+        </div>
+      )}
 
       {openEvent && originRect && (
         <EventModal event={openEvent} originRect={originRect} closing={closing} onClose={handleClose} />
