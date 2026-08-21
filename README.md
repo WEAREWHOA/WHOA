@@ -184,9 +184,13 @@ Square's rate limits.
 1. Deploy this branch so `/api/webhooks/square` and `/api/admin/square/*`
    exist in production.
 2. Set `SQUARE_ADMIN_SECRET` to any long random string, in Vercel.
-3. Visit `https://yourdomain/admin/square-sync` — a small page with two
-   buttons that call the setup endpoints below, so this doesn't require a
-   terminal. Paste in the `SQUARE_ADMIN_SECRET` value once, then:
+3. Visit `https://yourdomain/admin/square-sync` — a small page with buttons
+   that call the setup endpoints below, so this doesn't require a terminal.
+   Paste in the `SQUARE_ADMIN_SECRET` value once, then:
+   - **List locations** — only needs `SQUARE_ACCESS_TOKEN` to already be
+     set. Copy the `id` from the result into Vercel as `SQUARE_LOCATION_ID`
+     and `NEXT_PUBLIC_SQUARE_LOCATION_ID` (same value, both names) if you
+     haven't already, then redeploy.
    - **Register webhook** — tells Square where to send updates. The
      response includes `signatureKey` — copy that into Vercel as
      `SQUARE_WEBHOOK_SIGNATURE_KEY` and redeploy before the next step.
@@ -194,9 +198,10 @@ Square's rate limits.
      order history in. Can take a while on a large history; safe to click
      again if it times out, since every step upserts.
 
-   (Equivalent `curl` commands, if you'd rather script it:
-   `curl -X POST https://yourdomain/api/admin/square/register-webhook -H "Authorization: Bearer $SQUARE_ADMIN_SECRET"`
-   and the same against `/api/admin/square/backfill`.)
+   (Equivalent `curl` commands, if you'd rather script it: the same
+   `-H "Authorization: Bearer $SQUARE_ADMIN_SECRET"` POST against
+   `/api/admin/square/locations`, `/api/admin/square/register-webhook`, and
+   `/api/admin/square/backfill`.)
 
 From then on, catalog/inventory/order changes in Square flow into Supabase
 automatically. Per-vendor filtering (matching each product to the artist
