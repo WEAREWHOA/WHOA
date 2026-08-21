@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import Script from "next/script";
 import { checkoutAction } from "@/app/checkout/actions";
-import { lockPos } from "@/components/pos/usePosAuth";
 import { formatCents } from "@/lib/money";
 import type { CartLine, Product } from "@/lib/types";
 
@@ -34,7 +33,7 @@ const SQUARE_JS_SRC =
 
 type Step = "shop" | "pay" | "done";
 
-export default function PosTerminal({ products }: { products: Product[] }) {
+export default function CheckoutTab({ products }: { products: Product[] }) {
   const [ticket, setTicket] = useState<CartLine[]>([]);
   const [query, setQuery] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -96,23 +95,14 @@ export default function PosTerminal({ products }: { products: Product[] }) {
   }
 
   return (
-    <div className="grid flex-1 grid-cols-1 lg:grid-cols-[1fr_380px]">
-      <div className="border-border border-b p-6 lg:border-r lg:border-b-0">
-        <div className="flex items-center justify-between gap-3">
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search products…"
-            className="w-full max-w-sm rounded-lg border border-border-strong bg-surface-raised px-4 py-2.5 text-sm outline-none focus:border-flame-2"
-          />
-          <button
-            type="button"
-            onClick={lockPos}
-            className="shrink-0 rounded-full border border-border-strong px-4 py-2 text-xs font-semibold tracking-wide text-muted uppercase hover:text-foreground"
-          >
-            Lock register
-          </button>
-        </div>
+    <div className="grid flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[1fr_380px]">
+      <div className="border-border overflow-y-auto border-b p-6 lg:border-r lg:border-b-0">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search products…"
+          className="w-full max-w-sm rounded-lg border border-border-strong bg-surface-raised px-4 py-2.5 text-sm outline-none focus:border-flame-2"
+        />
 
         {filtered.length === 0 ? (
           <p className="mt-10 text-sm text-muted">No products match.</p>
@@ -185,7 +175,7 @@ export default function PosTerminal({ products }: { products: Product[] }) {
         )}
       </div>
 
-      <div className="flex flex-col p-6">
+      <div className="flex flex-col overflow-y-auto p-6">
         {step === "shop" && (
           <TicketPanel
             ticket={ticket}
@@ -230,7 +220,7 @@ function TicketPanel({
       {ticket.length === 0 ? (
         <p className="mt-4 text-sm text-muted">Tap a product to add it to the sale.</p>
       ) : (
-        <div className="mt-4 flex flex-1 flex-col gap-3 overflow-y-auto">
+        <div className="mt-4 flex flex-1 flex-col gap-3">
           {ticket.map((line) => (
             <div key={line.variationId} className="flex items-center gap-3">
               <div className="min-w-0 flex-1">

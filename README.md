@@ -163,20 +163,35 @@ checkout does.
 ## Staff POS
 
 A showcase register at `/pos` for demonstrating this app as a full
-front-of-house replacement for Square's own POS app — same underlying
-Square account, card processing, and order/payment flow as `/checkout`
-(`app/checkout/actions.ts`'s `checkoutAction` is reused as-is), just with a
-tap-to-add product grid and running ticket instead of an online cart.
+front-of-house replacement for Square's own POS app — modeled directly on
+Square's own mobile app (bottom tab bar: Checkout / Inventory /
+Transactions / Notifications / More), same underlying Square account, card
+processing, and order/payment flow as `/checkout`
+(`app/checkout/actions.ts`'s `checkoutAction` is reused as-is). `/pos` is a
+standalone app screen — `SiteChrome.tsx` skips the site nav/footer for it,
+same as the home page.
 
 - `components/pos/PosPinGate.tsx` / `usePosAuth.ts` — a 4-digit PIN gate
   (`2222`), same soft-gate posture as `/ssbd-admin`'s crew password: fine
   for keeping a register off the open web, not real access control. No
   per-staff accounts yet — "for now, one shared PIN."
-- `components/pos/PosTerminal.tsx` — product search/grid (tap a
-  single-variation product to add it directly; multi-variation products
-  expand inline to pick one), a running ticket with quantity steppers, and
-  a payment step embedding the same Web Payments SDK card form as
-  `/checkout`.
+- `components/pos/PosApp.tsx` / `PosTabBar.tsx` — the five-tab shell:
+  - **Checkout** (`tabs/CheckoutTab.tsx`) — product search/grid (tap a
+    single-variation product to add it directly; multi-variation products
+    expand inline to pick one), a running ticket with quantity steppers,
+    and a payment step embedding the same Web Payments SDK card form as
+    `/checkout`.
+  - **Inventory** (`tabs/InventoryTab.tsx`) — live stock levels per
+    product, straight from the same `listProducts()` call the shop uses.
+  - **Transactions** (`tabs/TransactionsTab.tsx`) — recent orders grouped
+    by date, read from the Square sync mirror (`lib/posOrders.ts` →
+    `square_orders`/`square_order_line_items`) rather than calling
+    Square's API directly.
+  - **Notifications** (`tabs/NotificationsTab.tsx`) — real today's-order
+    count, not a fabricated activity feed.
+  - **More** (`tabs/MoreTab.tsx`) — shortcuts into Orders/Items and a
+    "Lock register" action; Reports/Settings are marked "Coming soon"
+    rather than faked, since there's no reporting or settings backend yet.
 - **This charges real cards on your live Square account** — there's no
   sandbox/demo-mode toggle, so be deliberate about what you run through it
   in a live demo.

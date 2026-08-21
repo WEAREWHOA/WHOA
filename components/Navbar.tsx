@@ -1,4 +1,5 @@
 import Link from "next/link";
+import CartLink from "@/components/CartLink";
 
 const links = [
   { href: "/shop", label: "Shop" },
@@ -23,7 +24,8 @@ export default function Navbar() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <CartLink />
           <Link href="/login" className="btn-flame rounded-full px-5 py-2 text-sm">
             Log In / Sign Up
           </Link>

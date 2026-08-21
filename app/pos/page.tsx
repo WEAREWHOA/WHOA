@@ -1,6 +1,7 @@
 import { listProducts } from "@/lib/catalog";
+import { getRecentOrders } from "@/lib/posOrders";
 import PosPinGate from "@/components/pos/PosPinGate";
-import PosTerminal from "@/components/pos/PosTerminal";
+import PosApp from "@/components/pos/PosApp";
 
 // Staff need accurate live stock while ringing up sales — always fetch
 // fresh rather than serving a cached snapshot.
@@ -16,15 +17,17 @@ export default async function PosPage() {
     error = "The register is temporarily unavailable. Check back soon.";
   }
 
+  const orders = await getRecentOrders().catch(() => []);
+
   return (
-    <section className="flex flex-1 flex-col">
+    <section className="flex h-dvh flex-col">
       <PosPinGate>
         {error ? (
           <p className="m-6 rounded-lg border border-flame-1/40 bg-flame-1/10 px-4 py-3 text-sm text-flame-3">
             {error}
           </p>
         ) : (
-          <PosTerminal products={products} />
+          <PosApp products={products} orders={orders} />
         )}
       </PosPinGate>
     </section>
