@@ -22,6 +22,7 @@ interface AmbassadorRow {
   perm_music: boolean;
   perm_ssbd: boolean;
   is_super_admin: boolean;
+  square_customer_id: string | null;
   orders?: OrderRow[];
   links?: LinkRow[];
 }
@@ -47,7 +48,7 @@ interface LinkRow {
 // ever fetched separately, by the two getCredentials* functions below.
 const AMBASSADOR_PUBLIC_SELECT =
   "code, name, email, instagram, created_at, payout_method, payout_destination, vendor_slug, " +
-  "perm_ambassador, perm_vendor, perm_music, perm_ssbd, is_super_admin, orders(*), links(*)";
+  "perm_ambassador, perm_vendor, perm_music, perm_ssbd, is_super_admin, square_customer_id, orders(*), links(*)";
 
 function mapOrder(row: OrderRow): Order {
   return {
@@ -90,6 +91,7 @@ function mapAmbassador(row: AmbassadorRow): Ambassador {
       ssbd: row.perm_ssbd,
     },
     isSuperAdmin: row.is_super_admin,
+    squareCustomerId: row.square_customer_id ?? undefined,
   };
 }
 
@@ -355,6 +357,18 @@ export async function setVendorSlug(code: string, vendorSlug: string): Promise<b
   const { error } = await getSupabase()
     .from("ambassadors")
     .update({ vendor_slug: vendorSlug })
+    .eq("code", code.trim().toUpperCase());
+
+  return !error;
+}
+
+// Caches the Square Customer id matched by email so the portal page
+// doesn't need to re-search Square's Customers API on every load. Best
+// effort — a failure here shouldn't block anything, so callers just log.
+export async function setSquareCustomerId(code: string, squareCustomerId: string): Promise<boolean> {
+  const { error } = await getSupabase()
+    .from("ambassadors")
+    .update({ square_customer_id: squareCustomerId })
     .eq("code", code.trim().toUpperCase());
 
   return !error;
