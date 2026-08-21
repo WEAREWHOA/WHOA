@@ -1,5 +1,5 @@
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
-import EventCard from "@/components/events/EventCard";
+import EventsGrid from "@/components/events/EventsGrid";
 import { EVENTS } from "@/lib/events";
 
 export default function EventsPage() {
@@ -15,15 +15,11 @@ export default function EventsPage() {
           Event Calendar
         </h1>
         <p className="mt-3 max-w-md text-sm text-white/60">
-          Hover a flyer to RSVP. Tap it on mobile.
+          Tap a flyer for full details. Hover to RSVP.
         </p>
       </div>
 
-      <div className="relative z-10 mt-14 flex w-full max-w-6xl flex-wrap items-start justify-center gap-x-8 gap-y-14">
-        {EVENTS.map((event, i) => (
-          <EventCard key={event.id} event={event} delay={i * 0.45} />
-        ))}
-      </div>
+      <EventsGrid events={EVENTS} />
     </section>
   );
 }

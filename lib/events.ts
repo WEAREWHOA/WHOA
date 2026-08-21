@@ -1,3 +1,11 @@
+export type EventCategory = "whoadega" | "shows" | "festivals";
+
+export const EVENT_CATEGORIES: { id: EventCategory; label: string }[] = [
+  { id: "whoadega", label: "WHOAdega" },
+  { id: "shows", label: "Shows" },
+  { id: "festivals", label: "Festivals" },
+];
+
 export interface EventInfo {
   id: string;
   title: string;
@@ -5,6 +13,7 @@ export interface EventInfo {
   timeLabel: string;
   venue: string;
   location: string;
+  category: EventCategory;
   lineup?: string[];
   details?: string[];
   tags?: string[];
@@ -22,6 +31,7 @@ export const EVENTS: EventInfo[] = [
     timeLabel: "7PM – 11PM",
     venue: "The WHOAdega",
     location: "4847 Newport Ave, San Diego",
+    category: "whoadega",
     details: ["Special guest DJs"],
     tags: ["Free Entry", "All Ages"],
     accent: "#29e6ff",
@@ -35,6 +45,7 @@ export const EVENTS: EventInfo[] = [
     timeLabel: "7PM – Midnight",
     venue: "The WHOAdega × SH!FT Gallery",
     location: "4847 Newport Ave, San Diego",
+    category: "whoadega",
     lineup: ["Hunthux", "Blue Jade", "Anzio", "Kayristin", "+ Special Guest"],
     accent: "#ff2fb0",
     gradient: ["#0a0116", "#3a0a3a", "#ff2fb0"],
@@ -47,6 +58,7 @@ export const EVENTS: EventInfo[] = [
     timeLabel: "7PM – 11PM",
     venue: "The WHOAdega",
     location: "4847 Newport Ave, San Diego",
+    category: "whoadega",
     details: ["Hosted by Wasani featuring Divina"],
     tags: ["Free Entry", "All Ages"],
     accent: "#ff7a00",
@@ -60,6 +72,7 @@ export const EVENTS: EventInfo[] = [
     timeLabel: "7PM – 11:30PM",
     venue: "SH!FT Gallery Takeover",
     location: "4847 Newport Ave, San Diego, CA 92107",
+    category: "shows",
     details: ["Opening Night Celebration", "HABITAAT music video premiere"],
     lineup: ["Wasani Whoa", "Mad Maxime", "Just George", "Ivy Nyx"],
     accent: "#fff229",
@@ -73,6 +86,7 @@ export const EVENTS: EventInfo[] = [
     timeLabel: "3 Days",
     venue: "Pop Up Shop",
     location: "3119 Mariners Way, San Diego, CA",
+    category: "festivals",
     lineup: ["Rebelution", "Kolohe Kai", "The Offspring", "+ 30 more"],
     details: [
       "Fri — Rebelution, Steel Pulse, The Movement + more",
@@ -91,6 +105,7 @@ export const EVENTS: EventInfo[] = [
     timeLabel: "WHOADEGA Art Gallery Experience",
     venue: "Lake Perris, CA",
     location: "Lake Perris, CA",
+    category: "festivals",
     lineup: ["LSDREAM", "Of The Trees", "Tape B", "+ Gramatik"],
     details: [
       "75+ workshops · 40+ art installations",

@@ -1,0 +1,70 @@
+"use client";
+
+import { useState } from "react";
+import EventCard from "@/components/events/EventCard";
+import EventModal from "@/components/events/EventModal";
+import { EVENT_CATEGORIES, type EventCategory, type EventInfo } from "@/lib/events";
+
+const CLOSE_DURATION = 520;
+
+export default function EventsGrid({ events }: { events: EventInfo[] }) {
+  const [filter, setFilter] = useState<EventCategory | "all">("all");
+  const [openEvent, setOpenEvent] = useState<EventInfo | null>(null);
+  const [originRect, setOriginRect] = useState<DOMRect | null>(null);
+  const [closing, setClosing] = useState(false);
+
+  const filtered = filter === "all" ? events : events.filter((event) => event.category === filter);
+
+  function handleOpen(event: EventInfo, rect: DOMRect) {
+    setOpenEvent(event);
+    setOriginRect(rect);
+    setClosing(false);
+  }
+
+  function handleClose() {
+    setClosing(true);
+    setTimeout(() => {
+      setOpenEvent(null);
+      setOriginRect(null);
+      setClosing(false);
+    }, CLOSE_DURATION);
+  }
+
+  return (
+    <>
+      <div className="relative z-10 mt-10 flex flex-wrap items-center justify-center gap-2">
+        <button
+          type="button"
+          onClick={() => setFilter("all")}
+          className={`rounded-full px-4 py-1.5 text-sm font-semibold tracking-wide transition-colors ${
+            filter === "all" ? "btn-flame" : "border border-white/30 text-white/70 hover:text-white"
+          }`}
+        >
+          All
+        </button>
+        {EVENT_CATEGORIES.map((cat) => (
+          <button
+            key={cat.id}
+            type="button"
+            onClick={() => setFilter(cat.id)}
+            className={`rounded-full px-4 py-1.5 text-sm font-semibold tracking-wide uppercase transition-colors ${
+              filter === cat.id ? "btn-flame" : "border border-white/30 text-white/70 hover:text-white"
+            }`}
+          >
+            {cat.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="relative z-10 mt-10 flex w-full max-w-6xl flex-wrap items-start justify-center gap-x-8 gap-y-14">
+        {filtered.map((event, i) => (
+          <EventCard key={event.id} event={event} delay={i * 0.45} onOpen={handleOpen} />
+        ))}
+      </div>
+
+      {openEvent && originRect && (
+        <EventModal event={openEvent} originRect={originRect} closing={closing} onClose={handleClose} />
+      )}
+    </>
+  );
+}
