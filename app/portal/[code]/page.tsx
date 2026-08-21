@@ -2,6 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import { getByCode, getStats } from "@/lib/store";
 import { getSiteOrigin } from "@/lib/site";
 import { getSessionAmbassadorCode } from "@/lib/auth";
+import { getArtist } from "@/lib/artists";
+import { getVendorProducts, getVendorStats } from "@/lib/vendor";
 import LogoutButton from "@/components/portal/LogoutButton";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import AmbassadorTab from "@/components/dashboard/tabs/AmbassadorTab";
@@ -26,6 +28,11 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
   const tier = getTier(stats.orderCount);
   const origin = await getSiteOrigin();
   const firstName = ambassador.name.trim().split(/\s+/)[0];
+
+  const vendorArtist = ambassador.vendorSlug ? getArtist(ambassador.vendorSlug) : undefined;
+  const [vendorProducts, vendorStats] = vendorArtist
+    ? await Promise.all([getVendorProducts(vendorArtist.slug), getVendorStats(vendorArtist.slug)])
+    : [undefined, undefined];
 
   const isNew = searchParams?.new === "1";
   const payoutSaved = searchParams?.saved === "1";
@@ -67,7 +74,9 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
           />
         }
         customer={<CustomerTab />}
-        vendor={<VendorTab />}
+        vendor={
+          <VendorTab vendorName={vendorArtist?.name} stats={vendorStats} products={vendorProducts} />
+        }
         ssbd={<SsbdTab />}
       />
     </section>

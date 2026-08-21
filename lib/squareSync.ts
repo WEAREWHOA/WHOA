@@ -1,6 +1,7 @@
 import type { Square } from "square";
 import { getSquare } from "./square";
 import { getSupabase } from "./supabase";
+import { matchVendorSlug } from "./vendorMatch";
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const result: T[][] = [];
@@ -50,11 +51,13 @@ export async function syncFullCatalog(): Promise<{ productIds: string[]; variati
       const data = item.itemData;
       const firstImageId = data.imageIds?.[0];
 
+      const name = data.name ?? "Untitled";
       const { error: productError } = await supabase.from("square_products").upsert({
         id: item.id,
-        name: data.name ?? "Untitled",
+        name,
         description: data.descriptionPlaintext ?? data.description ?? null,
         image_url: firstImageId ? (imageUrlById.get(firstImageId) ?? null) : null,
+        owner_code: matchVendorSlug(name) ?? null,
         updated_at: new Date().toISOString(),
       });
       if (productError) {
