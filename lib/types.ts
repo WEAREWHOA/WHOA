@@ -21,6 +21,19 @@ export interface AmbassadorLink {
   createdAt: string;
 }
 
+// Which extra dashboard tabs an account has unlocked. Every account gets
+// the Customer tab for free; these are granted by a Super Admin (or set
+// automatically by the /apply ambassador flow) on top of that.
+export interface AccountPermissions {
+  ambassador: boolean;
+  vendor: boolean;
+  music: boolean;
+  ssbd: boolean;
+}
+
+// Despite the name, this now represents any backend-portal account, not
+// just ambassadors — a plain customer signup and an ambassador are the same
+// row, distinguished only by `permissions`.
 export interface Ambassador {
   code: string;
   name: string;
@@ -31,6 +44,8 @@ export interface Ambassador {
   links: AmbassadorLink[];
   payout: PayoutSettings | null;
   vendorSlug?: string;
+  permissions: AccountPermissions;
+  isSuperAdmin: boolean;
 }
 
 export interface AmbassadorStats {

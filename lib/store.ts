@@ -1,5 +1,12 @@
 import { getSupabase } from "./supabase";
-import type { Ambassador, AmbassadorLink, AmbassadorStats, Order, PayoutSettings } from "./types";
+import type {
+  AccountPermissions,
+  Ambassador,
+  AmbassadorLink,
+  AmbassadorStats,
+  Order,
+  PayoutSettings,
+} from "./types";
 
 interface AmbassadorRow {
   code: string;
@@ -10,6 +17,11 @@ interface AmbassadorRow {
   payout_method: PayoutSettings["method"] | null;
   payout_destination: string | null;
   vendor_slug: string | null;
+  perm_ambassador: boolean;
+  perm_vendor: boolean;
+  perm_music: boolean;
+  perm_ssbd: boolean;
+  is_super_admin: boolean;
   orders?: OrderRow[];
   links?: LinkRow[];
 }
@@ -34,7 +46,8 @@ interface LinkRow {
 // everywhere an Ambassador is returned to the app. Credentials are only
 // ever fetched separately, by the two getCredentials* functions below.
 const AMBASSADOR_PUBLIC_SELECT =
-  "code, name, email, instagram, created_at, payout_method, payout_destination, vendor_slug, orders(*), links(*)";
+  "code, name, email, instagram, created_at, payout_method, payout_destination, vendor_slug, " +
+  "perm_ambassador, perm_vendor, perm_music, perm_ssbd, is_super_admin, orders(*), links(*)";
 
 function mapOrder(row: OrderRow): Order {
   return {
@@ -70,6 +83,13 @@ function mapAmbassador(row: AmbassadorRow): Ambassador {
         ? { method: row.payout_method, destination: row.payout_destination }
         : null,
     vendorSlug: row.vendor_slug ?? undefined,
+    permissions: {
+      ambassador: row.perm_ambassador,
+      vendor: row.perm_vendor,
+      music: row.perm_music,
+      ssbd: row.perm_ssbd,
+    },
+    isSuperAdmin: row.is_super_admin,
   };
 }
 
@@ -118,14 +138,21 @@ async function generateLinkSlug(ambassadorCode: string, label: string): Promise<
   return candidate;
 }
 
+// Creates a backend-portal account. Despite the name, this is used for
+// every signup — a plain customer, not just an ambassador — so the
+// permissions below default to false and only /apply (the dedicated
+// ambassador application) turns `ambassador` on at creation time. A Super
+// Admin can grant any permission afterward from /super-admin.
 export async function createAmbassador(input: {
   name: string;
   email: string;
   instagram?: string;
   passwordHash: string;
+  permissions?: Partial<AccountPermissions>;
 }): Promise<Ambassador> {
   const code = await generateAmbassadorCode(input.name);
   const supabase = getSupabase();
+  const isAmbassador = input.permissions?.ambassador ?? false;
 
   const { error: ambassadorError } = await supabase.from("ambassadors").insert({
     code,
@@ -133,21 +160,29 @@ export async function createAmbassador(input: {
     email: input.email.trim().toLowerCase(),
     instagram: input.instagram?.trim() || null,
     password_hash: input.passwordHash,
+    perm_ambassador: isAmbassador,
+    perm_vendor: input.permissions?.vendor ?? false,
+    perm_music: input.permissions?.music ?? false,
+    perm_ssbd: input.permissions?.ssbd ?? false,
   });
 
   if (ambassadorError) {
     throw new Error(`Failed to create ambassador: ${ambassadorError.message}`);
   }
 
-  const { error: linkError } = await supabase.from("links").insert({
-    id: `link_${code.toLowerCase()}_default`,
-    ambassador_code: code,
-    label: "Default",
-    slug: code,
-  });
+  // Only ambassadors get a trackable referral link — a plain customer
+  // account has no use for one.
+  if (isAmbassador) {
+    const { error: linkError } = await supabase.from("links").insert({
+      id: `link_${code.toLowerCase()}_default`,
+      ambassador_code: code,
+      label: "Default",
+      slug: code,
+    });
 
-  if (linkError) {
-    throw new Error(`Failed to create default link: ${linkError.message}`);
+    if (linkError) {
+      throw new Error(`Failed to create default link: ${linkError.message}`);
+    }
   }
 
   const ambassador = await getByCode(code);
@@ -158,21 +193,28 @@ export async function createAmbassador(input: {
 }
 
 export async function getByCode(code: string): Promise<Ambassador | undefined> {
-  const { data } = await getSupabase()
+  const { data, error } = await getSupabase()
     .from("ambassadors")
     .select(AMBASSADOR_PUBLIC_SELECT)
     .eq("code", code.trim().toUpperCase())
     .maybeSingle();
 
+  // Surface a broken Supabase connection (e.g. a stale service-role key) as
+  // a real error instead of silently looking like "account not found" and
+  // sending the caller into a misleading 404.
+  if (error) throw new Error(`Failed to look up account by code: ${error.message}`);
+
   return data ? mapAmbassador(data as unknown as AmbassadorRow) : undefined;
 }
 
 export async function getByEmail(email: string): Promise<Ambassador | undefined> {
-  const { data } = await getSupabase()
+  const { data, error } = await getSupabase()
     .from("ambassadors")
     .select(AMBASSADOR_PUBLIC_SELECT)
     .eq("email", email.trim().toLowerCase())
     .maybeSingle();
+
+  if (error) throw new Error(`Failed to look up account by email: ${error.message}`);
 
   return data ? mapAmbassador(data as unknown as AmbassadorRow) : undefined;
 }
@@ -182,11 +224,13 @@ export async function getByEmail(email: string): Promise<Ambassador | undefined>
 export async function getCredentialsByCode(
   code: string,
 ): Promise<{ code: string; passwordHash: string } | undefined> {
-  const { data } = await getSupabase()
+  const { data, error } = await getSupabase()
     .from("ambassadors")
     .select("code, password_hash")
     .eq("code", code.trim().toUpperCase())
     .maybeSingle();
+
+  if (error) throw new Error(`Failed to look up credentials by code: ${error.message}`);
 
   return data?.password_hash ? { code: data.code, passwordHash: data.password_hash } : undefined;
 }
@@ -194,13 +238,59 @@ export async function getCredentialsByCode(
 export async function getCredentialsByEmail(
   email: string,
 ): Promise<{ code: string; passwordHash: string } | undefined> {
-  const { data } = await getSupabase()
+  const { data, error } = await getSupabase()
     .from("ambassadors")
     .select("code, password_hash")
     .eq("email", email.trim().toLowerCase())
     .maybeSingle();
 
+  if (error) throw new Error(`Failed to look up credentials by email: ${error.message}`);
+
   return data?.password_hash ? { code: data.code, passwordHash: data.password_hash } : undefined;
+}
+
+// Super Admin account search — case-insensitive partial match on name,
+// email, or code. Never returns password hashes (uses the same public
+// select as everything else).
+export async function searchAccounts(query: string): Promise<Ambassador[]> {
+  const q = query.trim();
+  if (!q) return [];
+
+  const { data, error } = await getSupabase()
+    .from("ambassadors")
+    .select(AMBASSADOR_PUBLIC_SELECT)
+    .or(`name.ilike.%${q}%,email.ilike.%${q}%,code.ilike.%${q}%`)
+    .order("created_at", { ascending: false })
+    .limit(25);
+
+  if (error) throw new Error(`Failed to search accounts: ${error.message}`);
+
+  return (data ?? []).map((row) => mapAmbassador(row as unknown as AmbassadorRow));
+}
+
+// Super Admin permission edits. `permissions` is a partial patch — only the
+// keys provided are changed.
+export async function updatePermissions(
+  code: string,
+  updates: {
+    permissions?: Partial<AccountPermissions>;
+    isSuperAdmin?: boolean;
+    vendorSlug?: string | null;
+  },
+): Promise<void> {
+  const patch: Record<string, unknown> = {};
+  if (updates.permissions?.ambassador !== undefined) patch.perm_ambassador = updates.permissions.ambassador;
+  if (updates.permissions?.vendor !== undefined) patch.perm_vendor = updates.permissions.vendor;
+  if (updates.permissions?.music !== undefined) patch.perm_music = updates.permissions.music;
+  if (updates.permissions?.ssbd !== undefined) patch.perm_ssbd = updates.permissions.ssbd;
+  if (updates.isSuperAdmin !== undefined) patch.is_super_admin = updates.isSuperAdmin;
+  if (updates.vendorSlug !== undefined) patch.vendor_slug = updates.vendorSlug || null;
+
+  if (Object.keys(patch).length === 0) return;
+
+  const { error } = await getSupabase().from("ambassadors").update(patch).eq("code", code.trim().toUpperCase());
+
+  if (error) throw new Error(`Failed to update permissions: ${error.message}`);
 }
 
 export async function createLink(ambassadorCode: string, label: string): Promise<AmbassadorLink> {

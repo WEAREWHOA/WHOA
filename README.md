@@ -1,9 +1,12 @@
 # WHOA
 
 A Next.js (App Router) storefront for WHOA, backed by Square for products,
-inventory, and payments, plus a password-protected ambassador program:
-create an account, get a code plus multiple trackable links, and watch
-clicks/orders/commission roll in on a personal portal.
+inventory, and payments, plus a single password-protected **Backend
+Portal** shared by everyone working with WHOA — customers, brand
+ambassadors, art/vendor collective members, musicians, and SSBD crew are
+all the same kind of account, distinguished only by which permissions a
+Super Admin has granted them. See
+[Backend Portal & permissions](#backend-portal--permissions) below.
 
 ## Mechanics
 
@@ -31,15 +34,20 @@ clicks/orders/commission roll in on a personal portal.
   running ticket, and a real Square charge via the same Web Payments SDK
   flow as `/checkout`
 
-**Ambassador program**
+**Backend Portal**
 
 - `/` — marketing landing page: hero, how-it-works, tiers, portal preview, FAQ, apply CTA
-- `/apply` — creates a password-protected ambassador account (name, email,
-  Instagram, password); approval is instant
-- `/login`, `/portal` — log in with an ambassador code or email, plus password
-- `/portal/[code]` — the ambassador dashboard (session-protected — only the
-  logged-in owner can view it): code, live stats, tier progress, recent
-  orders, the links manager, caption/resource pack, payout settings, logout
+- `/apply` — creates a password-protected account with Brand Ambassador
+  access already granted (name, email, Instagram, password); approval is instant
+- `/login`, `/portal` — log in (or sign up with just email + password) —
+  every account, whatever its permissions, uses the same login
+- `/portal/[code]` — the account's dashboard (session-protected — only the
+  logged-in owner can view it). Customer is always visible; Brand
+  Ambassadors, Vendor Sales, Music, and SSBD tabs only render if a Super
+  Admin has granted that permission — see
+  [Backend Portal & permissions](#backend-portal--permissions)
+- `/super-admin`, `/super-admin/[code]` — Super Admin only: search any
+  account by name/email/code and edit its permissions
 - `/r/[slug]` — a trackable link. Logs a click on that specific link, sets a
   30-day `whoa_ref` cookie identifying the ambassador, and redirects to
   `/shop`. Any purchase made while that cookie is present gets the 15%
@@ -94,7 +102,7 @@ revoked by deleting its row (which logout does).
 **Setup:**
 
 1. Create a Supabase project (or use an existing one).
-2. Run all four migrations against it, **in order** — paste each into the
+2. Run all five migrations against it, **in order** — paste each into the
    Supabase SQL Editor, or apply them with the Supabase CLI if the project
    is linked (`supabase db push`):
    - `supabase/migrations/0001_init.sql` — creates `ambassadors` and
@@ -111,9 +119,20 @@ revoked by deleting its row (which logout does).
    - `supabase/migrations/0004_vendor_slug.sql` — adds `vendor_slug` to
      `ambassadors`, linking an account to a vendor for the dashboard's
      Vendor tab.
-   All four enable RLS with no public policies — only the `service_role` key
+   - `supabase/migrations/0005_account_permissions.sql` — adds
+     `perm_ambassador`, `perm_vendor`, `perm_music`, `perm_ssbd`, and
+     `is_super_admin` to `ambassadors` (backfilling every existing row to
+     `perm_ambassador = true`, since pre-migration every account was one).
+     See [Backend Portal & permissions](#backend-portal--permissions).
+   All five enable RLS with no public policies — only the `service_role` key
    (which is what this app uses) can read or write.
-3. Set `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (from
+3. **Bootstrap the first Super Admin** — there's no self-serve way to grant
+   `is_super_admin` (by design), so after signing up your own account at
+   `/login?mode=signup`, set it directly in the Supabase Table Editor:
+   `update ambassadors set is_super_admin = true where email = 'you@example.com';`.
+   From there you can grant every other permission — including Super Admin
+   itself — from `/super-admin` in the app.
+4. Set `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (from
    Settings → API in the Supabase dashboard) as environment variables —
    locally in `.env.local`, and in the Vercel project's Environment
    Variables settings for deployment.
@@ -121,6 +140,48 @@ revoked by deleting its row (which logout does).
 `lib/supabase.ts` creates its client lazily on first use rather than at
 import time, so `npm run build` / `npm run lint` succeed even without these
 vars set — only requests that actually touch the store need them.
+
+## Backend Portal & permissions
+
+One account model, one login, for everyone working with WHOA — a customer,
+a brand ambassador, an art/vendor collective member, a musician, and SSBD
+crew are all just rows in `ambassadors` (the table name predates this and
+stayed to avoid a riskier rename — every field/type comment calls out that
+it's really "account" now). What's different per account is which
+dashboard tabs are unlocked:
+
+- **Customer** — always visible, no permission needed. Currently shows
+  placeholder purchase history (see the note in `CustomerTab.tsx`);
+  matching an account to its real Square order history by email is real,
+  separate follow-up work, not yet built.
+- **Brand Ambassador** (`perm_ambassador`) — referral code/link, live
+  stats, links manager, payouts. Granted automatically by `/apply`; a plain
+  `/login?mode=signup` account starts without it.
+- **Art / Vendor** (`perm_vendor`) — the Vendor Sales tab, scoped to
+  whichever artist `vendor_slug` points at (see
+  [migration 0004](#data-layer--auth)). Needs both the permission and a
+  vendor slug set to show real data.
+- **Music** (`perm_music`) — reserved for musicians; ships as a "coming
+  soon" placeholder (`MusicTab.tsx`) since there's no Square sales data
+  for music-collective artists yet, same honesty-over-fake-data posture as
+  everywhere else in this app.
+- **SSBD** (`perm_ssbd`) — Same Same But Different crew submissions tab.
+
+`components/dashboard/DashboardTabs.tsx` only renders the tab buttons a
+given account actually has permission for; `app/portal/[code]/page.tsx`
+computes `visible` from the logged-in account's `permissions` on every
+load, so a revoked permission takes effect the next time that page loads.
+
+**Super Admin** (`is_super_admin`) — a separate flag from the four
+permissions above, and the only way to grant or revoke any of them
+(including itself). `/super-admin` searches accounts by name/email/code;
+`/super-admin/[code]` edits one account's permissions, vendor slug, and
+Super Admin flag via `updateAccountPermissionsAction`
+(`app/super-admin/actions.ts`), which re-checks `requireSuperAdmin()`
+server-side regardless of what the UI shows — the same guard used by both
+Super Admin pages (`lib/superAdmin.ts`). There's deliberately no self-serve
+way to become the first Super Admin — see step 3 in
+[Data layer & auth](#data-layer--auth) above.
 
 ## Square integration
 

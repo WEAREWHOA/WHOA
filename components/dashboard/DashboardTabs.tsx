@@ -2,33 +2,42 @@
 
 import { useState, type ReactNode } from "react";
 
-const TABS = [
+const ALL_TABS = [
+  { id: "customer", label: "Customer" },
   { id: "ambassador", label: "Brand Ambassadors" },
-  { id: "customer", label: "Customer Dashboard" },
   { id: "vendor", label: "Vendor Sales" },
+  { id: "music", label: "Music" },
   { id: "ssbd", label: "SSBD" },
 ] as const;
 
-type TabId = (typeof TABS)[number]["id"];
+type TabId = (typeof ALL_TABS)[number]["id"];
 
 export default function DashboardTabs({
-  ambassador,
   customer,
+  ambassador,
   vendor,
+  music,
   ssbd,
+  visible,
 }: {
-  ambassador: ReactNode;
   customer: ReactNode;
+  ambassador: ReactNode;
   vendor: ReactNode;
+  music: ReactNode;
   ssbd: ReactNode;
+  // Customer is always visible — everyone with an account is a customer.
+  // The rest are unlocked per-account by a Super Admin.
+  visible: { ambassador: boolean; vendor: boolean; music: boolean; ssbd: boolean };
 }) {
-  const [active, setActive] = useState<TabId>("ambassador");
-  const content: Record<TabId, ReactNode> = { ambassador, customer, vendor, ssbd };
+  const content: Record<TabId, ReactNode> = { customer, ambassador, vendor, music, ssbd };
+  const tabs = ALL_TABS.filter((tab) => tab.id === "customer" || visible[tab.id]);
+
+  const [active, setActive] = useState<TabId>("customer");
 
   return (
     <div className="mt-10">
       <div className="flex flex-wrap gap-2 border-b border-border pb-4">
-        {TABS.map((tab) => (
+        {tabs.map((tab) => (
           <button
             key={tab.id}
             type="button"

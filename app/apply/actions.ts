@@ -31,7 +31,13 @@ export async function applyAction(formData: FormData) {
     }
 
     const passwordHash = await hashPassword(password);
-    const ambassador = await createAmbassador({ name, email, instagram, passwordHash });
+    const ambassador = await createAmbassador({
+      name,
+      email,
+      instagram,
+      passwordHash,
+      permissions: { ambassador: true },
+    });
 
     await createSession(ambassador.code);
     target = `/portal/${ambassador.code}?new=1`;

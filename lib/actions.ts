@@ -55,9 +55,10 @@ export async function logoutAction() {
 }
 
 // Lightweight universal signup: just email + password, no confirmation
-// email. Creates the same underlying account as the full ambassador
-// /apply flow (so the new account lands on the same tabbed dashboard
-// with every tab visible), just skipping name/instagram collection.
+// email. This is the front door for the shared backend portal — every
+// account (customer, ambassador, vendor, musician, crew) starts here as a
+// plain account with just the Customer tab. Extra tabs are unlocked by a
+// Super Admin (or automatically by the full /apply ambassador flow).
 export async function registerAction(formData: FormData) {
   const email = String(formData.get("email") || "").trim();
   const password = String(formData.get("password") || "");
