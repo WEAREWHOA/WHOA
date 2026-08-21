@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getByCode, getStats } from "@/lib/store";
 import { getSiteOrigin } from "@/lib/site";
@@ -9,6 +10,7 @@ import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import AmbassadorTab from "@/components/dashboard/tabs/AmbassadorTab";
 import CustomerTab from "@/components/dashboard/tabs/CustomerTab";
 import VendorTab from "@/components/dashboard/tabs/VendorTab";
+import MusicTab from "@/components/dashboard/tabs/MusicTab";
 import SsbdTab from "@/components/dashboard/tabs/SsbdTab";
 import { getTier } from "@/lib/tiers";
 
@@ -21,15 +23,16 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
     redirect("/login");
   }
 
-  const ambassador = await getByCode(code);
-  if (!ambassador) notFound();
+  const account = await getByCode(code);
+  if (!account) notFound();
 
-  const stats = getStats(ambassador);
+  const stats = getStats(account);
   const tier = getTier(stats.orderCount);
   const origin = await getSiteOrigin();
-  const firstName = ambassador.name.trim().split(/\s+/)[0];
+  const firstName = account.name.trim().split(/\s+/)[0];
 
-  const vendorArtist = ambassador.vendorSlug ? getArtist(ambassador.vendorSlug) : undefined;
+  const showVendor = account.permissions.vendor && Boolean(account.vendorSlug);
+  const vendorArtist = showVendor ? getArtist(account.vendorSlug!) : undefined;
   const [vendorProducts, vendorStats] = vendorArtist
     ? await Promise.all([getVendorProducts(vendorArtist.slug), getVendorStats(vendorArtist.slug)])
     : [undefined, undefined];
@@ -42,30 +45,41 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
     <section className="mx-auto w-full max-w-5xl px-6 py-16">
       {isNew && (
         <div className="mb-8 rounded-xl border border-flame-2/40 bg-flame-2/10 px-5 py-4 text-sm">
-          You&apos;re in. Your code and link are live below — start sharing.
+          You&apos;re in. Your account is live below — start exploring.
         </div>
       )}
 
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <span className="text-xs font-semibold tracking-[0.2em] text-muted uppercase">
-            WHOA dashboard
+            WHOA Backend Portal
           </span>
           <h1 className="font-display mt-2 text-4xl tracking-wide sm:text-5xl">
             Welcome back, <span className="text-flame">{firstName}</span>
           </h1>
           <p className="mt-2 max-w-lg text-sm text-muted">
-            One login, every side of WHOA — ambassador tools, your purchases, vendor sales, and
-            what you&apos;re bringing to SSBD, all in one place.
+            One login, every side of WHOA — your purchases, and whatever else has been unlocked
+            on your account, all in one place.
           </p>
         </div>
-        <LogoutButton />
+        <div className="flex items-center gap-3">
+          {account.isSuperAdmin && (
+            <Link
+              href="/super-admin"
+              className="rounded-full border border-border-strong px-5 py-2 text-sm font-semibold text-muted transition-colors hover:text-foreground"
+            >
+              Super Admin
+            </Link>
+          )}
+          <LogoutButton />
+        </div>
       </div>
 
       <DashboardTabs
+        customer={<CustomerTab />}
         ambassador={
           <AmbassadorTab
-            ambassador={ambassador}
+            ambassador={account}
             stats={stats}
             tier={tier}
             origin={origin}
@@ -73,11 +87,17 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
             payoutSaved={payoutSaved}
           />
         }
-        customer={<CustomerTab />}
         vendor={
           <VendorTab vendorName={vendorArtist?.name} stats={vendorStats} products={vendorProducts} />
         }
+        music={<MusicTab />}
         ssbd={<SsbdTab />}
+        visible={{
+          ambassador: account.permissions.ambassador,
+          vendor: showVendor,
+          music: account.permissions.music,
+          ssbd: account.permissions.ssbd,
+        }}
       />
     </section>
   );

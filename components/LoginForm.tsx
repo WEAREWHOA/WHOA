@@ -31,7 +31,7 @@ export default function LoginForm({
   return (
     <div className="card-surface w-full max-w-md rounded-2xl p-8 sm:p-10">
       <span className="text-xs font-semibold tracking-[0.2em] text-muted uppercase">
-        WHOA dashboard login
+        WHOA Backend Portal
       </span>
 
       <div className="mt-4 flex gap-2">
@@ -59,8 +59,9 @@ export default function LoginForm({
             Create your <span className="text-flame">account</span>
           </h1>
           <p className="mt-3 text-sm text-muted">
-            Just an email and a password — you&apos;re in instantly, no confirmation email. You&apos;ll
-            land on your dashboard with every tab unlocked.
+            Just an email and a password — you&apos;re in instantly, no confirmation email.
+            You&apos;ll land on your account with a Customer tab to start; ambassador, vendor,
+            music, and SSBD access get unlocked from there.
           </p>
 
           {message && (
