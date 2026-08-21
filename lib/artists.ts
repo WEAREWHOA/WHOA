@@ -12,14 +12,6 @@ export const MEDIUM_CATEGORIES = [
 
 export type MediumCategory = (typeof MEDIUM_CATEGORIES)[number];
 
-export interface ArtworkPiece {
-  id: string;
-  title: string;
-  medium: string;
-  blurb: string;
-  price: string;
-}
-
 export interface Artist {
   slug: string;
   name: string;
@@ -32,7 +24,6 @@ export interface Artist {
   rotate: number;
   patternSeed: number;
   instagram?: string;
-  pieces: ArtworkPiece[];
 }
 
 // Visual palette cycled across vendors below — purely a styling choice, not
@@ -62,10 +53,10 @@ function slugify(name: string): string {
 }
 
 // Real WHOADEGA / online-store vendors. We only have names for now — bios,
-// mediums, real photos, and product listings are pending (the Square sync
-// project will eventually populate `pieces` from each vendor's actual
-// catalog items). Keeping this copy generic and honest rather than
-// inventing backstory or products for real people/brands.
+// mediums, and real photos are pending. Product listings come live from
+// Square via lib/vendor.ts (matched by vendor name), not hardcoded here.
+// Keeping this copy generic and honest rather than inventing backstory for
+// real people/brands.
 const VENDOR_NAMES = [
   "Alex Wilson",
   "Ascension Society",
@@ -110,7 +101,6 @@ export const ARTISTS: Artist[] = VENDOR_NAMES.map((name, i) => {
     gradient,
     rotate: ROTATES[i % ROTATES.length],
     patternSeed: i % 4,
-    pieces: [],
   };
 });
 

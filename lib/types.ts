@@ -30,6 +30,7 @@ export interface Ambassador {
   orders: Order[];
   links: AmbassadorLink[];
   payout: PayoutSettings | null;
+  vendorSlug?: string;
 }
 
 export interface AmbassadorStats {

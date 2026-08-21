@@ -9,6 +9,7 @@ interface AmbassadorRow {
   created_at: string;
   payout_method: PayoutSettings["method"] | null;
   payout_destination: string | null;
+  vendor_slug: string | null;
   orders?: OrderRow[];
   links?: LinkRow[];
 }
@@ -33,7 +34,7 @@ interface LinkRow {
 // everywhere an Ambassador is returned to the app. Credentials are only
 // ever fetched separately, by the two getCredentials* functions below.
 const AMBASSADOR_PUBLIC_SELECT =
-  "code, name, email, instagram, created_at, payout_method, payout_destination, orders(*), links(*)";
+  "code, name, email, instagram, created_at, payout_method, payout_destination, vendor_slug, orders(*), links(*)";
 
 function mapOrder(row: OrderRow): Order {
   return {
@@ -68,6 +69,7 @@ function mapAmbassador(row: AmbassadorRow): Ambassador {
       row.payout_method && row.payout_destination
         ? { method: row.payout_method, destination: row.payout_destination }
         : null,
+    vendorSlug: row.vendor_slug ?? undefined,
   };
 }
 
@@ -248,6 +250,18 @@ export async function setPayout(code: string, payout: PayoutSettings): Promise<b
     .from("ambassadors")
     .update({ payout_method: payout.method, payout_destination: payout.destination })
     .eq("code", code);
+
+  return !error;
+}
+
+// Links an ambassador account to a vendor/artist slug (see
+// supabase/migrations/0004_vendor_slug.sql), so their dashboard's Vendor
+// tab can show real sales/inventory scoped to that vendor's products.
+export async function setVendorSlug(code: string, vendorSlug: string): Promise<boolean> {
+  const { error } = await getSupabase()
+    .from("ambassadors")
+    .update({ vendor_slug: vendorSlug })
+    .eq("code", code.trim().toUpperCase());
 
   return !error;
 }

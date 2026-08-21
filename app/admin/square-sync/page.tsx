@@ -10,10 +10,14 @@ type StepState = {
 
 const IDLE: StepState = { loading: false, result: null, error: null };
 
-async function callAdminRoute(path: string, secret: string): Promise<string> {
+async function callAdminRoute(path: string, secret: string, body?: unknown): Promise<string> {
   const res = await fetch(path, {
     method: "POST",
-    headers: { Authorization: `Bearer ${secret}` },
+    headers: {
+      Authorization: `Bearer ${secret}`,
+      ...(body ? { "Content-Type": "application/json" } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
   });
 
   const text = await res.text();
@@ -40,6 +44,9 @@ export default function SquareSyncAdminPage() {
   const [locationsState, setLocationsState] = useState<StepState>(IDLE);
   const [webhookState, setWebhookState] = useState<StepState>(IDLE);
   const [backfillState, setBackfillState] = useState<StepState>(IDLE);
+  const [vendorLinkState, setVendorLinkState] = useState<StepState>(IDLE);
+  const [ambassadorCode, setAmbassadorCode] = useState("");
+  const [vendorSlug, setVendorSlug] = useState("");
 
   async function handleListLocations() {
     setLocationsState({ loading: true, result: null, error: null });
@@ -71,7 +78,21 @@ export default function SquareSyncAdminPage() {
     }
   }
 
+  async function handleVendorLink() {
+    setVendorLinkState({ loading: true, result: null, error: null });
+    try {
+      const result = await callAdminRoute("/api/admin/vendor-link", secret, {
+        code: ambassadorCode,
+        vendorSlug,
+      });
+      setVendorLinkState({ loading: false, result, error: null });
+    } catch (err) {
+      setVendorLinkState({ loading: false, result: null, error: (err as Error).message });
+    }
+  }
+
   const canRun = secret.trim().length > 0;
+  const canLinkVendor = canRun && ambassadorCode.trim().length > 0 && vendorSlug.trim().length > 0;
 
   return (
     <section className="mx-auto w-full max-w-2xl flex-1 px-6 py-16">
@@ -188,6 +209,49 @@ export default function SquareSyncAdminPage() {
         {backfillState.result && (
           <pre className="mt-4 overflow-x-auto rounded-lg border border-border-strong bg-surface-raised p-4 text-xs">
             {backfillState.result}
+          </pre>
+        )}
+      </div>
+
+      <div className="card-surface mt-6 rounded-2xl p-6">
+        <h2 className="font-display text-2xl">Link an ambassador to a vendor</h2>
+        <p className="mt-2 text-sm text-muted">
+          Not part of the Square sync — this is what turns on an existing account&apos;s Vendor tab.
+          The vendor slug is the artist&apos;s URL slug from{" "}
+          <code className="font-mono-code">/art-collective/&lt;slug&gt;</code> (e.g.{" "}
+          <code className="font-mono-code">whoady</code> for WHOADY).
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <input
+            value={ambassadorCode}
+            onChange={(e) => setAmbassadorCode(e.target.value)}
+            placeholder="Ambassador code (e.g. WHOA-WHOADY15)"
+            className="w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
+          />
+          <input
+            value={vendorSlug}
+            onChange={(e) => setVendorSlug(e.target.value)}
+            placeholder="Vendor slug (e.g. whoady)"
+            className="w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
+          />
+        </div>
+        <button
+          type="button"
+          disabled={!canLinkVendor || vendorLinkState.loading}
+          onClick={handleVendorLink}
+          className="btn-flame mt-4 rounded-full px-6 py-3 text-sm font-semibold tracking-wide uppercase disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {vendorLinkState.loading ? "Linking…" : "Link account"}
+        </button>
+
+        {vendorLinkState.error && (
+          <p className="mt-4 rounded-lg border border-flame-1/40 bg-flame-1/10 px-4 py-3 text-sm text-flame-3">
+            {vendorLinkState.error}
+          </p>
+        )}
+        {vendorLinkState.result && (
+          <pre className="mt-4 overflow-x-auto rounded-lg border border-border-strong bg-surface-raised p-4 text-xs">
+            {vendorLinkState.result}
           </pre>
         )}
       </div>
