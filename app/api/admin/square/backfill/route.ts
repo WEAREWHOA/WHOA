@@ -14,13 +14,19 @@ export async function POST(req: Request) {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const { productIds, variationIds } = await syncFullCatalog();
-  await syncInventoryForVariations(variationIds);
-  const orderCount = await backfillOrders();
+  try {
+    const { productIds, variationIds } = await syncFullCatalog();
+    await syncInventoryForVariations(variationIds);
+    const orderCount = await backfillOrders();
 
-  return Response.json({
-    products: productIds.length,
-    variations: variationIds.length,
-    orders: orderCount,
-  });
+    return Response.json({
+      products: productIds.length,
+      variations: variationIds.length,
+      orders: orderCount,
+    });
+  } catch (err) {
+    console.error("backfill failed:", err);
+    const message = err instanceof Error ? err.message : String(err);
+    return Response.json({ error: message }, { status: 500 });
+  }
 }
