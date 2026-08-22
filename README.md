@@ -207,6 +207,11 @@ same email — no manual linking step.
   by that customer id — the authoritative source, not the
   `square_orders` sync mirror (which has no customer id column and only
   covers orders synced since the webhook existed, not historical ones).
+  Searches every Square location (via `getAllLocationIds()`, not just the
+  storefront's configured `SQUARE_LOCATION_ID`) and pages through the full
+  result set — checking only one location or capping at one page both
+  undercounted against what Square's own dashboard shows for a customer
+  with history at more than one location or more than 100 orders.
 - `getCustomerHistory()` runs on every `/portal/[code]` load for the
   logged-in account: if `square_customer_id` isn't cached yet
   ([migration 0006](#data-layer--auth)), it looks the email up once and

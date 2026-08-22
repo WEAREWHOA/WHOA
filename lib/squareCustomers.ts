@@ -1,4 +1,5 @@
-import { getSquare, getSquareLocationId } from "./square";
+import { getSquare } from "./square";
+import { getAllLocationIds } from "./squareSync";
 import { setSquareCustomerId } from "./store";
 import type { Ambassador } from "./types";
 
@@ -42,30 +43,50 @@ export async function findSquareCustomerIdByEmail(email: string): Promise<string
 // the authoritative source (not our square_orders sync mirror, which only
 // captures orders synced via the webhook and has no customer_id column),
 // so it correctly includes purchases made before this app existed.
+//
+// Searches every Square location (not just the one storefront checkout
+// uses) and pages through the full result set — a customer with orders at
+// a second location (an in-person/event location, say) or more than one
+// page of history would otherwise silently undercount against what
+// Square's own dashboard shows.
 export async function getOrdersForSquareCustomer(customerId: string): Promise<CustomerOrderSummary[]> {
   const square = getSquare();
-  const locationId = getSquareLocationId();
+  // Square's Orders Search caps locationIds at 10 per request — fine for
+  // this business today, but would need chunking if it ever grows past
+  // that many Square locations.
+  const locationIds = await getAllLocationIds();
+  if (locationIds.length === 0) return [];
 
-  const response = await square.orders.search({
-    locationIds: [locationId],
-    query: { filter: { customerFilter: { customerIds: [customerId] } } },
-    limit: 50,
-  });
+  const orders: CustomerOrderSummary[] = [];
+  let cursor: string | undefined;
 
-  return (response.orders ?? [])
-    .filter((order) => order.state !== "DRAFT" && order.state !== "CANCELED")
-    .map((order) => ({
-      id: order.id ?? "",
-      totalCents: Number(order.totalMoney?.amount ?? 0),
-      createdAt: order.createdAt ?? null,
-      state: order.state ?? "UNKNOWN",
-      lines: (order.lineItems ?? []).map((li) => ({
-        name: li.name ?? "Item",
-        quantity: Number(li.quantity ?? "1"),
-        totalCents: Number(li.totalMoney?.amount ?? 0),
-      })),
-    }))
-    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+  do {
+    const response = await square.orders.search({
+      locationIds,
+      query: { filter: { customerFilter: { customerIds: [customerId] } } },
+      limit: 100,
+      cursor,
+    });
+
+    for (const order of response.orders ?? []) {
+      if (order.state === "DRAFT" || order.state === "CANCELED") continue;
+      orders.push({
+        id: order.id ?? "",
+        totalCents: Number(order.totalMoney?.amount ?? 0),
+        createdAt: order.createdAt ?? null,
+        state: order.state ?? "UNKNOWN",
+        lines: (order.lineItems ?? []).map((li) => ({
+          name: li.name ?? "Item",
+          quantity: Number(li.quantity ?? "1"),
+          totalCents: Number(li.totalMoney?.amount ?? 0),
+        })),
+      });
+    }
+
+    cursor = response.cursor;
+  } while (cursor);
+
+  return orders.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
 }
 
 // Square's Customer Directory shows "Visits" / "First visit" / "Last
