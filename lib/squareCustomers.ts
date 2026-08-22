@@ -2,12 +2,26 @@ import { getSquare, getSquareLocationId } from "./square";
 import { setSquareCustomerId } from "./store";
 import type { Ambassador } from "./types";
 
+export interface CustomerOrderLine {
+  name: string;
+  quantity: number;
+  totalCents: number;
+}
+
 export interface CustomerOrderSummary {
   id: string;
   totalCents: number;
   createdAt: string | null;
   state: string;
-  lines: { name: string; quantity: number }[];
+  lines: CustomerOrderLine[];
+}
+
+export interface CustomerProfile {
+  email: string | null;
+  phone: string | null;
+  firstVisit: string | null;
+  lastVisit: string | null;
+  visitCount: number;
 }
 
 // Exact-match lookup — the same email a customer signed up with must match
@@ -48,13 +62,31 @@ export async function getOrdersForSquareCustomer(customerId: string): Promise<Cu
       lines: (order.lineItems ?? []).map((li) => ({
         name: li.name ?? "Item",
         quantity: Number(li.quantity ?? "1"),
+        totalCents: Number(li.totalMoney?.amount ?? 0),
       })),
     }))
     .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
 }
 
+// Square's Customer Directory shows "Visits" / "First visit" / "Last
+// visit" in its own dashboard, but those aren't fields on the Customer
+// object via the API — they're derived from order history there, so we
+// derive them the same way from the exact orders already fetched above,
+// rather than inventing a separate concept.
+function deriveProfile(customer: { emailAddress?: string | null; phoneNumber?: string | null }, orders: CustomerOrderSummary[]): CustomerProfile {
+  const dates = orders.map((o) => o.createdAt).filter((d): d is string => Boolean(d));
+  return {
+    email: customer.emailAddress ?? null,
+    phone: customer.phoneNumber ?? null,
+    firstVisit: dates.length > 0 ? dates.reduce((a, b) => (a < b ? a : b)) : null,
+    lastVisit: dates.length > 0 ? dates.reduce((a, b) => (a > b ? a : b)) : null,
+    visitCount: orders.length,
+  };
+}
+
 export interface CustomerHistory {
   linked: boolean;
+  profile: CustomerProfile | null;
   orders: CustomerOrderSummary[];
 }
 
@@ -73,13 +105,19 @@ export async function getCustomerHistory(account: Ambassador): Promise<CustomerH
     }
 
     if (!squareCustomerId) {
-      return { linked: false, orders: [] };
+      return { linked: false, profile: null, orders: [] };
     }
 
-    const orders = await getOrdersForSquareCustomer(squareCustomerId);
-    return { linked: true, orders };
+    const square = getSquare();
+    const [customerResponse, orders] = await Promise.all([
+      square.customers.get({ customerId: squareCustomerId }),
+      getOrdersForSquareCustomer(squareCustomerId),
+    ]);
+
+    const profile = deriveProfile(customerResponse.customer ?? {}, orders);
+    return { linked: true, profile, orders };
   } catch (err) {
     console.error("getCustomerHistory failed:", err);
-    return { linked: false, orders: [] };
+    return { linked: false, profile: null, orders: [] };
   }
 }

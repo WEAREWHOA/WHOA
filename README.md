@@ -210,14 +210,23 @@ same email — no manual linking step.
 - `getCustomerHistory()` runs on every `/portal/[code]` load for the
   logged-in account: if `square_customer_id` isn't cached yet
   ([migration 0006](#data-layer--auth)), it looks the email up once and
-  saves the match so future loads skip straight to fetching orders. Never
-  throws — a Square API hiccup degrades to "no purchase history shown,"
-  not a broken dashboard.
-- `components/dashboard/tabs/CustomerTab.tsx` shows the real order list
-  (items, date, total, Square order state) when linked, an honest "no
-  Square profile found for this email yet" message when not, and "linked
-  but nothing on file yet" when linked with zero orders — no fabricated
-  data in any state.
+  saves the match; from there it fetches the Square Customer profile
+  (email, phone) and full order history every load. Never throws — a
+  Square API hiccup degrades to "no purchase history shown," not a
+  broken dashboard.
+- Square's own dashboard shows "Visits" / "First visit" / "Last visit" on
+  a customer profile, but those aren't fields on the Customer object via
+  the API — `deriveProfile()` computes the same thing from the exact
+  order history already fetched (visit count = order count, first/last
+  visit = earliest/latest order date) rather than inventing a separate
+  concept.
+- `components/dashboard/tabs/CustomerTab.tsx` shows a stat row (visits,
+  first/last visit, email/phone on file) plus the full transaction list —
+  every order with every line item and its price broken out, not
+  condensed into one summary line — when linked; an honest "no Square
+  profile found for this email yet" message when not; "no purchase
+  history on file yet" when linked with zero orders. No fabricated data
+  in any state.
 
 ## Square integration
 

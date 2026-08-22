@@ -79,7 +79,13 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
       </div>
 
       <DashboardTabs
-        customer={<CustomerTab linked={customerHistory.linked} orders={customerHistory.orders} />}
+        customer={
+          <CustomerTab
+            linked={customerHistory.linked}
+            profile={customerHistory.profile}
+            orders={customerHistory.orders}
+          />
+        }
         ambassador={
           <AmbassadorTab
             ambassador={account}
