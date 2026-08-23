@@ -1,7 +1,40 @@
 import { getSquare, getSquareLocationId } from "./square";
 import type { Product, ProductVariation } from "./types";
 
-export async function listProducts(): Promise<Product[]> {
+// The "Channels" section on a Square item (Online Store, POS, etc.) isn't
+// exposed as a simple boolean — each item just carries a list of channel
+// IDs it's enabled for, so the "Online Store" channel's ID has to be
+// looked up by name first. Cached per server instance since channels
+// essentially never change; a cold start just re-fetches once.
+let onlineStoreChannelId: string | null | undefined;
+
+async function getOnlineStoreChannelId(): Promise<string | null> {
+  if (onlineStoreChannelId !== undefined) return onlineStoreChannelId;
+
+  const square = getSquare();
+  const page = await square.channels.list({ status: "ACTIVE" });
+
+  let match: string | null = null;
+  let fallback: string | null = null;
+  for await (const channel of page) {
+    const name = channel.name?.trim().toLowerCase();
+    if (!name || !channel.id) continue;
+    if (name === "online store") {
+      match = channel.id;
+      break;
+    }
+    if (!fallback && name.includes("online")) fallback = channel.id;
+  }
+
+  onlineStoreChannelId = match ?? fallback;
+  return onlineStoreChannelId;
+}
+
+// `onlineOnly` scopes results to items with the "Online Store" channel
+// checked in Square — used by the public shop, which shouldn't show
+// internal/private inventory. The POS register (which doesn't pass this)
+// still sees everything, since staff need to sell in-person-only items too.
+export async function listProducts(options?: { onlineOnly?: boolean }): Promise<Product[]> {
   const square = getSquare();
   const locationId = getSquareLocationId();
 
@@ -10,7 +43,18 @@ export async function listProducts(): Promise<Product[]> {
     limit: 100,
   });
 
-  const items = response.items ?? [];
+  let items = response.items ?? [];
+
+  if (options?.onlineOnly) {
+    const channelId = await getOnlineStoreChannelId();
+    // Fail closed: if the "Online Store" channel can't be identified at
+    // all, showing nothing (an obviously broken shop that gets reported)
+    // is a safer default than silently showing every item, including
+    // ones deliberately kept off the public site.
+    items = channelId
+      ? items.filter((item) => item.type === "ITEM" && item.itemData?.channels?.includes(channelId))
+      : [];
+  }
 
   const imageIds = new Set<string>();
   for (const item of items) {
@@ -74,7 +118,7 @@ export async function listProducts(): Promise<Product[]> {
 }
 
 export async function getProduct(itemId: string): Promise<Product | undefined> {
-  const products = await listProducts();
+  const products = await listProducts({ onlineOnly: true });
   return products.find((p) => p.id === itemId);
 }
 
