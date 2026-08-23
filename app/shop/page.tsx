@@ -9,7 +9,7 @@ export default async function ShopPage() {
   let error: string | null = null;
 
   try {
-    products = await listProducts();
+    products = await listProducts({ onlineOnly: true });
   } catch {
     error = "The shop is temporarily unavailable. Check back soon.";
   }

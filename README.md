@@ -244,7 +244,15 @@ here.
   pattern as `lib/supabase.ts`, so missing credentials don't break the build.
 - `lib/catalog.ts` — `listProducts()`/`getProduct()` call
   `catalog.searchItems`, batch-fetch item/variation images, and
-  `inventory.batchGetCounts` for stock levels.
+  `inventory.batchGetCounts` for stock levels. `listProducts({ onlineOnly:
+  true })` (used by `/shop` and `getProduct()`) scopes results to items
+  with the "Online Store" channel checked in Square's per-item Channels
+  setting — resolved by name via `channels.list()` since Square exposes
+  channel membership as a list of IDs on the item, not a simple boolean.
+  Fails closed (shows nothing) if that channel can't be identified, rather
+  than risk silently showing private/in-person-only inventory. The POS
+  register calls `listProducts()` with no options, so staff still see and
+  can sell everything, online-enabled or not.
 - `app/checkout/actions.ts` — on checkout, creates a real Square `Order`
   (with a `FIXED_PERCENTAGE` 15% discount attached if a `whoa_ref` cookie
   is present), then a `Payment` against that order using the token from the
