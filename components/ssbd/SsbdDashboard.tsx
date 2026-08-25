@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ANNOUNCEMENTS, DOCS, SHIFT_DAYS, TEAM_CONTACTS } from "@/lib/ssbd";
 
 export default function SsbdDashboard() {
@@ -17,20 +18,41 @@ export default function SsbdDashboard() {
       <section className="mt-10">
         <h2 className="font-display text-2xl tracking-wide">Announcements</h2>
         <div className="mt-4 space-y-3">
-          {ANNOUNCEMENTS.map((a) => (
-            <div key={a.id} className="card-surface rounded-2xl border border-border p-5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h3 className="font-display text-lg">{a.title}</h3>
-                {a.tag && (
-                  <span className="bg-flame rounded-full px-3 py-1 text-[0.65rem] font-semibold tracking-wide text-background uppercase">
-                    {a.tag}
-                  </span>
+          {ANNOUNCEMENTS.map((a) => {
+            const content = (
+              <>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="font-display text-lg">{a.title}</h3>
+                  {a.tag && (
+                    <span className="bg-flame rounded-full px-3 py-1 text-[0.65rem] font-semibold tracking-wide text-background uppercase">
+                      {a.tag}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 text-xs text-muted">{a.date}</p>
+                <p className="mt-2 text-sm text-foreground/90">{a.body}</p>
+                {a.href && (
+                  <p className="text-flame-2 mt-3 text-xs font-semibold tracking-wide uppercase">
+                    Read the full guide →
+                  </p>
                 )}
+              </>
+            );
+
+            return a.href ? (
+              <Link
+                key={a.id}
+                href={a.href}
+                className="card-surface block rounded-2xl border border-border p-5 transition-colors hover:border-flame-2/50"
+              >
+                {content}
+              </Link>
+            ) : (
+              <div key={a.id} className="card-surface rounded-2xl border border-border p-5">
+                {content}
               </div>
-              <p className="mt-1 text-xs text-muted">{a.date}</p>
-              <p className="mt-2 text-sm text-foreground/90">{a.body}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 

@@ -4,6 +4,7 @@ export interface Announcement {
   date: string;
   body: string;
   tag?: "Urgent" | "Update" | "Reminder";
+  href?: string;
 }
 
 export interface CrewDoc {
@@ -33,6 +34,7 @@ export const ANNOUNCEMENTS: Announcement[] = [
     date: "Posted now",
     tag: "Update",
     body: "This is home base for everything you need to help build, sell, and run the WHOADEGA booth at Same Same But Different, September 25–27, 2026 at Lake Perris, CA. Check back here for the latest before and during the festival.",
+    href: "/ssbd-admin/welcome-guide",
   },
   {
     id: "build-day",
