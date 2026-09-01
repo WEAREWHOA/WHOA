@@ -32,7 +32,9 @@ export interface ScheduleArea {
 
 export interface TeamContact {
   role: string;
-  name: string;
+  // Absent for a shared inbox/line rather than a specific person, e.g.
+  // General Questions.
+  name?: string;
   contact: string;
 }
 
@@ -189,9 +191,10 @@ export const SCHEDULE_AREAS: ScheduleArea[] = [
 ];
 
 export const TEAM_CONTACTS: TeamContact[] = [
-  { role: "Booth Lead", name: "Add name", contact: "Add phone or email" },
-  { role: "Merch Lead", name: "Add name", contact: "Add phone or email" },
-  { role: "POS / Sales Lead", name: "Add name", contact: "Add phone or email" },
-  { role: "General Questions", name: "Add name", contact: "Add phone or email" },
-  { role: "Creation Station Organizers", name: "Wasani, Sam/Amee", contact: "N/A" },
+  { role: "Whoa / Creation Station Operations", name: "Wasani", contact: "949-690-3690" },
+  { role: "Whoadega / Whoa Oasis Director", name: "Nick", contact: "704-280-4148" },
+  { role: "Whoadega / Whoa Oasis Director", name: "Vee", contact: "702-715-8031" },
+  { role: "WHOA OS Tech Support", name: "Jan", contact: "786-554-5865" },
+  { role: "Creation Station Organizers", name: "Sam/Amee", contact: "N/A" },
+  { role: "General Questions", contact: "info@wearewhoa.com" },
 ];
