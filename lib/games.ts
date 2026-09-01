@@ -61,9 +61,10 @@ export const GAME_TILES: GameTile[] = [
   {
     id: "beat-pad",
     title: "Beat Pad",
-    tagline: "16 pads of WHOA-branded sound, straight from the Music Collective.",
+    tagline: "16 pads, tied into the Music Collective.",
     accent: "#ff3b3b",
-    status: "soon",
+    href: "/games/beat-pad",
+    status: "live",
   },
   {
     id: "arcade-cabinet",

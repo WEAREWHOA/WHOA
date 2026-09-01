@@ -439,10 +439,17 @@ homepage orbit (`components/home/OrbitField.tsx`, the "WHOA GAMES" stop).
   this is a public, unauthenticated write path. The gallery renders saved
   strokes as SVG polylines (`DrawingThumbnail.tsx`) — no canvas replay
   logic needed for read-only display.
+- **Beat Pad** (`components/games/beat-pad/`) — 16 pads (kick/snare/
+  hats/toms/a pentatonic run of tones), each a synthesized hit via the
+  Web Audio API (`lib/games/beatPad.ts`) rather than a sample — there
+  are no real WHOA-branded audio assets yet, and the page says so
+  rather than passing synth tones off as official recordings. Keyboard
+  playable (1234/qwer/asdf/zxcv) alongside tap. Links out to
+  `/music-collective` for the real thing.
 
-The rest (QR Scavenger Hunt, Outfit Builder, Beat Pad, and the WHOASIS
-Arcade Cabinet — a physical installation concept, not a web game) are
-still "Coming soon" on the hub.
+The rest (QR Scavenger Hunt, Outfit Builder, and the WHOASIS Arcade
+Cabinet — a physical installation concept, not a web game) are still
+"Coming soon" on the hub.
 
 ## Theme
 
