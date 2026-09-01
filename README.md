@@ -468,6 +468,18 @@ homepage orbit (`components/home/OrbitField.tsx`, the "WHOA GAMES" stop).
   code at 6/6. `/games/hunt/print` (staff-only, not linked from the public
   hub) generates real, scannable QR codes server-side via the `qrcode`
   package — genuine printable codes, not placeholder link text.
+- **Visualizer** (`components/games/visualizer/AudioVisualizer.tsx`,
+  `lib/games/visualizer.ts`) — a mic-reactive audio visualizer, not an
+  uploaded/streamed track player: it captures live room audio via
+  `getUserMedia` + Web Audio's `AnalyserNode` so it reacts to whatever's
+  actually playing nearby, and says so on the idle screen ("nothing is
+  recorded or sent anywhere — it's only analyzed live, in your browser").
+  Three canvas render modes (bars/radial/ribbon), three color palettes, and
+  sensitivity/smoothing sliders are all switchable live. Mode/palette/
+  sensitivity are read inside the `requestAnimationFrame` loop via refs
+  synced from state in a `useEffect` — assigning them directly in the
+  render body trips the `react-hooks/refs` lint rule ("Cannot access refs
+  during render"), the same gotcha hit in `SnakeGame.tsx`'s `tick` ref.
 - **WHOASIS Arcade Cabinet** (`app/games/arcade-cabinet/`) — not a web
   game at all, so it's not marked "Coming soon" forever waiting on code
   that will never make it playable in a browser. It's a real page laying
@@ -477,7 +489,7 @@ homepage orbit (`components/home/OrbitField.tsx`, the "WHOA GAMES" stop).
   override the default "Play now →" label — this one shows "See the plan
   →" instead, since there's nothing to play.
 
-All eight tiles are live.
+All nine tiles are live.
 
 ## Theme
 

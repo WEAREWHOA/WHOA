@@ -72,6 +72,14 @@ export const GAME_TILES: GameTile[] = [
     status: "live",
   },
   {
+    id: "visualizer",
+    title: "Visualizer",
+    tagline: "Mic-reactive visuals for whatever's playing in the room.",
+    accent: "#29e6ff",
+    href: "/games/visualizer",
+    status: "live",
+  },
+  {
     id: "arcade-cabinet",
     title: "WHOASIS Arcade Cabinet",
     tagline: "This whole page, running kiosk-mode in the lounge on real hardware.",
