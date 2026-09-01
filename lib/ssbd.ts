@@ -168,6 +168,20 @@ export const DOCS: CrewDoc[] = [
   },
 ];
 
+export interface Activation {
+  id: string;
+  title: string;
+  date: string;
+}
+
+// Extra activations happening at SSBD, beyond the booth itself — dates
+// and times TBD until confirmed with organizers.
+export const ACTIVATIONS: Activation[] = [
+  { id: "silent-discwhoa", title: "SILENT DISCWHOA", date: "TBD" },
+  { id: "whoalypics", title: "WHOALYPICS", date: "TBD" },
+  { id: "chill-pill-runway-show", title: "CHILL PILL RUNWAY SHOW", date: "TBD" },
+];
+
 // One schedule, two areas — WHOADEGA and WHOA OASIS share the same
 // Friday/Saturday/Sunday grid but run their own crew and shift times.
 export const SCHEDULE_AREAS: ScheduleArea[] = [
