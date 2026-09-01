@@ -158,10 +158,13 @@ export default function SsbdDashboard() {
         <h2 className="font-display text-2xl tracking-wide">Team Contacts</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {TEAM_CONTACTS.map((c) => (
-            <div key={c.role} className="card-surface rounded-2xl border border-border p-5">
+            <div
+              key={`${c.role}-${c.name ?? c.contact}`}
+              className="card-surface rounded-2xl border border-border p-5"
+            >
               <p className="text-flame-2 text-xs font-semibold tracking-wide uppercase">{c.role}</p>
-              <p className="font-display mt-1 text-lg">{c.name}</p>
-              <p className="text-sm text-muted">{c.contact}</p>
+              {c.name && <p className="font-display mt-1 text-lg">{c.name}</p>}
+              <p className={`text-sm text-muted ${c.name ? "" : "mt-1"}`}>{c.contact}</p>
             </div>
           ))}
         </div>
