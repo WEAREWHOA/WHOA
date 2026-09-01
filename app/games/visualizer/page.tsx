@@ -1,0 +1,27 @@
+import Link from "next/link";
+import AudioVisualizer from "@/components/games/visualizer/AudioVisualizer";
+
+export default function VisualizerPage() {
+  return (
+    <section className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center px-6 py-16 text-center">
+      <Link href="/games" className="self-start text-sm text-muted hover:text-foreground">
+        ← WHOA Games
+      </Link>
+
+      <span className="mt-6 text-xs font-semibold tracking-[0.3em] text-muted uppercase">
+        WHOA Games
+      </span>
+      <h1 className="text-psychedelic font-display mt-2 text-4xl tracking-wide sm:text-5xl">
+        Visualizer
+      </h1>
+      <p className="mt-3 max-w-md text-sm text-muted">
+        Point it at whatever&apos;s playing in the room. Switch modes, colors, and how hard it
+        reacts.
+      </p>
+
+      <div className="mt-10 w-full">
+        <AudioVisualizer />
+      </div>
+    </section>
+  );
+}
