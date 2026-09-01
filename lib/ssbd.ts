@@ -193,4 +193,5 @@ export const TEAM_CONTACTS: TeamContact[] = [
   { role: "Merch Lead", name: "Add name", contact: "Add phone or email" },
   { role: "POS / Sales Lead", name: "Add name", contact: "Add phone or email" },
   { role: "General Questions", name: "Add name", contact: "Add phone or email" },
+  { role: "Creation Station Organizers", name: "Wasani, Sam/Amee", contact: "N/A" },
 ];
