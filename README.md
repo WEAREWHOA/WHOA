@@ -128,8 +128,11 @@ revoked by deleting its row (which logout does).
      `square_customer_id` to `ambassadors`, caching the Square Customer
      match used by the Customer tab. See
      [Square Customers matching](#square-customers-matching).
-   All six enable RLS with no public policies — only the `service_role` key
-   (which is what this app uses) can read or write.
+   - `supabase/migrations/0007_graffiti_wall.sql` — creates
+     `graffiti_drawings` for the WHOA Games graffiti wall. See
+     [WHOA Games](#whoa-games).
+   All seven enable RLS with no public policies — only the `service_role`
+   key (which is what this app uses) can read or write.
 3. **Bootstrap the first Super Admin** — there's no self-serve way to grant
    `is_super_admin` (by design), so after signing up your own account at
    `/login?mode=signup`, set it directly in the Supabase Table Editor:
@@ -406,6 +409,40 @@ use the "Link an ambassador to a vendor" tool at the bottom of
 `/admin/square-sync` (same `SQUARE_ADMIN_SECRET` auth), or set
 `ambassadors.vendor_slug` directly in the Supabase table editor. The vendor
 slug is the artist's URL slug from `/art-collective/<slug>`.
+
+## WHOA Games
+
+`/games` — a hub of small in-store/online games, built incrementally.
+`lib/games.ts` lists every tile; a tile without an `href` is a real planned
+build marked "Coming soon," not a dead link. Also reachable from the
+homepage orbit (`components/home/OrbitField.tsx`, the "WHOA GAMES" stop).
+
+- **WHOA Snake** (`components/games/snake/`) — a canvas Snake game where
+  the trail is a flame gradient and the food is a "1-of-1 drop." Reaching
+  a score threshold reveals a discount code, shown as something to tell
+  staff at checkout — there's no backend tying a game score to a real
+  Square discount yet, so it isn't auto-applied.
+- **Mystery Drop Spinner** (`components/games/mystery-drop/`) — a
+  weighted-random pull across a curated prize pool
+  (`lib/games/mysteryDrops.ts`) standing in for real blind-box/upcycled
+  inventory. Not live-linked to Square stock.
+- **Which WHOA Piece Are You** (`components/games/quiz/`) — a 6-question
+  quiz scored against 5 results (`lib/games/quiz.ts`); the result renders
+  to an offscreen canvas and downloads as a PNG sized for Instagram
+  Stories (9:16).
+- **Graffiti Wall** (`components/games/graffiti/`) — a shared drawing
+  canvas. Strokes save as normalized point paths in Supabase
+  (`graffiti_drawings`, [migration 0007](#data-layer--auth)) rather than
+  rasterized images — a whole drawing is a few KB of coordinates, so this
+  stays cheap to run at any volume. `lib/graffiti.ts` clamps/caps stroke
+  count, point count, and brush width server-side before insert, since
+  this is a public, unauthenticated write path. The gallery renders saved
+  strokes as SVG polylines (`DrawingThumbnail.tsx`) — no canvas replay
+  logic needed for read-only display.
+
+The rest (QR Scavenger Hunt, Outfit Builder, Beat Pad, and the WHOASIS
+Arcade Cabinet — a physical installation concept, not a web game) are
+still "Coming soon" on the hub.
 
 ## Theme
 
