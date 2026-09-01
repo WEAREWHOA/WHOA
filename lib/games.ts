@@ -5,6 +5,9 @@ export interface GameTile {
   accent: string;
   href?: string;
   status: "live" | "soon";
+  // Overrides the default "Play now →" label — for a live tile that isn't
+  // actually a playable game, like the arcade cabinet's build-plan page.
+  ctaLabel?: string;
 }
 
 // Tiles without an href/live status are real, planned builds — marked
@@ -73,6 +76,8 @@ export const GAME_TILES: GameTile[] = [
     title: "WHOASIS Arcade Cabinet",
     tagline: "This whole page, running kiosk-mode in the lounge on real hardware.",
     accent: "#ffffff",
-    status: "soon",
+    href: "/games/arcade-cabinet",
+    status: "live",
+    ctaLabel: "See the plan →",
   },
 ];
