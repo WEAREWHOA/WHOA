@@ -456,9 +456,21 @@ homepage orbit (`components/home/OrbitField.tsx`, the "WHOA GAMES" stop).
   CORS headers (a "tainted canvas" — nothing this app can force from its
   side), so it's wrapped in a try/catch with an honest fallback message
   ("take a screenshot instead") rather than silently doing nothing.
+- **QR Scavenger Hunt** (`components/games/hunt/`, `lib/games/
+  scavengerHunt.ts`) — six branches, each a real section of this platform
+  (WHOADEGA, Art Collective, Music Collective, Brand Ambassadors, SSBD,
+  Backend Portal), not arbitrary categories. `/games/hunt/[branch]` marks
+  that branch found in localStorage (`useHuntProgress.ts`, same
+  `useSyncExternalStore` pattern as `usePosAuth.ts`/`useSsbdAuth.ts` — note
+  its `getServerSnapshot` must return the same cached empty-array
+  reference every call, not a fresh `[]` literal, or React logs an
+  infinite-loop warning); `/games/hunt` shows progress and reveals a prize
+  code at 6/6. `/games/hunt/print` (staff-only, not linked from the public
+  hub) generates real, scannable QR codes server-side via the `qrcode`
+  package — genuine printable codes, not placeholder link text.
 
-The rest (QR Scavenger Hunt and the WHOASIS Arcade Cabinet — a physical
-installation concept, not a web game) are still "Coming soon" on the hub.
+The WHOASIS Arcade Cabinet — a physical installation concept, not a web
+game — is still "Coming soon" on the hub; every other tile is now live.
 
 ## Theme
 

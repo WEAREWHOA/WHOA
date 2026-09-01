@@ -49,7 +49,8 @@ export const GAME_TILES: GameTile[] = [
     title: "QR Scavenger Hunt",
     tagline: "Six hidden codes, one per WHOA branch. Find them all.",
     accent: "#fff229",
-    status: "soon",
+    href: "/games/hunt",
+    status: "live",
   },
   {
     id: "outfit-builder",
