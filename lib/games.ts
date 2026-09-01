@@ -41,7 +41,8 @@ export const GAME_TILES: GameTile[] = [
     title: "Graffiti Wall",
     tagline: "Draw on the wall. It saves to the public gallery.",
     accent: "#ff7a00",
-    status: "soon",
+    href: "/games/graffiti",
+    status: "live",
   },
   {
     id: "scavenger-hunt",
