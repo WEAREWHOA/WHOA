@@ -446,10 +446,19 @@ homepage orbit (`components/home/OrbitField.tsx`, the "WHOA GAMES" stop).
   rather than passing synth tones off as official recordings. Keyboard
   playable (1234/qwer/asdf/zxcv) alongside tap. Links out to
   `/music-collective` for the real thing.
+- **Outfit Builder** (`components/games/outfit-builder/`) — pick real
+  pieces from `listProducts({ onlineOnly: true })` (same catalog `/shop`
+  shows) across five categories, guessed from each product's name
+  (`lib/games/outfitLayers.ts`, same keyword-matching posture as
+  `lib/vendorMatch.ts`'s vendor detection, since Square's catalog has no
+  layer/slot field). Picks download as a PNG flatlay board rendered to
+  an offscreen canvas. That download can fail if a product's image lacks
+  CORS headers (a "tainted canvas" — nothing this app can force from its
+  side), so it's wrapped in a try/catch with an honest fallback message
+  ("take a screenshot instead") rather than silently doing nothing.
 
-The rest (QR Scavenger Hunt, Outfit Builder, and the WHOASIS Arcade
-Cabinet — a physical installation concept, not a web game) are still
-"Coming soon" on the hub.
+The rest (QR Scavenger Hunt and the WHOASIS Arcade Cabinet — a physical
+installation concept, not a web game) are still "Coming soon" on the hub.
 
 ## Theme
 

@@ -54,9 +54,10 @@ export const GAME_TILES: GameTile[] = [
   {
     id: "outfit-builder",
     title: "Outfit Builder",
-    tagline: "Layer real WHOADEGA pieces. Screenshot your fit.",
+    tagline: "Pick real WHOADEGA pieces. Download your fit.",
     accent: "#7b2ff7",
-    status: "soon",
+    href: "/games/outfit-builder",
+    status: "live",
   },
   {
     id: "beat-pad",
