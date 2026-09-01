@@ -116,7 +116,7 @@ export default function SsbdDashboard() {
       <section className="mt-12">
         <h2 className="font-display text-2xl tracking-wide">Shift Schedule</h2>
         <p className="mt-2 text-sm text-muted">
-          One schedule, two areas — Art Gallery and WHOADEGA. Talk to your team lead if your shift
+          One schedule, two areas — WHOADEGA and WHOA OASIS. Talk to your team lead if your shift
           needs to change.
         </p>
         <div className="mt-4 space-y-6">

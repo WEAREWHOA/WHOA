@@ -146,9 +146,10 @@ export const DOCS: CrewDoc[] = [
     category: "Logistics",
     summary: "General timing — exact hours will be confirmed closer to the festival.",
     body: [
+      "If you aren't scheduled for any load-in or build but would like to help in any way, feel free to come early to help",
       "Exact load-in/load-out times are TBD and will be posted here once confirmed with organizers",
-      "General rule of thumb: build happens 1–2 days before doors open",
-      "Teardown typically happens the day after the festival wraps",
+      "General rule is build happens Wednesday / Thursday",
+      "Teardown happens Monday morning",
       "Bring a hand truck or dolly if you're helping haul merch and fixtures",
     ],
   },
@@ -167,12 +168,17 @@ export const DOCS: CrewDoc[] = [
   },
 ];
 
-// One schedule, two areas — Art Gallery and WHOADEGA share the same
+// One schedule, two areas — WHOADEGA and WHOA OASIS share the same
 // Friday/Saturday/Sunday grid but run their own crew and shift times.
 export const SCHEDULE_AREAS: ScheduleArea[] = [
   {
-    id: "art-gallery",
-    label: "Art Gallery",
+    id: "whoadega",
+    label: "WHOADEGA",
+    shifts: null,
+  },
+  {
+    id: "whoa-oasis",
+    label: "WHOA OASIS",
     shifts: [
       { name: "Derek", friday: "10 AM – 6 PM", saturday: "10 AM – 6 PM", sunday: "10 AM – 6 PM" },
       { name: "Mike", friday: "2 PM – 10 PM", saturday: "2 PM – 10 PM", sunday: "2 PM – 10 PM" },
@@ -183,11 +189,6 @@ export const SCHEDULE_AREAS: ScheduleArea[] = [
       { name: "James", friday: "10 PM – 6 AM", saturday: "6 PM – 2 AM", sunday: "10 PM – 4 AM" },
     ],
   },
-  {
-    id: "whoadega",
-    label: "WHOADEGA",
-    shifts: null,
-  },
 ];
 
 export const TEAM_CONTACTS: TeamContact[] = [
@@ -195,6 +196,6 @@ export const TEAM_CONTACTS: TeamContact[] = [
   { role: "Whoadega / Whoa Oasis Director", name: "Nick", contact: "704-280-4148" },
   { role: "Whoadega / Whoa Oasis Director", name: "Vee", contact: "702-715-8031" },
   { role: "WHOA OS Tech Support", name: "Jan", contact: "786-554-5865" },
-  { role: "Creation Station Organizers", name: "Sam/Amee", contact: "N/A" },
+  { role: "Creation Station Organizers", name: "Sam/Aymé", contact: "N/A" },
   { role: "General Questions", contact: "info@wearewhoa.com" },
 ];
