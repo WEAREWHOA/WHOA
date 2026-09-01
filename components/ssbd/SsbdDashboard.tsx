@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { ANNOUNCEMENTS, DOCS, SHIFT_DAYS, TEAM_CONTACTS } from "@/lib/ssbd";
+import {
+  ANNOUNCEMENTS,
+  DOCS,
+  SCHEDULE_AREAS,
+  TEAM_CONTACTS,
+  TRAINING_POLICY,
+  TRAINING_SESSIONS,
+} from "@/lib/ssbd";
 
 export default function SsbdDashboard() {
   return (
@@ -56,6 +63,29 @@ export default function SsbdDashboard() {
         </div>
       </section>
 
+      <section id="training-calendar" className="mt-12">
+        <h2 className="font-display text-2xl tracking-wide">Training Calendar</h2>
+        <p className="mt-2 text-sm text-muted">{TRAINING_POLICY.attendance}</p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          {TRAINING_SESSIONS.map((session) => (
+            <div key={session.id} className="card-surface rounded-2xl border border-border p-5">
+              <h3 className="font-display text-lg">{session.title}</h3>
+              <p className="text-xs text-muted">
+                {session.date} · {session.time}
+              </p>
+              <ul className="mt-3 list-disc space-y-1.5 pl-5 text-sm text-foreground/80">
+                {session.topics.map((topic) => (
+                  <li key={topic}>{topic}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+        <div className="card-surface mt-4 rounded-2xl border border-flame-2/40 p-5">
+          <p className="text-sm text-foreground/90">{TRAINING_POLICY.note}</p>
+        </div>
+      </section>
+
       <section className="mt-12">
         <h2 className="font-display text-2xl tracking-wide">Documents & Resources</h2>
         <div className="mt-4 space-y-3">
@@ -86,14 +116,39 @@ export default function SsbdDashboard() {
       <section className="mt-12">
         <h2 className="font-display text-2xl tracking-wide">Shift Schedule</h2>
         <p className="mt-2 text-sm text-muted">
-          Exact shift times are still being finalized. Talk to your team lead to grab a slot.
+          One schedule, two areas — Art Gallery and WHOADEGA. Talk to your team lead if your shift
+          needs to change.
         </p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
-          {SHIFT_DAYS.map((day) => (
-            <div key={day.label} className="card-surface rounded-2xl border border-border p-5">
-              <h3 className="font-display text-lg">{day.label}</h3>
-              <p className="text-xs text-muted">{day.date}</p>
-              <p className="mt-3 text-sm text-foreground/80">{day.note}</p>
+        <div className="mt-4 space-y-6">
+          {SCHEDULE_AREAS.map((area) => (
+            <div key={area.id} className="card-surface rounded-2xl border border-border p-5">
+              <h3 className="font-display text-lg">{area.label}</h3>
+              {area.shifts ? (
+                <div className="mt-4 overflow-x-auto">
+                  <table className="w-full min-w-[480px] text-left text-sm">
+                    <thead>
+                      <tr className="text-flame-2 text-xs font-semibold tracking-wide uppercase">
+                        <th className="pb-2 pr-4">Crew</th>
+                        <th className="pb-2 pr-4">Friday</th>
+                        <th className="pb-2 pr-4">Saturday</th>
+                        <th className="pb-2">Sunday</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {area.shifts.map((shift) => (
+                        <tr key={shift.name}>
+                          <td className="py-2 pr-4 font-semibold">{shift.name}</td>
+                          <td className="py-2 pr-4 text-foreground/80">{shift.friday}</td>
+                          <td className="py-2 pr-4 text-foreground/80">{shift.saturday}</td>
+                          <td className="py-2 text-foreground/80">{shift.sunday}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-muted">Schedule coming soon — check back here.</p>
+              )}
             </div>
           ))}
         </div>

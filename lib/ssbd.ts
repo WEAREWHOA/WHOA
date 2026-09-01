@@ -15,10 +15,19 @@ export interface CrewDoc {
   body: string[];
 }
 
-export interface ShiftDay {
+export interface AreaShift {
+  name: string;
+  friday: string;
+  saturday: string;
+  sunday: string;
+}
+
+export interface ScheduleArea {
+  id: string;
   label: string;
-  date: string;
-  note: string;
+  // null means the schedule for this area hasn't been shared yet —
+  // rendered as "coming soon" rather than faked.
+  shifts: AreaShift[] | null;
 }
 
 export interface TeamContact {
@@ -44,13 +53,60 @@ export const ANNOUNCEMENTS: Announcement[] = [
     body: "Exact load-in time and the crew call sheet will be posted here as soon as they're locked in with festival organizers. Keep an eye on this page in the weeks leading up to the event.",
   },
   {
-    id: "pos-training",
-    title: "Merch & POS training",
+    id: "trainings",
+    title: "Two mandatory trainings before SSBD",
     date: "TBD",
+    tag: "Urgent",
+    body: "Merch & POS Training, then a Merch Refresher + Load-In/Exodus Expectations session. Can't make it live? You must watch the recording and DM us to confirm you watched it — we will ask questions. Dates, topics, and the full policy are in the Training Calendar below.",
+    href: "/ssbd-admin#training-calendar",
+  },
+  {
+    id: "runway-show",
+    title: "Chill Pill Runway Show",
+    date: "During SSBD — Sept 25–27, 2026",
     tag: "Update",
-    body: "If you're working the register, get comfortable with the Square POS before doors open. A quick-reference guide is in Documents & Resources below.",
+    body: "There's a runway show happening at SSBD, produced by Lily Flores of Chill Pill. Exact time and location within the festival to come — check back here.",
   },
 ];
+
+export interface TrainingSession {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  topics: string[];
+}
+
+export const TRAINING_SESSIONS: TrainingSession[] = [
+  {
+    id: "merch-pos-training",
+    title: "Merch & POS Training",
+    date: "TBD",
+    time: "TBD",
+    topics: [
+      "Square POS walkthrough — ringing up items, discounts, card vs. cash",
+      "Merch handling, folding, and presentation at the booth",
+      "What to do if the card reader loses connection",
+    ],
+  },
+  {
+    id: "merch-refresher-loadin",
+    title: "Merch Refresher + Load-In/Exodus Expectations",
+    date: "TBD",
+    time: "TBD",
+    topics: [
+      "Quick refresher on merch & POS basics",
+      "SSBD load-in expectations — timing, what to bring, where to go",
+      "SSBD load-out/exodus expectations — teardown, hauling, wrap time",
+    ],
+  },
+];
+
+export const TRAINING_POLICY = {
+  attendance:
+    "Both trainings are mandatory. If you can't attend live, you must watch the recording and DM us to confirm you watched it — I will ask questions!!!!!!",
+  note: "This is for your benefit and the benefit of the team that relies on you. This is our Super Bowl and helps support next year's festival season — so if you're an artist (which we all are!!), treat this like your own brand so we can invite you back. 🫶🏽",
+};
 
 export const DOCS: CrewDoc[] = [
   {
@@ -109,10 +165,27 @@ export const DOCS: CrewDoc[] = [
   },
 ];
 
-export const SHIFT_DAYS: ShiftDay[] = [
-  { label: "Friday", date: "Sept 25, 2026", note: "Shift times TBD — talk to your team lead to grab a slot." },
-  { label: "Saturday", date: "Sept 26, 2026", note: "Shift times TBD — talk to your team lead to grab a slot." },
-  { label: "Sunday", date: "Sept 27, 2026", note: "Shift times TBD — talk to your team lead to grab a slot." },
+// One schedule, two areas — Art Gallery and WHOADEGA share the same
+// Friday/Saturday/Sunday grid but run their own crew and shift times.
+export const SCHEDULE_AREAS: ScheduleArea[] = [
+  {
+    id: "art-gallery",
+    label: "Art Gallery",
+    shifts: [
+      { name: "Derek", friday: "10 AM – 6 PM", saturday: "10 AM – 6 PM", sunday: "10 AM – 6 PM" },
+      { name: "Mike", friday: "2 PM – 10 PM", saturday: "2 PM – 10 PM", sunday: "2 PM – 10 PM" },
+      { name: "Ali", friday: "10 AM – 6 PM", saturday: "2 PM – 10 PM", sunday: "2 PM – 10 PM" },
+      { name: "Dylan", friday: "6 PM – 2 AM", saturday: "10 PM – 6 AM", sunday: "8 PM – 4 AM" },
+      { name: "#5555", friday: "10 PM – 6 AM", saturday: "10 PM – 6 AM", sunday: "10 PM – 4 AM" },
+      { name: "Bryce", friday: "10 PM – 6 AM", saturday: "10 PM – 6 AM", sunday: "6 PM – 2 AM" },
+      { name: "James", friday: "10 PM – 6 AM", saturday: "6 PM – 2 AM", sunday: "10 PM – 4 AM" },
+    ],
+  },
+  {
+    id: "whoadega",
+    label: "WHOADEGA",
+    shifts: null,
+  },
 ];
 
 export const TEAM_CONTACTS: TeamContact[] = [
