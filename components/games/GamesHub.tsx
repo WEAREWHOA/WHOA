@@ -40,7 +40,7 @@ export default function GamesHub() {
                   game.status === "live" ? "text-flame-2" : "text-muted"
                 }`}
               >
-                {game.status === "live" ? "Play now →" : "Coming soon"}
+                {game.status === "live" ? (game.ctaLabel ?? "Play now →") : "Coming soon"}
               </span>
             </div>
           );

@@ -468,9 +468,16 @@ homepage orbit (`components/home/OrbitField.tsx`, the "WHOA GAMES" stop).
   code at 6/6. `/games/hunt/print` (staff-only, not linked from the public
   hub) generates real, scannable QR codes server-side via the `qrcode`
   package — genuine printable codes, not placeholder link text.
+- **WHOASIS Arcade Cabinet** (`app/games/arcade-cabinet/`) — not a web
+  game at all, so it's not marked "Coming soon" forever waiting on code
+  that will never make it playable in a browser. It's a real page laying
+  out the actual physical build: every other game already runs full-screen
+  in a browser, so the cabinet is just that browser in kiosk mode, on real
+  hardware, pointed at `/games`. `GameTile.ctaLabel` lets a live tile
+  override the default "Play now →" label — this one shows "See the plan
+  →" instead, since there's nothing to play.
 
-The WHOASIS Arcade Cabinet — a physical installation concept, not a web
-game — is still "Coming soon" on the hub; every other tile is now live.
+All eight tiles are live.
 
 ## Theme
 
