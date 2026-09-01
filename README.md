@@ -480,6 +480,27 @@ homepage orbit (`components/home/OrbitField.tsx`, the "WHOA GAMES" stop).
   synced from state in a `useEffect` — assigning them directly in the
   render body trips the `react-hooks/refs` lint rule ("Cannot access refs
   during render"), the same gotcha hit in `SnakeGame.tsx`'s `tick` ref.
+- **WHOA Puzzle** (`components/games/whoa-puzzle/WhoaPuzzle.tsx`,
+  `lib/games/whoaPuzzle.ts`) — a classic 3×3 sliding tile puzzle. The
+  source art (a flame-gradient board with the WHOA wordmark plus a few
+  scattered accent dots, so every tile has a distinct visual cue) is
+  drawn once to an off-screen canvas and each tile's slice is redrawn
+  from it into its own `<canvas>` via `drawImage` whenever the board
+  changes — deliberately not "generate one image, store it in state,"
+  since piping a canvas-generated data URL through `setState` inside a
+  mount `useEffect` trips the newer `react-hooks/set-state-in-effect`
+  lint rule; this keeps the canvas a DOM detail the effect synchronizes
+  instead. `shuffleBoard()` always shuffles by replaying random *legal*
+  moves from the solved state, guaranteeing a solvable board (a random
+  permutation of tiles is only solvable half the time). The very first
+  board can't be `shuffleBoard()`'s real `Math.random()` output either —
+  that runs during SSR too, so the server-rendered board would differ
+  from the client's post-hydration board and React would throw a
+  hydration-mismatch error — so first paint uses `initialBoard()`, the
+  same shuffle logic seeded with a tiny deterministic PRNG instead,
+  identical on server and client; the "Shuffle" button's reshuffle stays
+  genuinely random since it only ever runs client-side, after a click.
+  Solving it — and only solving it — shows "WHOA!"
 - **WHOASIS Arcade Cabinet** (`app/games/arcade-cabinet/`) — not a web
   game at all, so it's not marked "Coming soon" forever waiting on code
   that will never make it playable in a browser. It's a real page laying
@@ -489,7 +510,7 @@ homepage orbit (`components/home/OrbitField.tsx`, the "WHOA GAMES" stop).
   override the default "Play now →" label — this one shows "See the plan
   →" instead, since there's nothing to play.
 
-All nine tiles are live.
+All ten tiles are live.
 
 ## Theme
 

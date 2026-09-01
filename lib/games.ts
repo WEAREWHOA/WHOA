@@ -80,6 +80,14 @@ export const GAME_TILES: GameTile[] = [
     status: "live",
   },
   {
+    id: "whoa-puzzle",
+    title: "WHOA Puzzle",
+    tagline: "Slide the tiles into place. It only says WHOA when you solve it.",
+    accent: "#ff8a29",
+    href: "/games/whoa-puzzle",
+    status: "live",
+  },
+  {
     id: "arcade-cabinet",
     title: "WHOASIS Arcade Cabinet",
     tagline: "This whole page, running kiosk-mode in the lounge on real hardware.",
