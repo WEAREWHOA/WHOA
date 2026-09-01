@@ -27,6 +27,7 @@ const STOPS: HubStop[] = [
   { label: "ART COLLECTIVE", href: "/art-collective", accent: "#fff229", rotate: -5, halfWidth: 95, halfHeight: 45 },
   { label: "EVENT CALENDAR", href: "/events", accent: "#ff8a29", rotate: 4, halfWidth: 100, halfHeight: 45 },
   { label: "WHOA POS", href: "/pos", accent: "#ff3b3b", rotate: -3, halfWidth: 90, halfHeight: 45 },
+  { label: "WHOA GAMES", href: "/games", accent: "#b829ff", rotate: 2, halfWidth: 105, halfHeight: 45 },
   { label: "ENTER WHOA", href: "https://www.wearewhoa.art", accent: "#ffffff", rotate: 0, big: true, halfWidth: 140, halfHeight: 55 },
 ];
 
