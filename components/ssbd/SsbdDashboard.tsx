@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  ACTIVATIONS,
   ANNOUNCEMENTS,
   DOCS,
   SCHEDULE_AREAS,
@@ -114,9 +115,24 @@ export default function SsbdDashboard() {
       </section>
 
       <section className="mt-12">
+        <h2 className="font-display text-2xl tracking-wide">Activations Schedule</h2>
+        <p className="mt-2 text-sm text-muted">
+          Extra activations happening at SSBD, beyond the booth — dates and times TBD.
+        </p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          {ACTIVATIONS.map((a) => (
+            <div key={a.id} className="card-surface rounded-2xl border border-border p-5">
+              <h3 className="font-display text-lg uppercase">{a.title}</h3>
+              <p className="mt-1 text-xs text-muted">{a.date}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-12">
         <h2 className="font-display text-2xl tracking-wide">Shift Schedule</h2>
         <p className="mt-2 text-sm text-muted">
-          One schedule, two areas — Art Gallery and WHOADEGA. Talk to your team lead if your shift
+          One schedule, two areas — WHOADEGA and WHOA OASIS. Talk to your team lead if your shift
           needs to change.
         </p>
         <div className="mt-4 space-y-6">
