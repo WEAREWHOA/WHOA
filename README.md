@@ -131,7 +131,10 @@ revoked by deleting its row (which logout does).
    - `supabase/migrations/0007_graffiti_wall.sql` — creates
      `graffiti_drawings` for the WHOA Games graffiti wall. See
      [WHOA Games](#whoa-games).
-   All seven enable RLS with no public policies — only the `service_role`
+   - `supabase/migrations/0008_custom_design.sql` — creates
+     `custom_design_submissions` for the Custom Design bleach editor. See
+     [Custom Design](#custom-design).
+   All eight enable RLS with no public policies — only the `service_role`
    key (which is what this app uses) can read or write.
 3. **Bootstrap the first Super Admin** — there's no self-serve way to grant
    `is_super_admin` (by design), so after signing up your own account at
@@ -511,6 +514,51 @@ homepage orbit (`components/home/OrbitField.tsx`, the "WHOA GAMES" stop).
   →" instead, since there's nothing to play.
 
 All ten tiles are live.
+
+## Custom Design
+
+`/custom-design` (`components/customDesign/`, `lib/customDesign.ts`) — an
+"Editor Tool" for bleaching a design onto a garment: pick one of four
+black-only templates (T-Shirt, Hoodie, Tapered Sweatpants, Wide Leg
+Sweatpants), then draw with a Marker or Spray brush (each with its own
+size/density, spray also has spread) and submit contact info. **This is
+explicitly a test of the submission pipeline, not a live ordering flow** —
+the page says so, and no email/fulfillment integration exists yet; that's
+future work once the pipeline itself is proven out.
+
+- **Garment templates are shared polygon data, not images** — each
+  template in `lib/customDesign.ts` is a list of polygons in a 300×380
+  coordinate space. The exact same coordinates drive three different
+  things: the on-screen SVG silhouette (`GarmentSilhouette.tsx`), the
+  canvas clip region that keeps bleach marks from ever landing outside
+  the garment (`buildGarmentPath2D`), and a flattened canvas re-draw of
+  the base garment used to build the submission's preview image
+  (`drawGarmentBase`) — one source of truth for all three, rather than
+  three things that could drift out of sync.
+- **Bleach color is an authentic rust/tan (`#caa06a`), not flat white** —
+  bleach breaks down black cotton dye to the fabric's underlying pigment,
+  which reads warm, not clean white. The bleach canvas sits over the
+  black garment with `mix-blend-mode: screen`, so marks visually lighten
+  the black rather than sitting on top of it as flat paint.
+- **Marker vs. Spray reuse one draw function** (`drawStroke`) for both
+  live, incremental drawing and a full replay of every point — a marker
+  segment is drawn as a 2-point mini-stroke on each pointer move; a spray
+  burst is drawn as just the newly-generated dabs (via
+  `generateSprayDabs`, a uniform-disk random scatter) rather than
+  redrawing every dab from the whole stroke every frame. Undo replays
+  every remaining stroke from scratch after popping the last one — same
+  redraw-on-undo approach as the WHOA Puzzle.
+- **Mouse and finger both work with no separate code path** — pointer
+  events (`onPointerDown/Move/Up`) unify mouse, touch, and pen input,
+  same approach as the Graffiti Wall canvas.
+- **The submission is genuinely captured, not faked** — `submitDesign()`
+  sanitizes and inserts the stroke data (jsonb, same normalized-point-path
+  posture as `graffiti_drawings`) plus a flattened PNG preview (so a
+  submission is inspectable without a staff-facing viewer that replays
+  strokes) into `custom_design_submissions`. It's public/customer-facing,
+  so — like checkout and the ambassador referral lookup — the Supabase
+  call is wrapped in try/catch and fails soft with an error message
+  rather than throwing.
 
 ## Theme
 
