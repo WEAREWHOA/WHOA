@@ -2,50 +2,33 @@ import { getSupabase } from "./supabase";
 
 export type GarmentId = "tshirt" | "hoodie" | "tapered-sweatpants" | "wide-leg-sweatpants";
 
-export interface GarmentTemplate {
+// A vector template's fill IS the bleach clip region — a Path2D built
+// straight from its polygons. An image template has no such geometry, so
+// its clip region is instead a raster alpha mask, built at runtime from
+// the real photo (see `buildGarmentMask`).
+export interface VectorGarmentTemplate {
   id: GarmentId;
   label: string;
-  // Filled black shapes that make up the garment silhouette — also the
-  // exact region bleach marks get clipped to, so a stray spray can never
-  // land outside the garment. Each polygon is a list of points in a
-  // shared 300x380 coordinate space.
+  kind: "vector";
+  // Filled black shapes that make up the garment silhouette, in a shared
+  // 300x380 coordinate space.
   polygons: [number, number][][];
   // Non-fill decorative strokes (pocket outline, drawstrings) — purely
   // visual, not part of the bleach clip region.
   decorations?: { points: [number, number][] }[];
 }
 
+export interface ImageGarmentTemplate {
+  id: GarmentId;
+  label: string;
+  kind: "image";
+  // Path under /public to the real garment photo/render.
+  imageSrc: string;
+}
+
+export type GarmentTemplate = VectorGarmentTemplate | ImageGarmentTemplate;
+
 export const GARMENT_VIEWBOX = { width: 300, height: 380 };
-
-const TSHIRT_BODY: [number, number][] = [
-  [130, 20],
-  [145, 34],
-  [155, 34],
-  [170, 20],
-  [210, 35],
-  [255, 65],
-  [230, 100],
-  [215, 88],
-  [215, 360],
-  [85, 360],
-  [85, 88],
-  [70, 100],
-  [45, 65],
-  [90, 35],
-];
-
-const HOODIE_HOOD: [number, number][] = [
-  [90, 42],
-  [95, 18],
-  [115, 4],
-  [150, 0],
-  [185, 4],
-  [205, 18],
-  [210, 42],
-  [185, 25],
-  [150, 20],
-  [115, 25],
-];
 
 const WAISTBAND: [number, number][] = [
   [95, 10],
@@ -71,40 +54,21 @@ const TAPERED_RIGHT_LEG: [number, number][] = [
   [182, 360],
   [158, 360],
 ];
-const WIDE_LEFT_LEG: [number, number][] = [
-  [95, 110],
-  [150, 108],
-  [175, 360],
-  [75, 360],
-];
-const WIDE_RIGHT_LEG: [number, number][] = [
-  [150, 108],
-  [205, 110],
-  [225, 360],
-  [185, 360],
-];
 
 export const GARMENT_TEMPLATES: GarmentTemplate[] = [
-  { id: "tshirt", label: "T-Shirt", polygons: [TSHIRT_BODY] },
-  {
-    id: "hoodie",
-    label: "Hoodie",
-    polygons: [HOODIE_HOOD, TSHIRT_BODY],
-    decorations: [
-      { points: [[115, 230], [112, 275], [118, 282], [182, 282], [188, 275], [185, 230]] },
-      { points: [[140, 20], [136, 70]] },
-      { points: [[160, 20], [164, 70]] },
-    ],
-  },
+  { id: "tshirt", label: "T-Shirt", kind: "image", imageSrc: "/custom-design/tshirt.jpg" },
+  { id: "hoodie", label: "Hoodie", kind: "image", imageSrc: "/custom-design/hoodie.jpg" },
   {
     id: "tapered-sweatpants",
     label: "Tapered Sweatpants",
+    kind: "vector",
     polygons: [WAISTBAND, HIP, TAPERED_LEFT_LEG, TAPERED_RIGHT_LEG],
   },
   {
     id: "wide-leg-sweatpants",
     label: "Wide Leg Sweatpants",
-    polygons: [WAISTBAND, HIP, WIDE_LEFT_LEG, WIDE_RIGHT_LEG],
+    kind: "image",
+    imageSrc: "/custom-design/wide-leg-sweatpants.jpg",
   },
 ];
 
@@ -140,7 +104,7 @@ function clamp01(n: number): number {
   return clamp(n, 0, 1);
 }
 
-export function buildGarmentPath2D(template: GarmentTemplate, scaleX: number, scaleY: number): Path2D {
+export function buildGarmentPath2D(template: VectorGarmentTemplate, scaleX: number, scaleY: number): Path2D {
   const path = new Path2D();
   for (const polygon of template.polygons) {
     polygon.forEach(([x, y], i) => {
@@ -154,16 +118,22 @@ export function buildGarmentPath2D(template: GarmentTemplate, scaleX: number, sc
   return path;
 }
 
-// Draws the garment's black base (and its decorative details) directly
-// onto a canvas — used to flatten a submission preview. Shares the exact
-// same polygon data as the on-screen SVG, so the preview always matches
-// what the visitor actually saw.
+// Draws the garment's base — the real photo for an image template, the
+// filled polygons (plus decorative details) for a vector one — directly
+// onto a canvas, used to flatten a submission preview so it matches what
+// the visitor actually saw.
 export function drawGarmentBase(
   ctx: CanvasRenderingContext2D,
   template: GarmentTemplate,
   width: number,
   height: number,
+  image?: HTMLImageElement,
 ) {
+  if (template.kind === "image") {
+    if (image) ctx.drawImage(image, 0, 0, width, height);
+    return;
+  }
+
   const scaleX = width / GARMENT_VIEWBOX.width;
   const scaleY = height / GARMENT_VIEWBOX.height;
 
@@ -196,6 +166,106 @@ export function drawGarmentBase(
       ctx.stroke();
     }
   }
+}
+
+export function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(`Failed to load image: ${src}`));
+    img.src = src;
+  });
+}
+
+const MASK_MAX_DIMENSION = 700;
+const BACKGROUND_THRESHOLD = 28;
+
+// Builds an alpha mask (opaque = garment, transparent = background) for
+// an image template's photo, used as the bleach clip region. A flat
+// per-pixel "is this close to the background color" check would also
+// erase the light-colored piped seams, hood outline, pocket outline, and
+// drawstrings drawn ON the garment — they're close in color to the true
+// background. Flood-filling outward from the four corners instead only
+// marks background pixels that are actually *connected* to the edge of
+// the frame; those interior light-colored details are islands fully
+// surrounded by the dark garment, so they're never reached and stay part
+// of the mask.
+export function buildGarmentMask(img: HTMLImageElement): HTMLCanvasElement {
+  const scale = Math.min(1, MASK_MAX_DIMENSION / Math.max(img.naturalWidth, img.naturalHeight));
+  const width = Math.max(1, Math.round(img.naturalWidth * scale));
+  const height = Math.max(1, Math.round(img.naturalHeight * scale));
+
+  const source = document.createElement("canvas");
+  source.width = width;
+  source.height = height;
+  const sctx = source.getContext("2d")!;
+  sctx.drawImage(img, 0, 0, width, height);
+  const imageData = sctx.getImageData(0, 0, width, height);
+  const data = imageData.data;
+
+  const corners = [
+    0,
+    (width - 1) * 4,
+    (height - 1) * width * 4,
+    ((height - 1) * width + width - 1) * 4,
+  ];
+  let br = 0;
+  let bg = 0;
+  let bb = 0;
+  for (const c of corners) {
+    br += data[c];
+    bg += data[c + 1];
+    bb += data[c + 2];
+  }
+  br /= corners.length;
+  bg /= corners.length;
+  bb /= corners.length;
+
+  const visited = new Uint8Array(width * height);
+  const isBackground = new Uint8Array(width * height);
+  const queue = new Int32Array(width * height);
+  let head = 0;
+  let tail = 0;
+
+  function tryEnqueue(x: number, y: number) {
+    if (x < 0 || y < 0 || x >= width || y >= height) return;
+    const idx = y * width + x;
+    if (visited[idx]) return;
+    visited[idx] = 1;
+    const i = idx * 4;
+    const dr = data[i] - br;
+    const dg = data[i + 1] - bg;
+    const db = data[i + 2] - bb;
+    if (Math.sqrt(dr * dr + dg * dg + db * db) > BACKGROUND_THRESHOLD) return;
+    isBackground[idx] = 1;
+    queue[tail++] = idx;
+  }
+
+  for (let x = 0; x < width; x++) {
+    tryEnqueue(x, 0);
+    tryEnqueue(x, height - 1);
+  }
+  for (let y = 0; y < height; y++) {
+    tryEnqueue(0, y);
+    tryEnqueue(width - 1, y);
+  }
+
+  while (head < tail) {
+    const idx = queue[head++];
+    const x = idx % width;
+    const y = (idx / width) | 0;
+    tryEnqueue(x + 1, y);
+    tryEnqueue(x - 1, y);
+    tryEnqueue(x, y + 1);
+    tryEnqueue(x, y - 1);
+  }
+
+  for (let idx = 0; idx < width * height; idx++) {
+    data[idx * 4 + 3] = isBackground[idx] ? 0 : 255;
+  }
+
+  sctx.putImageData(imageData, 0, 0);
+  return source;
 }
 
 // Draws one stroke — called both for live, incremental drawing (a 2-point
