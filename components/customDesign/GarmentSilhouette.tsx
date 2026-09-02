@@ -7,6 +7,12 @@ export default function GarmentSilhouette({
   template: GarmentTemplate;
   className?: string;
 }) {
+  if (template.kind === "image") {
+    // A local static asset also drawn straight into canvas ops elsewhere — next/image's layout machinery buys nothing here.
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={template.imageSrc} alt={template.label} className={`${className} object-contain`} />;
+  }
+
   return (
     <svg
       viewBox={`0 0 ${GARMENT_VIEWBOX.width} ${GARMENT_VIEWBOX.height}`}

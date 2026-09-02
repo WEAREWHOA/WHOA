@@ -10,9 +10,11 @@ import {
   DENSITY_RANGE,
   SPREAD_RANGE,
   buildGarmentPath2D,
+  buildGarmentMask,
   drawGarmentBase,
   drawStroke,
   generateSprayDabs,
+  loadImage,
   type GarmentTemplate,
   type BleachStroke,
   type BleachTool,
@@ -30,7 +32,18 @@ export default function CustomDesignEditor() {
   const [template, setTemplate] = useState<GarmentTemplate | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  // The visible canvas: for a vector template, strokes are drawn straight
+  // onto it (clipped via ctx.clip()). For an image template, it instead
+  // holds a *derived* view — see compositeVisible().
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // Image templates only: raw, unclipped ink accumulates here, then gets
+  // masked onto the visible canvas by compositeVisible() — a raster
+  // stand-in for the Path2D clip a vector template gets for free.
+  const inkCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const maskCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const garmentImageRef = useRef<HTMLImageElement | null>(null);
+  const [assetsReady, setAssetsReady] = useState(false);
+
   const strokesRef = useRef<BleachStroke[]>([]);
   const drawingRef = useRef(false);
 
@@ -45,14 +58,39 @@ export default function CustomDesignEditor() {
   const [submitState, setSubmitState] = useState<"idle" | "submitting">("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Image templates only: composites the raw ink onto the visible canvas,
+  // masked to the garment's actual silhouette via "destination-in".
+  function compositeVisible() {
+    const visible = canvasRef.current;
+    const ink = inkCanvasRef.current;
+    const mask = maskCanvasRef.current;
+    const ctx = visible?.getContext("2d");
+    if (!visible || !ink || !mask || !ctx) return;
+    ctx.clearRect(0, 0, visible.width, visible.height);
+    ctx.drawImage(ink, 0, 0, visible.width, visible.height);
+    ctx.globalCompositeOperation = "destination-in";
+    ctx.drawImage(mask, 0, 0, mask.width, mask.height, 0, 0, visible.width, visible.height);
+    ctx.globalCompositeOperation = "source-over";
+  }
+
   function redrawAll() {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (const stroke of strokesRef.current) {
-      drawStroke(ctx, stroke, canvas.width, canvas.height);
+    if (!template) return;
+
+    if (template.kind === "vector") {
+      const canvas = canvasRef.current;
+      const ctx = canvas?.getContext("2d");
+      if (!canvas || !ctx) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const stroke of strokesRef.current) drawStroke(ctx, stroke, canvas.width, canvas.height);
+      return;
     }
+
+    const ink = inkCanvasRef.current;
+    const ictx = ink?.getContext("2d");
+    if (!ink || !ictx) return;
+    ictx.clearRect(0, 0, ink.width, ink.height);
+    for (const stroke of strokesRef.current) drawStroke(ictx, stroke, ink.width, ink.height);
+    compositeVisible();
   }
 
   function setupCanvas() {
@@ -63,17 +101,52 @@ export default function CustomDesignEditor() {
     canvas.width = container.clientWidth * CANVAS_SCALE;
     canvas.height = container.clientHeight * CANVAS_SCALE;
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const path = buildGarmentPath2D(
-      template,
-      canvas.width / GARMENT_VIEWBOX.width,
-      canvas.height / GARMENT_VIEWBOX.height,
-    );
-    ctx.save();
-    ctx.clip(path);
+    if (template.kind === "vector") {
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      const path = buildGarmentPath2D(
+        template,
+        canvas.width / GARMENT_VIEWBOX.width,
+        canvas.height / GARMENT_VIEWBOX.height,
+      );
+      ctx.save();
+      ctx.clip(path);
+      redrawAll();
+      return;
+    }
+
+    if (!inkCanvasRef.current) inkCanvasRef.current = document.createElement("canvas");
+    inkCanvasRef.current.width = canvas.width;
+    inkCanvasRef.current.height = canvas.height;
     redrawAll();
   }
+
+  // Image templates only: load the real photo + build its garment mask
+  // once per template, off-screen, before drawing is enabled. Callers
+  // that change `template` (pickTemplate/changeTemplate/startOver) already
+  // reset `assetsReady` to false themselves before this effect runs, so
+  // there's nothing to set synchronously here for either branch.
+  useEffect(() => {
+    if (step !== "edit" || !template || template.kind !== "image") return;
+
+    let cancelled = false;
+    loadImage(template.imageSrc)
+      .then((img) => {
+        if (cancelled) return;
+        garmentImageRef.current = img;
+        maskCanvasRef.current = buildGarmentMask(img);
+        setAssetsReady(true);
+        setupCanvas();
+      })
+      .catch(() => {
+        // Left not-ready; the loading overlay stays up rather than opening
+        // onto a broken/unmasked canvas.
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, template]);
 
   useEffect(() => {
     if (step !== "edit") return;
@@ -92,8 +165,13 @@ export default function CustomDesignEditor() {
     };
   }
 
+  function drawTargetCanvas(): HTMLCanvasElement | null {
+    if (!template) return null;
+    return template.kind === "vector" ? canvasRef.current : inkCanvasRef.current;
+  }
+
   function handlePointerDown(e: PointerEvent<HTMLCanvasElement>) {
-    if (!template) return;
+    if (!template || (template.kind === "image" && !assetsReady)) return;
     (e.target as HTMLCanvasElement).setPointerCapture(e.pointerId);
     drawingRef.current = true;
 
@@ -102,16 +180,17 @@ export default function CustomDesignEditor() {
     strokesRef.current.push(stroke);
     setCanUndo(true);
 
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (canvas && ctx) drawStroke(ctx, stroke, canvas.width, canvas.height);
+    const target = drawTargetCanvas();
+    const ctx = target?.getContext("2d");
+    if (target && ctx) drawStroke(ctx, stroke, target.width, target.height);
+    if (template.kind === "image") compositeVisible();
   }
 
   function handlePointerMove(e: PointerEvent<HTMLCanvasElement>) {
-    if (!drawingRef.current) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
+    if (!drawingRef.current || !template) return;
+    const target = drawTargetCanvas();
+    const ctx = target?.getContext("2d");
+    if (!target || !ctx) return;
 
     const point = toNormalized(e.clientX, e.clientY);
     const stroke = strokesRef.current[strokesRef.current.length - 1];
@@ -119,14 +198,16 @@ export default function CustomDesignEditor() {
     if (tool === "marker") {
       const prev = stroke.points[stroke.points.length - 1];
       stroke.points.push(point);
-      drawStroke(ctx, { ...stroke, points: [prev, point] }, canvas.width, canvas.height);
+      drawStroke(ctx, { ...stroke, points: [prev, point] }, target.width, target.height);
     } else {
       const dabCount = Math.max(1, Math.round(density * 6));
       const offsets = generateSprayDabs(dabCount, spread);
       const newDabs = offsets.map((o) => ({ x: point.x + o.x, y: point.y + o.y }));
       stroke.points.push(...newDabs);
-      drawStroke(ctx, { ...stroke, points: newDabs }, canvas.width, canvas.height);
+      drawStroke(ctx, { ...stroke, points: newDabs }, target.width, target.height);
     }
+
+    if (template.kind === "image") compositeVisible();
   }
 
   function handlePointerUp() {
@@ -145,9 +226,16 @@ export default function CustomDesignEditor() {
     redrawAll();
   }
 
+  function resetAssets() {
+    garmentImageRef.current = null;
+    maskCanvasRef.current = null;
+    setAssetsReady(false);
+  }
+
   function pickTemplate(t: GarmentTemplate) {
     strokesRef.current = [];
     setCanUndo(false);
+    resetAssets();
     setTemplate(t);
     setStep("edit");
   }
@@ -155,12 +243,15 @@ export default function CustomDesignEditor() {
   function changeTemplate() {
     strokesRef.current = [];
     setCanUndo(false);
+    resetAssets();
     setTemplate(null);
     setShowSubmitForm(false);
     setStep("pick");
   }
 
   function buildPreviewDataUrl(): string | null {
+    // canvasRef already holds just the (clipped or masked) bleach marks
+    // in both modes — the garment base still needs to be drawn under it.
     const bleachCanvas = canvasRef.current;
     if (!bleachCanvas || !template) return null;
     const out = document.createElement("canvas");
@@ -171,7 +262,7 @@ export default function CustomDesignEditor() {
 
     ctx.fillStyle = "#14100c";
     ctx.fillRect(0, 0, out.width, out.height);
-    drawGarmentBase(ctx, template, out.width, out.height);
+    drawGarmentBase(ctx, template, out.width, out.height, garmentImageRef.current ?? undefined);
     ctx.globalCompositeOperation = "screen";
     ctx.drawImage(bleachCanvas, 0, 0);
     ctx.globalCompositeOperation = "source-over";
@@ -220,6 +311,7 @@ export default function CustomDesignEditor() {
   function startOver() {
     strokesRef.current = [];
     setCanUndo(false);
+    resetAssets();
     setTemplate(null);
     setShowSubmitForm(false);
     setForm({ name: "", email: "", phone: "" });
@@ -296,6 +388,11 @@ export default function CustomDesignEditor() {
           className="absolute inset-0 h-full w-full touch-none"
           style={{ mixBlendMode: "screen" }}
         />
+        {template?.kind === "image" && !assetsReady && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/70 text-xs text-muted">
+            Loading template…
+          </div>
+        )}
       </div>
 
       <div className="mt-6 flex flex-wrap items-center justify-center gap-6">

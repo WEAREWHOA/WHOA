@@ -526,15 +526,31 @@ explicitly a test of the submission pipeline, not a live ordering flow** —
 the page says so, and no email/fulfillment integration exists yet; that's
 future work once the pipeline itself is proven out.
 
-- **Garment templates are shared polygon data, not images** — each
-  template in `lib/customDesign.ts` is a list of polygons in a 300×380
-  coordinate space. The exact same coordinates drive three different
-  things: the on-screen SVG silhouette (`GarmentSilhouette.tsx`), the
-  canvas clip region that keeps bleach marks from ever landing outside
-  the garment (`buildGarmentPath2D`), and a flattened canvas re-draw of
-  the base garment used to build the submission's preview image
-  (`drawGarmentBase`) — one source of truth for all three, rather than
-  three things that could drift out of sync.
+- **Two kinds of template, one shared interface** — `GarmentTemplate` in
+  `lib/customDesign.ts` is a discriminated union. Tapered Sweatpants (no
+  real photo available yet) is `kind: "vector"`: a list of polygons in a
+  300×380 space that drives the on-screen SVG, a Path2D bleach clip region
+  (`buildGarmentPath2D`), and the submission preview's base layer, all
+  from one set of coordinates. T-Shirt, Hoodie, and Wide Leg Sweatpants
+  (`public/custom-design/*.jpg`) are `kind: "image"`, using real photos —
+  once there's a photo for tapered sweatpants too, it can switch over the
+  same way.
+- **An image template's bleach clip is a raster mask, not a Path2D** —
+  there's no vector geometry for a photo, so `buildGarmentMask()` builds
+  one at runtime: flood-fill outward from the image's four corners,
+  following only pixels close to the sampled background color. A flat
+  per-pixel "is this background-colored" check would also erase the
+  light-colored piped seams, hood outline, pocket outline, and
+  drawstrings drawn *on* these particular garment photos — they're close
+  in color to the true background. Flood-fill only marks background
+  pixels that are actually *connected* to the frame's edge, so those
+  interior details (islands fully surrounded by the dark garment) are
+  never reached and stay part of the mask. Live strokes accumulate on an
+  off-screen "ink" canvas exactly like a vector template's, then get
+  composited onto the visible canvas via `destination-in` against that
+  mask (`compositeVisible()`) — the stroke data model, sanitization, and
+  undo-by-replay logic are identical either way; only how the final pixels
+  get clipped differs.
 - **Bleach color is an authentic rust/tan (`#caa06a`), not flat white** —
   bleach breaks down black cotton dye to the fabric's underlying pigment,
   which reads warm, not clean white. The bleach canvas sits over the
