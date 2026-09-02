@@ -1,3 +1,4 @@
+import Link from "next/link";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 import { listProducts } from "@/lib/catalog";
 import ProductCard from "@/components/shop/ProductCard";
@@ -28,6 +29,12 @@ export default async function ShopPage() {
         <p className="mt-3 max-w-md text-sm text-white/60">
           Same stock, same prices, whether you&apos;re here or at the booth.
         </p>
+        <Link
+          href="/custom-design"
+          className="relative z-10 mt-5 inline-block rounded-full border border-white/20 px-5 py-2.5 text-xs font-semibold tracking-wide text-white/80 uppercase hover:border-flame-2/60 hover:text-white"
+        >
+          Try the Custom Design editor (test) →
+        </Link>
       </div>
 
       {error && (
