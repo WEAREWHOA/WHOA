@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 import ArtCollectiveGrid from "@/components/artcollective/ArtCollectiveGrid";
 import { ARTISTS } from "@/lib/artists";
+
+export const metadata: Metadata = {
+  title: "Art Collective",
+  description: "Meet the artists and vendors behind WHOA — shop their work straight from the collective.",
+};
 
 export default function ArtCollectivePage() {
   return (

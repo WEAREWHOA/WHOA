@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import CustomDesignEditor from "@/components/customDesign/CustomDesignEditor";
+
+export const metadata: Metadata = {
+  title: "Custom Design",
+  description: "Bleach your own design onto a WHOA piece with the custom design editor.",
+};
 
 export default function CustomDesignPage() {
   return (

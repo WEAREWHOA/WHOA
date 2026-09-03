@@ -1,9 +1,15 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 import { listProducts } from "@/lib/catalog";
 import ProductCard from "@/components/shop/ProductCard";
 
 export const revalidate = 60;
+
+export const metadata: Metadata = {
+  title: "Shop",
+  description: "Shop WHOA apparel, art, and gear — straight from the WHOADEGA.",
+};
 
 export default async function ShopPage() {
   let products: Awaited<ReturnType<typeof listProducts>> = [];

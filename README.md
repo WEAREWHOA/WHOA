@@ -83,6 +83,14 @@ npm run build
 | `NEXT_PUBLIC_SQUARE_ENVIRONMENT`    | `sandbox` | `sandbox` or `production` — picks which Square.js script gets loaded |
 | `SQUARE_WEBHOOK_SIGNATURE_KEY`  | —          | Signing secret for `/api/webhooks/square`, returned when the webhook subscription is created — see [Square ↔ Supabase sync](#square--supabase-sync) |
 | `SQUARE_ADMIN_SECRET`           | —          | Shared secret gating the one-time `/api/admin/square/*` setup endpoints — pick any long random string |
+| `NEXT_PUBLIC_SITE_URL`          | `http://localhost:3000` | Production domain, used for `metadataBase`, `sitemap.xml`, and `robots.txt` — set once the real domain is known |
+
+## SEO & metadata
+
+- `app/icon.tsx` / `app/apple-icon.tsx` / `app/opengraph-image.tsx` — favicon and social-share image, generated at request time from the theme's own flame gradient (`next/og`'s `ImageResponse`) since no real WHOA logo asset exists yet.
+- `app/not-found.tsx` — themed 404 page. Next.js 16 resolves unmatched URLs at the routing level, so a page-local `metadata` export here doesn't reach the response — the page just inherits the root title, which is fine since 404 responses get an automatic `noindex`.
+- `app/sitemap.ts` / `app/robots.ts` — list the public marketing/shop pages plus live entries for every online product, artist, and musician. Staff-only and transactional routes (`/pos`, `/admin`, `/checkout`, `/cart`, etc.) are disallowed.
+- Root layout sets `metadataBase` (from `NEXT_PUBLIC_SITE_URL`), a `%s | WHOA` title template, and shared Open Graph/Twitter card metadata. Static pages set their own `title`/`description`; `/shop/[itemId]`, `/art-collective/[slug]`, and `/music-collective/[slug]` use `generateMetadata()` to pull the live product/artist/musician name and description.
 
 ## Data layer & auth
 

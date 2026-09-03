@@ -1,9 +1,22 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { getProduct } from "@/lib/catalog";
 import AddToCart from "@/components/shop/AddToCart";
 import { formatCents } from "@/lib/money";
 
 export const revalidate = 60;
+
+export async function generateMetadata(props: PageProps<"/shop/[itemId]">): Promise<Metadata> {
+  const { itemId } = await props.params;
+  const product = await getProduct(itemId).catch(() => undefined);
+  if (!product) return {};
+
+  return {
+    title: product.name,
+    description: product.description || `Shop ${product.name} on WHOA.`,
+    openGraph: product.imageUrl ? { images: [product.imageUrl] } : undefined,
+  };
+}
 
 export default async function ProductPage(props: PageProps<"/shop/[itemId]">) {
   const { itemId } = await props.params;

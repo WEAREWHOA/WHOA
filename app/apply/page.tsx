@@ -1,5 +1,11 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { applyAction } from "./actions";
+
+export const metadata: Metadata = {
+  title: "Apply",
+  description: "Apply to become a WHOA ambassador.",
+};
 
 const errorMessages: Record<string, string> = {
   missing: "Enter your name and a valid email to continue.",
