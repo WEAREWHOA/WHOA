@@ -134,31 +134,57 @@ export default function OrbitField() {
     <div ref={containerRef} className="absolute inset-0">
       <TunnelTransition active={tunneling} />
 
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-        <WhoaSphere ref={sphereRef} />
-      </div>
-
-      {STOPS.map((stop, i) => (
-        <div
-          key={stop.href}
-          ref={(el) => {
-            itemRefs.current[i] = el;
-          }}
-          className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
-        >
-          <div className="pointer-events-auto">
+      {/* Below `sm`, the continuous orbit math below has nowhere near enough
+          horizontal room to keep 9 buttons apart — every radius clamps down
+          to roughly the same narrow band, so they pile up and overlap. A
+          static, top-aligned, scrollable stack sidesteps that entirely
+          rather than trying to make one physics system safely fit 375px. */}
+      <div className="absolute inset-0 flex flex-col items-center gap-6 overflow-y-auto px-6 py-10 sm:hidden">
+        <WhoaSphere />
+        <div className="flex w-full max-w-xs flex-col gap-3">
+          {STOPS.map((stop) => (
             <HubButton
+              key={stop.href}
               href={stop.href}
               label={stop.label}
               accent={stop.accent}
-              rotate={stop.rotate}
               big={stop.big}
-              delay={i * 0.35}
               onNavigate={stop.tunnel ? handleTunnelNavigate : undefined}
             />
-          </div>
+          ))}
         </div>
-      ))}
+      </div>
+
+      {/* `sm:contents` rather than a normal block — these children position
+          absolutely against this component's own `absolute inset-0` root,
+          not a wrapper box, so this has to stay boxless when it's showing. */}
+      <div className="hidden sm:contents">
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <WhoaSphere ref={sphereRef} />
+        </div>
+
+        {STOPS.map((stop, i) => (
+          <div
+            key={stop.href}
+            ref={(el) => {
+              itemRefs.current[i] = el;
+            }}
+            className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+          >
+            <div className="pointer-events-auto">
+              <HubButton
+                href={stop.href}
+                label={stop.label}
+                accent={stop.accent}
+                rotate={stop.rotate}
+                big={stop.big}
+                delay={i * 0.35}
+                onNavigate={stop.tunnel ? handleTunnelNavigate : undefined}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
