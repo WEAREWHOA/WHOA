@@ -6,6 +6,14 @@ import { getSupabase } from "./supabase";
 const SESSION_COOKIE = "whoa_session";
 const SESSION_DAYS = 30;
 
+// Non-httpOnly companion to SESSION_COOKIE, carrying no meaningful value of
+// its own (never checked server-side — the real session cookie above is
+// what auth actually rests on). It exists purely so client components
+// (e.g. the nav) can tell "logged in" from "logged out" via document.cookie
+// without a server round-trip or reading cookies() in the root layout,
+// which would force the entire site into dynamic rendering.
+const LOGGED_IN_COOKIE = "whoa_logged_in";
+
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 10);
 }
@@ -31,6 +39,13 @@ export async function createSession(ambassadorCode: string): Promise<void> {
   const store = await cookies();
   store.set(SESSION_COOKIE, token, {
     httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    expires: expiresAt,
+    path: "/",
+  });
+  store.set(LOGGED_IN_COOKIE, "1", {
+    httpOnly: false,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     expires: expiresAt,
@@ -64,4 +79,5 @@ export async function destroySession(): Promise<void> {
   }
 
   store.delete(SESSION_COOKIE);
+  store.delete(LOGGED_IN_COOKIE);
 }

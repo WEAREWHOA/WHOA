@@ -10,6 +10,8 @@ const STATIC_ROUTES = [
   { path: "/art-collective", priority: 0.8 },
   { path: "/music-collective", priority: 0.8 },
   { path: "/events", priority: 0.8 },
+  { path: "/join", priority: 0.7 },
+  { path: "/about-us", priority: 0.7 },
   { path: "/about", priority: 0.7 },
   { path: "/contact", priority: 0.7 },
   { path: "/faq", priority: 0.6 },

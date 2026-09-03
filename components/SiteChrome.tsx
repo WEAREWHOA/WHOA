@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import BottomNav from "@/components/BottomNav";
 
 export default function SiteChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -18,8 +19,11 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
   return (
     <>
       <Navbar />
-      <main className="flex flex-1 flex-col">{children}</main>
+      {/* pb clears the fixed BottomNav on mobile so page content (and this
+          Footer) never sit underneath it. */}
+      <main className="flex flex-1 flex-col pb-16 md:pb-0">{children}</main>
       <Footer />
+      <BottomNav />
     </>
   );
 }
