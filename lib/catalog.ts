@@ -3,30 +3,42 @@ import type { Product, ProductVariation } from "./types";
 
 // The "Channels" section on a Square item (Online Store, POS, etc.) isn't
 // exposed as a simple boolean — each item just carries a list of channel
-// IDs it's enabled for, so the "Online Store" channel's ID has to be
-// looked up by name first. Cached per server instance since channels
-// essentially never change; a cold start just re-fetches once.
+// IDs it's enabled for, so the target channel's ID has to be looked up by
+// name first. Cached per server instance since channels essentially never
+// change; a cold start just re-fetches once.
 let onlineStoreChannelId: string | null | undefined;
 
+// Square's built-in "Online Store" channel only exists for sellers using
+// Square's own hosted site — this account doesn't (that's the storefront
+// this app replaces), so there's no channel literally named that. Sellers
+// without one have used a custom channel of their own naming to mark
+// "show this online" (here, one named "WHOA") — SQUARE_ONLINE_CHANNEL_NAME
+// lets that real name be configured instead of guessed at. Falls back to
+// the "Online Store"/"online" heuristic for accounts that do have Square's
+// built-in channel.
 export async function getOnlineStoreChannelId(): Promise<string | null> {
   if (onlineStoreChannelId !== undefined) return onlineStoreChannelId;
 
   const square = getSquare();
   const page = await square.channels.list({ status: "ACTIVE" });
 
+  const configuredName = process.env.SQUARE_ONLINE_CHANNEL_NAME?.trim().toLowerCase();
+
+  let configured: string | null = null;
   let match: string | null = null;
   let fallback: string | null = null;
   for await (const channel of page) {
     const name = channel.name?.trim().toLowerCase();
     if (!name || !channel.id) continue;
-    if (name === "online store") {
-      match = channel.id;
+    if (configuredName && name === configuredName) {
+      configured = channel.id;
       break;
     }
+    if (name === "online store") match = channel.id;
     if (!fallback && name.includes("online")) fallback = channel.id;
   }
 
-  onlineStoreChannelId = match ?? fallback;
+  onlineStoreChannelId = configured ?? match ?? fallback;
   return onlineStoreChannelId;
 }
 
