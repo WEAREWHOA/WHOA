@@ -8,7 +8,7 @@ import type { Product, ProductVariation } from "./types";
 // essentially never change; a cold start just re-fetches once.
 let onlineStoreChannelId: string | null | undefined;
 
-async function getOnlineStoreChannelId(): Promise<string | null> {
+export async function getOnlineStoreChannelId(): Promise<string | null> {
   if (onlineStoreChannelId !== undefined) return onlineStoreChannelId;
 
   const square = getSquare();
