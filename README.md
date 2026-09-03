@@ -260,16 +260,33 @@ here.
 - `lib/square.ts` — a lazily-created Square SDK client (`getSquare()`), same
   pattern as `lib/supabase.ts`, so missing credentials don't break the build.
 - `lib/catalog.ts` — `listProducts()`/`getProduct()` call
-  `catalog.searchItems`, batch-fetch item/variation images, and
-  `inventory.batchGetCounts` for stock levels. `listProducts({ onlineOnly:
-  true })` (used by `/shop` and `getProduct()`) scopes results to items
-  with the "Online Store" channel checked in Square's per-item Channels
-  setting — resolved by name via `channels.list()` since Square exposes
-  channel membership as a list of IDs on the item, not a simple boolean.
-  Fails closed (shows nothing) if that channel can't be identified, rather
-  than risk silently showing private/in-person-only inventory. The POS
-  register calls `listProducts()` with no options, so staff still see and
-  can sell everything, online-enabled or not.
+  `catalog.searchItems`, batch-fetch item/variation images and category
+  names, and `inventory.batchGetCounts` for stock levels. `listProducts({
+  onlineOnly: true })` (used by `/shop` and `getProduct()`) scopes results
+  to items in a designated "show this online" Square channel — resolved by
+  name via `channels.list()` (see [`SQUARE_ONLINE_CHANNEL_NAME`](#environment-variables)
+  above) since Square exposes channel membership as a list of IDs on the
+  item, not a simple boolean. Fails closed (shows nothing) if that channel
+  can't be identified, rather than risk silently showing private/in-person-only
+  inventory. The POS register calls `listProducts()` with no options, so
+  staff still see and can sell everything, online-enabled or not.
+- **Categories, search, sort, and multiple product photos** — all from
+  real Square data, not invented. `Product.categories` comes from each
+  item's `categories` field (Square's own category assignments,
+  batch-resolved to names the same way images are); `/shop`
+  (`components/shop/ShopGrid.tsx`) turns whichever categories actually
+  appear on the current online-visible items into filter pills, plus a
+  client-side name/description search and a price/name sort — all real,
+  no placeholder options for categories or attributes that don't exist in
+  the catalog. `Product.imageUrls` carries every photo uploaded for an
+  item (not just the first), so `/shop/[itemId]`
+  (`components/shop/ProductGallery.tsx`) shows a real thumbnail gallery
+  instead of a single image when more than one exists. A category badge
+  on a product page links to `/shop?category=<id>`, which pre-filters the
+  grid via `useSearchParams()` inside a `<Suspense>` boundary — kept
+  client-side specifically so `/shop` itself stays statically rendered
+  (`revalidate = 60`) rather than opting the whole page into dynamic
+  rendering just for one query param.
 - `app/checkout/actions.ts` — on checkout, creates a real Square `Order`
   (with a `FIXED_PERCENTAGE` 15% discount attached if a `whoa_ref` cookie
   is present), then a `Payment` against that order using the token from the

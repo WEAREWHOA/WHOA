@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 import { listProducts } from "@/lib/catalog";
-import ProductCard from "@/components/shop/ProductCard";
+import ShopGrid from "@/components/shop/ShopGrid";
 
 export const revalidate = 60;
 
@@ -54,11 +55,9 @@ export default async function ShopPage() {
       )}
 
       {!error && products.length > 0 && (
-        <div className="relative z-10 mt-14 flex w-full max-w-6xl flex-wrap items-start justify-center gap-x-8 gap-y-14">
-          {products.map((product, i) => (
-            <ProductCard key={product.id} product={product} delay={i * 0.35} />
-          ))}
-        </div>
+        <Suspense>
+          <ShopGrid products={products} />
+        </Suspense>
       )}
     </section>
   );

@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getProduct } from "@/lib/catalog";
 import AddToCart from "@/components/shop/AddToCart";
+import ProductGallery from "@/components/shop/ProductGallery";
 import { formatCents } from "@/lib/money";
 
 export const revalidate = 60;
@@ -41,19 +43,23 @@ export default async function ProductPage(props: PageProps<"/shop/[itemId]">) {
 
   return (
     <section className="mx-auto grid w-full max-w-5xl gap-10 px-6 py-16 lg:grid-cols-2">
-      <div className="card-surface aspect-square overflow-hidden rounded-2xl">
-        {product.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
-        ) : (
-          <div className="flex h-full items-center justify-center text-muted">
-            <span className="font-display text-3xl tracking-wide">WHOA</span>
-          </div>
-        )}
-      </div>
+      <ProductGallery name={product.name} imageUrls={product.imageUrls} />
 
       <div>
-        <h1 className="font-display text-4xl tracking-wide sm:text-5xl">{product.name}</h1>
+        {product.categories.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {product.categories.map((category) => (
+              <Link
+                key={category.id}
+                href={`/shop?category=${encodeURIComponent(category.id)}`}
+                className="rounded-full border border-border-strong px-3 py-1 text-xs font-semibold tracking-wide text-muted uppercase transition-colors hover:border-flame-2/50 hover:text-foreground"
+              >
+                {category.name}
+              </Link>
+            ))}
+          </div>
+        )}
+        <h1 className="font-display mt-3 text-4xl tracking-wide sm:text-5xl">{product.name}</h1>
         <p className="text-flame mt-3 text-lg">{formatCents(minPrice)}</p>
         {product.description && (
           <p className="mt-6 whitespace-pre-line text-sm leading-relaxed text-muted">

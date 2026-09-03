@@ -63,12 +63,22 @@ export interface ProductVariation {
   inStock: number | null;
 }
 
+export interface ProductCategory {
+  id: string;
+  name: string;
+}
+
 export interface Product {
   id: string;
   name: string;
   description: string;
   imageUrl: string | null;
+  // Every photo uploaded for this item, in Square's own order — imageUrl
+  // is always imageUrls[0] (kept separately since most call sites only
+  // ever need a single thumbnail).
+  imageUrls: string[];
   variations: ProductVariation[];
+  categories: ProductCategory[];
 }
 
 // US-only for now — international shipping isn't supported yet.

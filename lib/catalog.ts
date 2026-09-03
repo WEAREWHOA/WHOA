@@ -1,5 +1,5 @@
 import { getSquare, getSquareLocationId } from "./square";
-import type { Product, ProductVariation } from "./types";
+import type { Product, ProductCategory, ProductVariation } from "./types";
 
 // The "Channels" section on a Square item (Online Store, POS, etc.) isn't
 // exposed as a simple boolean — each item just carries a list of channel
@@ -69,6 +69,7 @@ export async function listProducts(options?: { onlineOnly?: boolean }): Promise<
   }
 
   const imageIds = new Set<string>();
+  const categoryIds = new Set<string>();
   for (const item of items) {
     if (item.type !== "ITEM" || !item.itemData) continue;
     for (const id of item.itemData.imageIds ?? []) imageIds.add(id);
@@ -76,14 +77,21 @@ export async function listProducts(options?: { onlineOnly?: boolean }): Promise<
       if (variation.type !== "ITEM_VARIATION" || !variation.itemVariationData) continue;
       for (const id of variation.itemVariationData.imageIds ?? []) imageIds.add(id);
     }
+    for (const category of item.itemData.categories ?? []) {
+      if (category.id) categoryIds.add(category.id);
+    }
   }
 
   const imageUrlById = new Map<string, string>();
-  if (imageIds.size > 0) {
-    const imagesResponse = await square.catalog.batchGet({ objectIds: Array.from(imageIds) });
-    for (const obj of imagesResponse.objects ?? []) {
+  const categoryNameById = new Map<string, string>();
+  const lookupIds = [...imageIds, ...categoryIds];
+  if (lookupIds.length > 0) {
+    const lookupResponse = await square.catalog.batchGet({ objectIds: lookupIds });
+    for (const obj of lookupResponse.objects ?? []) {
       if (obj.type === "IMAGE" && obj.imageData?.url) {
         imageUrlById.set(obj.id, obj.imageData.url);
+      } else if (obj.type === "CATEGORY" && obj.id && obj.categoryData?.name) {
+        categoryNameById.set(obj.id, obj.categoryData.name);
       }
     }
   }
@@ -115,14 +123,27 @@ export async function listProducts(options?: { onlineOnly?: boolean }): Promise<
       });
     }
 
-    const firstImageId = data.imageIds?.[0];
+    const imageUrls: string[] = [];
+    for (const id of data.imageIds ?? []) {
+      const url = imageUrlById.get(id);
+      if (url) imageUrls.push(url);
+    }
+
+    const categories: ProductCategory[] = [];
+    for (const category of data.categories ?? []) {
+      if (!category.id) continue;
+      const name = categoryNameById.get(category.id);
+      if (name) categories.push({ id: category.id, name });
+    }
 
     products.push({
       id: item.id,
       name: data.name ?? "Untitled",
       description: data.descriptionPlaintext ?? data.description ?? "",
-      imageUrl: firstImageId ? (imageUrlById.get(firstImageId) ?? null) : null,
+      imageUrl: imageUrls[0] ?? null,
+      imageUrls,
       variations,
+      categories,
     });
   }
 
