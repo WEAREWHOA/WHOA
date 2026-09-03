@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Bebas_Neue, Inter, Geist_Mono } from "next/font/google";
 import SiteChrome from "@/components/SiteChrome";
 import { CartProvider } from "@/components/cart/CartProvider";
+import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const bebas = Bebas_Neue({
@@ -20,10 +21,33 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const DESCRIPTION =
+  "Shop WHOA, and share it — join the ambassador program, give your people 15% off, and earn 10% commission on every sale.";
+
 export const metadata: Metadata = {
-  title: "WHOA",
-  description:
-    "Shop WHOA, and share it — join the ambassador program, give your people 15% off, and earn 10% commission on every sale.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    template: "%s | WHOA",
+    default: "WHOA",
+  },
+  description: DESCRIPTION,
+  openGraph: {
+    type: "website",
+    siteName: "WHOA",
+    title: "WHOA",
+    description: DESCRIPTION,
+    images: ["/opengraph-image"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "WHOA",
+    description: DESCRIPTION,
+    images: ["/opengraph-image"],
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0a0806",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

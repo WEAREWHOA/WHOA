@@ -1,11 +1,25 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { ARTISTS, getArtist } from "@/lib/artists";
 import { getVendorProducts } from "@/lib/vendor";
 import { formatCents } from "@/lib/money";
 
 export function generateStaticParams() {
   return ARTISTS.map((artist) => ({ slug: artist.slug }));
+}
+
+export async function generateMetadata(
+  props: PageProps<"/art-collective/[slug]">,
+): Promise<Metadata> {
+  const { slug } = await props.params;
+  const artist = getArtist(slug);
+  if (!artist) return {};
+
+  return {
+    title: artist.name,
+    description: artist.tagline || artist.bio,
+  };
 }
 
 // Product data is live from Square (via the sync), not static — always

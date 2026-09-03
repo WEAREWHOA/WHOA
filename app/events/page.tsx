@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 import EventsGrid from "@/components/events/EventsGrid";
 import { EVENTS } from "@/lib/events";
+
+export const metadata: Metadata = {
+  title: "Events",
+  description: "Find WHOA at the WHOADEGA, shows, and festivals — RSVP or grab tickets.",
+};
 
 export default function EventsPage() {
   return (

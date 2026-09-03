@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 import MusicianCard from "@/components/musiccollective/MusicianCard";
 import { MUSICIANS } from "@/lib/musicians";
+
+export const metadata: Metadata = {
+  title: "Music Collective",
+  description: "The DJs and producers behind WHOA Wednesday and the WHOADEGA speaker stack.",
+};
 
 export default function MusicCollectivePage() {
   return (

@@ -1,9 +1,23 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { MUSICIANS, getMusician } from "@/lib/musicians";
 
 export function generateStaticParams() {
   return MUSICIANS.map((musician) => ({ slug: musician.slug }));
+}
+
+export async function generateMetadata(
+  props: PageProps<"/music-collective/[slug]">,
+): Promise<Metadata> {
+  const { slug } = await props.params;
+  const musician = getMusician(slug);
+  if (!musician) return {};
+
+  return {
+    title: musician.name,
+    description: musician.tagline || musician.bio,
+  };
 }
 
 export default async function MusicianPage(props: PageProps<"/music-collective/[slug]">) {
