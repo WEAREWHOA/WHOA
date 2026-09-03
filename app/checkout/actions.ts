@@ -3,6 +3,7 @@
 import { randomUUID } from "crypto";
 import { cookies } from "next/headers";
 import { getSquare, getSquareLocationId } from "@/lib/square";
+import { getInventoryCounts } from "@/lib/catalog";
 import { getByCode } from "@/lib/store";
 import { getSupabase } from "@/lib/supabase";
 import { REF_COOKIE } from "@/lib/attribution";
@@ -55,6 +56,36 @@ export async function checkoutAction(input: {
 
   const locationId = getSquareLocationId();
   const square = getSquare();
+
+  // Re-check live stock right before charging anything — a cart can go
+  // stale between "add to cart" and "hit pay" (someone else buys the last
+  // one, or the customer just typed a number bigger than what's left,
+  // since the cart page's quantity input has no cap of its own). A
+  // variation missing from the counts map isn't tracked in Square at all,
+  // which means unlimited — only a variation Square actually tracks, at a
+  // count lower than what's in the cart, blocks the order.
+  try {
+    const counts = await getInventoryCounts(
+      input.lines.map((l) => l.variationId),
+      locationId,
+    );
+    for (const line of input.lines) {
+      const available = counts.get(line.variationId);
+      if (available !== undefined && line.quantity > available) {
+        return {
+          ok: false,
+          error:
+            available === 0
+              ? `${line.productName} (${line.variationName}) just sold out.`
+              : `Only ${available} of ${line.productName} (${line.variationName}) left — update your cart.`,
+        };
+      }
+    }
+  } catch (err) {
+    // A stock-check hiccup shouldn't block a sale outright — Square's own
+    // order creation still enforces its own inventory rules server-side.
+    console.error("Stock check failed during checkout:", err);
+  }
 
   let orderId: string;
   let totalMoney: Money;
