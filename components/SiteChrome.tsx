@@ -19,9 +19,10 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
   return (
     <>
       <Navbar />
-      {/* pb clears the fixed BottomNav on mobile so page content (and this
-          Footer) never sit underneath it. */}
-      <main className="flex flex-1 flex-col pb-16 md:pb-0">{children}</main>
+      {/* pb clears the fixed BottomNav on mobile (including its raised
+          Shop button, which pokes up above the bar) so page content and
+          the Footer never sit underneath it. */}
+      <main className="flex flex-1 flex-col pb-24 md:pb-0">{children}</main>
       <Footer />
       <BottomNav />
     </>

@@ -26,8 +26,13 @@ except the immersive home hub and `/pos`.
 
 - `components/BottomNav.tsx` — a fixed bottom tab bar, mobile only
   (`md:hidden`), safe-area-aware (`env(safe-area-inset-bottom)`) for iOS
-  home-indicator clearance. `SiteChrome.tsx` adds matching bottom padding
-  to `<main>` on mobile so page content and the footer never sit under it.
+  home-indicator clearance. **Shop** (the center tab) renders as a raised,
+  glowing circular button poking above the bar in the flame gradient
+  (`btn-flame`) — a native-app "primary action" pattern (à la a FAB),
+  rather than a plain icon+label like the other four tabs, since it's the
+  actual money-making destination. `SiteChrome.tsx` adds extra bottom
+  padding to `<main>` on mobile (enough to clear the raised button, not
+  just the bar) so page content and the footer never sit under it.
 - `components/Navbar.tsx` — the same 5 destinations as a horizontal top
   nav on desktop (`hidden md:flex`); the mobile hamburger dropdown this
   used to have is gone, since `BottomNav` now owns mobile navigation.
