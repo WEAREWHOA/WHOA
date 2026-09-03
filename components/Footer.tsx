@@ -9,6 +9,18 @@ export default function Footer() {
         </div>
 
         <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
+          <Link href="/about" className="transition-colors hover:text-foreground">
+            About
+          </Link>
+          <Link href="/contact" className="transition-colors hover:text-foreground">
+            Contact
+          </Link>
+          <Link href="/shipping-policy" className="transition-colors hover:text-foreground">
+            Shipping
+          </Link>
+          <Link href="/return-policy" className="transition-colors hover:text-foreground">
+            Returns
+          </Link>
           <Link href="/apply" className="transition-colors hover:text-foreground">
             Apply
           </Link>
@@ -18,12 +30,6 @@ export default function Footer() {
           <Link href="/ssbd-admin" className="transition-colors hover:text-foreground">
             SSBD Admin
           </Link>
-          <a
-            href="https://www.wearewhoa.art"
-            className="transition-colors hover:text-foreground"
-          >
-            wearewhoa.art
-          </a>
         </nav>
       </div>
       <div className="border-t border-border py-4 text-center text-xs text-muted">

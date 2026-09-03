@@ -10,11 +10,15 @@ const STATIC_ROUTES = [
   { path: "/art-collective", priority: 0.8 },
   { path: "/music-collective", priority: 0.8 },
   { path: "/events", priority: 0.8 },
+  { path: "/about", priority: 0.7 },
+  { path: "/contact", priority: 0.7 },
   { path: "/ambassadors", priority: 0.7 },
   { path: "/apply", priority: 0.6 },
   { path: "/games", priority: 0.6 },
   { path: "/custom-design", priority: 0.6 },
   { path: "/same-same-but-whoa", priority: 0.5 },
+  { path: "/shipping-policy", priority: 0.3 },
+  { path: "/return-policy", priority: 0.3 },
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
