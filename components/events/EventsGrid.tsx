@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import EventCard from "@/components/events/EventCard";
 import EventModal from "@/components/events/EventModal";
 import EventsCalendar from "@/components/events/EventsCalendar";
@@ -8,9 +9,20 @@ import { EVENT_CATEGORIES, type EventCategory, type EventInfo } from "@/lib/even
 
 const CLOSE_DURATION = 520;
 
+function isEventCategory(value: string | null): value is EventCategory {
+  return EVENT_CATEGORIES.some((c) => c.id === value);
+}
+
 export default function EventsGrid({ events }: { events: EventInfo[] }) {
+  // A link like /events?category=whoadega (used by the "Pop Ups & Retail"
+  // tile on /join) pre-filters the grid instead of dumping visitors on the
+  // unfiltered list.
+  const searchParams = useSearchParams();
   const [view, setView] = useState<"cards" | "calendar">("cards");
-  const [filter, setFilter] = useState<EventCategory | "all">("all");
+  const [filter, setFilter] = useState<EventCategory | "all">(() => {
+    const requested = searchParams.get("category");
+    return isEventCategory(requested) ? requested : "all";
+  });
   const [openEvent, setOpenEvent] = useState<EventInfo | null>(null);
   const [originRect, setOriginRect] = useState<DOMRect | null>(null);
   const [closing, setClosing] = useState(false);

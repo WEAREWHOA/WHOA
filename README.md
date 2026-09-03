@@ -18,6 +18,46 @@ Super Admin has granted them. See
   bio," "TikTok video 1") that all share the same discount code but track
   clicks separately, so they can see which channel actually converts.
 
+## App layout & navigation
+
+An Etsy-app-inspired shell: a persistent 5-tab nav (Events / Join / Shop /
+You / About Us) rendered two ways depending on viewport, on every page
+except the immersive home hub and `/pos`.
+
+- `components/BottomNav.tsx` — a fixed bottom tab bar, mobile only
+  (`md:hidden`), safe-area-aware (`env(safe-area-inset-bottom)`) for iOS
+  home-indicator clearance. `SiteChrome.tsx` adds matching bottom padding
+  to `<main>` on mobile so page content and the footer never sit under it.
+- `components/Navbar.tsx` — the same 5 destinations as a horizontal top
+  nav on desktop (`hidden md:flex`); the mobile hamburger dropdown this
+  used to have is gone, since `BottomNav` now owns mobile navigation.
+- **You** links to `/portal` if logged in, `/login` otherwise. That check
+  can't happen in the root layout via `cookies()` — doing so would force
+  the entire site into dynamic rendering just to highlight one nav tab, undoing
+  the static/ISR rendering `/shop` and others depend on. Instead,
+  `createSession`/`destroySession` (`lib/auth.ts`) set/clear a second,
+  non-httpOnly `whoa_logged_in` cookie alongside the real (httpOnly)
+  session cookie — carrying no meaningful value of its own, just a client-
+  readable flag. `lib/useLoggedIn.ts` reads it via `useSyncExternalStore`
+  (not `useState`+`useEffect`, which would either violate
+  `react-hooks/set-state-in-effect` or cause a hydration mismatch reading
+  `document.cookie` directly in a lazy initializer).
+- `/join` — hub page, 5 big clickable tiles (Brand Ambassador Program,
+  Events & Festivals, Art Collective, Music Collective, Pop Ups & Retail)
+  linking to the real corresponding pages. "Pop Ups & Retail" links to
+  `/events?category=whoadega`, pre-filtering to the real WHOADEGA
+  category rather than needing content of its own.
+- `/about-us` — hub consolidating Our Story, Partnerships (the real
+  charitable donations), Contact, and links to FAQ/Shipping/Return/
+  Privacy/Terms. Doesn't replace `/about` (still the full brand-story
+  page, still linked from the footer) — this is the nav-level landing
+  spot for "everything About-ish."
+- `/events` and `/shop` both read an optional `?category=` param
+  client-side via `useSearchParams()` inside a `<Suspense>` boundary
+  (same reasoning as the You-tab cookie above — keeps both pages
+  statically rendered instead of opting into dynamic rendering for one
+  query param) to support deep links like the Pop Ups & Retail tile.
+
 ## Routes
 
 **Storefront**
@@ -37,6 +77,10 @@ Super Admin has granted them. See
 **Backend Portal**
 
 - `/` — marketing landing page: hero, how-it-works, tiers, portal preview, FAQ, apply CTA
+- `/join` — "Join the Community" hub tying together the ambassador
+  program, events, the art/music collectives, and pop ups/retail
+- `/about-us` — "About Us" hub: story, mission, partnerships, contact,
+  and legal/info pages, all in one place
 - `/apply` — creates a password-protected account with Brand Ambassador
   access already granted (name, email, Instagram, password); approval is instant
 - `/login`, `/portal` — log in (or sign up with just email + password) —

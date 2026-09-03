@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 import EventsGrid from "@/components/events/EventsGrid";
@@ -25,7 +26,9 @@ export default function EventsPage() {
         </p>
       </div>
 
-      <EventsGrid events={EVENTS} />
+      <Suspense>
+        <EventsGrid events={EVENTS} />
+      </Suspense>
     </section>
   );
 }
