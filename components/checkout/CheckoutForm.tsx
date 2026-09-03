@@ -43,6 +43,12 @@ export default function CheckoutForm({ ambassadorCode }: { ambassadorCode: strin
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [line1, setLine1] = useState("");
+  const [line2, setLine2] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [zip, setZip] = useState("");
+  const [phone, setPhone] = useState("");
 
   const discountCents = ambassadorCode ? Math.round(totalCents * 0.15) : 0;
   const finalCents = totalCents - discountCents;
@@ -89,6 +95,7 @@ export default function CheckoutForm({ ambassadorCode }: { ambassadorCode: strin
       lines,
       customerName: name,
       customerEmail: email,
+      shippingAddress: { line1, line2, city, state, zip, phone },
     });
 
     if (!outcome.ok) {
@@ -169,6 +176,61 @@ export default function CheckoutForm({ ambassadorCode }: { ambassadorCode: strin
             onChange={(e) => setEmail(e.target.value)}
             className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
           />
+        </div>
+
+        <div>
+          <span className="text-sm font-medium">Shipping address</span>
+
+          <input
+            type="text"
+            required
+            placeholder="Address line 1"
+            value={line1}
+            onChange={(e) => setLine1(e.target.value)}
+            className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
+          />
+          <input
+            type="text"
+            placeholder="Apt, suite, etc. (optional)"
+            value={line2}
+            onChange={(e) => setLine2(e.target.value)}
+            className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
+          />
+          <div className="mt-2 grid grid-cols-6 gap-2">
+            <input
+              type="text"
+              required
+              placeholder="City"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              className="col-span-3 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
+            />
+            <input
+              type="text"
+              required
+              placeholder="State"
+              value={state}
+              onChange={(e) => setState(e.target.value)}
+              className="col-span-1 w-full rounded-lg border border-border-strong bg-surface-raised px-2 py-3 text-center text-sm outline-none focus:border-flame-2"
+            />
+            <input
+              type="text"
+              required
+              placeholder="ZIP"
+              value={zip}
+              onChange={(e) => setZip(e.target.value)}
+              className="col-span-2 w-full rounded-lg border border-border-strong bg-surface-raised px-2 py-3 text-center text-sm outline-none focus:border-flame-2"
+            />
+          </div>
+          <input
+            type="tel"
+            required
+            placeholder="Phone (for shipping updates)"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
+          />
+          <p className="mt-2 text-xs text-muted">Shipping within the US only, for now.</p>
         </div>
 
         <div>

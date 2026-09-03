@@ -265,6 +265,12 @@ here.
   Web Payments SDK. If an ambassador referred the sale, a row is appended to
   Supabase's `orders` table with the sale amount and 10% commission —
   this is what powers the live stats on `/portal/[code]`.
+  `checkoutAction`'s `shippingAddress` param is optional and shared with
+  `/pos`'s in-person checkout — present (and validated) from the online
+  storefront, it attaches a `SHIPMENT` fulfillment (recipient name, phone,
+  email, address) to the order so there's an actual place to send the
+  package; omitted from the POS register, where a customer standing at the
+  booth doesn't need one. US addresses only, for now.
 
 **Setup:**
 
