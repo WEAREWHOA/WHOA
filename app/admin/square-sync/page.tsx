@@ -47,6 +47,7 @@ export default function SquareSyncAdminPage() {
   const [vendorLinkState, setVendorLinkState] = useState<StepState>(IDLE);
   const [ambassadorCode, setAmbassadorCode] = useState("");
   const [vendorSlug, setVendorSlug] = useState("");
+  const [catalogDebugState, setCatalogDebugState] = useState<StepState>(IDLE);
 
   async function handleListLocations() {
     setLocationsState({ loading: true, result: null, error: null });
@@ -75,6 +76,16 @@ export default function SquareSyncAdminPage() {
       setBackfillState({ loading: false, result, error: null });
     } catch (err) {
       setBackfillState({ loading: false, result: null, error: (err as Error).message });
+    }
+  }
+
+  async function handleCatalogDebug() {
+    setCatalogDebugState({ loading: true, result: null, error: null });
+    try {
+      const result = await callAdminRoute("/api/admin/square/catalog-debug", secret);
+      setCatalogDebugState({ loading: false, result, error: null });
+    } catch (err) {
+      setCatalogDebugState({ loading: false, result: null, error: (err as Error).message });
     }
   }
 
@@ -152,6 +163,36 @@ export default function SquareSyncAdminPage() {
         {locationsState.result && (
           <pre className="mt-4 overflow-x-auto rounded-lg border border-border-strong bg-surface-raised p-4 text-xs">
             {locationsState.result}
+          </pre>
+        )}
+      </div>
+
+      <div className="card-surface mt-6 rounded-2xl p-6">
+        <h2 className="font-display text-2xl">Diagnose &ldquo;/shop shows no products&rdquo;</h2>
+        <p className="mt-2 text-sm text-muted">
+          <code className="font-mono-code">/shop</code> only lists items with Square&apos;s
+          &ldquo;Online Store&rdquo; channel checked. This dumps exactly what that check sees: the
+          active channels Square reports, which one (if any) got matched as &ldquo;Online
+          Store&rdquo;, and per-item whether it&apos;s in that channel — so a mismatch shows up
+          directly instead of just an empty page.
+        </p>
+        <button
+          type="button"
+          disabled={!canRun || catalogDebugState.loading}
+          onClick={handleCatalogDebug}
+          className="btn-flame mt-4 rounded-full px-6 py-3 text-sm font-semibold tracking-wide uppercase disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {catalogDebugState.loading ? "Checking…" : "Run diagnostic"}
+        </button>
+
+        {catalogDebugState.error && (
+          <p className="mt-4 rounded-lg border border-flame-1/40 bg-flame-1/10 px-4 py-3 text-sm text-flame-3">
+            {catalogDebugState.error}
+          </p>
+        )}
+        {catalogDebugState.result && (
+          <pre className="mt-4 overflow-x-auto rounded-lg border border-border-strong bg-surface-raised p-4 text-xs">
+            {catalogDebugState.result}
           </pre>
         )}
       </div>

@@ -416,6 +416,19 @@ Square's rate limits.
 From then on, catalog/inventory/order changes in Square flow into Supabase
 automatically.
 
+**Diagnosing "`/shop` shows no products":** `/shop` only lists items with
+Square's "Online Store" channel checked (`lib/catalog.ts`'s
+`listProducts({ onlineOnly: true })`), resolved by name via
+`channels.list()` — and fails closed (shows nothing) if that resolution
+comes back empty, rather than risk showing private/in-person-only
+inventory. On `/admin/square-sync`, the **"Diagnose /shop shows no
+products"** button (`/api/admin/square/catalog-debug`) dumps exactly what
+that check sees: Square's active channels, which one (if any) resolved as
+"Online Store", and per-item whether it's actually in that channel — so a
+broken match (e.g. no active Square Online site to resolve a channel
+against, even if an item's own "Online Store" toggle looks checked in the
+dashboard) shows up directly instead of just an empty page.
+
 ### Per-vendor matching
 
 Each Square product's vendor name lives at the end of its title (e.g. "Tie
