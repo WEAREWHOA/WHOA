@@ -94,8 +94,8 @@ export default function ReturnPolicyPage() {
             Reach us anytime at{" "}
             <a href="mailto:info@wearewhoa.com" className="text-flame font-medium hover:underline">
               info@wearewhoa.com
-            </a>
-            .
+            </a>{" "}
+            or (619) 630-9551.
           </p>
         </div>
       </div>

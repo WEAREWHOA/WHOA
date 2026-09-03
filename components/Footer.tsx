@@ -15,11 +15,20 @@ export default function Footer() {
           <Link href="/contact" className="transition-colors hover:text-foreground">
             Contact
           </Link>
+          <Link href="/faq" className="transition-colors hover:text-foreground">
+            FAQ
+          </Link>
           <Link href="/shipping-policy" className="transition-colors hover:text-foreground">
             Shipping
           </Link>
           <Link href="/return-policy" className="transition-colors hover:text-foreground">
             Returns
+          </Link>
+          <Link href="/privacy-policy" className="transition-colors hover:text-foreground">
+            Privacy
+          </Link>
+          <Link href="/terms-of-service" className="transition-colors hover:text-foreground">
+            Terms
           </Link>
           <Link href="/apply" className="transition-colors hover:text-foreground">
             Apply

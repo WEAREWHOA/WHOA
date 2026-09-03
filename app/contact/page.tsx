@@ -20,8 +20,8 @@ export default function ContactPage() {
           Get in touch
         </h1>
         <p className="mt-3 max-w-md text-sm text-white/60">
-          Pricing, wholesale orders, custom designs, or events — send us a message below, email, or
-          DM on Instagram.
+          Pricing, wholesale orders, custom designs, or events — send us a message below, call the
+          store, email, or DM on Instagram.
         </p>
       </div>
 
@@ -31,6 +31,12 @@ export default function ContactPage() {
           className="rounded-full border border-white/20 px-5 py-2.5 text-xs font-semibold tracking-wide text-white/80 uppercase transition-colors hover:border-flame-2/60 hover:text-white"
         >
           info@wearewhoa.com
+        </a>
+        <a
+          href="tel:+16196309551"
+          className="rounded-full border border-white/20 px-5 py-2.5 text-xs font-semibold tracking-wide text-white/80 uppercase transition-colors hover:border-flame-2/60 hover:text-white"
+        >
+          (619) 630-9551
         </a>
         <a
           href="https://instagram.com/wearewhoa.art"
