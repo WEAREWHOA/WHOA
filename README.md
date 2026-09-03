@@ -646,9 +646,18 @@ here rather than scraped.
   US-only — see `app/checkout/actions.ts` and `lib/types.ts`'s
   `ShippingAddress`), so those lines were updated to match actual current
   behavior instead of carrying over a stale claim.
+- `/privacy-policy`, `/terms-of-service`, and `/faq`
+  (`components/faq/FaqAccordion.tsx`) — **first drafts**, written from
+  what this app actually does (what data checkout/contact/ambassador
+  signup collect, the `whoa_ref`/`whoa_session` cookies and their 30-day
+  lifetimes, Square/Supabase as the only third parties involved, no
+  analytics on the site today) rather than generic boilerplate. They
+  assume California governing law based on WHOADEGA's real location (Ocean
+  Beach, San Diego) — **get these reviewed by a lawyer before relying on
+  them**, especially for state-specific consumer-privacy requirements
+  (e.g. CCPA) this draft doesn't attempt to fully address.
 
-Still missing, blocked on the user supplying real content: a Privacy
-Policy, Terms of Service, and FAQ page.
+All seven pages link the store's real phone number, (619) 630-9551.
 
 ## Theme
 
