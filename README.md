@@ -271,6 +271,22 @@ here.
   email, address) to the order so there's an actual place to send the
   package; omitted from the POS register, where a customer standing at the
   booth doesn't need one. US addresses only, for now.
+- `checkoutAction` re-checks live Square inventory (`getInventoryCounts()`,
+  exported from `lib/catalog.ts`) for every cart line right before
+  creating the order — the cart page's own quantity input has no cap, and
+  stock can go stale between "add to cart" and "hit pay" regardless. A
+  variation Square doesn't track inventory for at all is treated as
+  unlimited (missing from the counts map, same `null`-means-untracked
+  convention `ProductVariation.inStock` already uses); a tracked variation
+  short on stock blocks the order with a specific "only N left" or "just
+  sold out" message rather than silently overselling. Shipping is free —
+  the checkout summary states that explicitly as a line rather than
+  leaving a silent $0 gap where a stated policy is expected.
+- `CheckoutForm.tsx` treats a Square Web Payments script that never calls
+  `onLoad` (ad blocker, flaky connection) as a real error after a 10s
+  timeout, replacing the empty card field with an explanation and a
+  reload action — previously the Pay button would just stay disabled
+  forever with zero explanation.
 
 **Setup:**
 

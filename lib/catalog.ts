@@ -122,7 +122,7 @@ export async function getProduct(itemId: string): Promise<Product | undefined> {
   return products.find((p) => p.id === itemId);
 }
 
-async function getInventoryCounts(
+export async function getInventoryCounts(
   variationIds: string[],
   locationId: string,
 ): Promise<Map<string, number>> {

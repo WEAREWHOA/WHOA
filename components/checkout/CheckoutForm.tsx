@@ -38,7 +38,9 @@ export default function CheckoutForm({ ambassadorCode }: { ambassadorCode: strin
   const cardRef = useRef<SquareCard | null>(null);
 
   const [scriptReady, setScriptReady] = useState(false);
+  const [scriptFailed, setScriptFailed] = useState(false);
   const [cardReady, setCardReady] = useState(false);
+  const cardReadyRef = useRef(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -60,21 +62,42 @@ export default function CheckoutForm({ ambassadorCode }: { ambassadorCode: strin
     let cancelled = false;
 
     (async () => {
-      const payments = await window.Square!.payments(APPLICATION_ID, LOCATION_ID);
-      const card = await payments.card();
-      await card.attach("#card-container");
-      if (cancelled) {
-        await card.destroy();
-        return;
+      try {
+        const payments = await window.Square!.payments(APPLICATION_ID, LOCATION_ID);
+        const card = await payments.card();
+        await card.attach("#card-container");
+        if (cancelled) {
+          await card.destroy();
+          return;
+        }
+        cardRef.current = card;
+        setCardReady(true);
+      } catch (err) {
+        console.error("Square card field failed to initialize:", err);
+        if (!cancelled) setScriptFailed(true);
       }
-      cardRef.current = card;
-      setCardReady(true);
     })();
 
     return () => {
       cancelled = true;
     };
   }, [scriptReady]);
+
+  useEffect(() => {
+    cardReadyRef.current = cardReady;
+  }, [cardReady]);
+
+  // The Square SDK script can silently fail to ever call onLoad (an ad
+  // blocker dropping the request rather than erroring it, a slow/flaky
+  // connection) — with no fallback, the card field and Pay button would
+  // just stay disabled forever with zero explanation. This turns that
+  // into a real, visible error after a reasonable wait.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!cardReadyRef.current) setScriptFailed(true);
+    }, 10_000);
+    return () => clearTimeout(timer);
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -122,7 +145,12 @@ export default function CheckoutForm({ ambassadorCode }: { ambassadorCode: strin
 
   return (
     <>
-      <Script src={SQUARE_JS_SRC} onLoad={() => setScriptReady(true)} strategy="afterInteractive" />
+      <Script
+        src={SQUARE_JS_SRC}
+        onLoad={() => setScriptReady(true)}
+        onError={() => setScriptFailed(true)}
+        strategy="afterInteractive"
+      />
 
       <div className="card-surface mt-8 rounded-xl p-6">
         <div className="flex flex-col gap-2 text-sm">
@@ -136,8 +164,13 @@ export default function CheckoutForm({ ambassadorCode }: { ambassadorCode: strin
           ))}
         </div>
 
+        <div className="mt-4 flex justify-between text-sm">
+          <span className="text-muted">Shipping</span>
+          <span>Free</span>
+        </div>
+
         {ambassadorCode && (
-          <div className="text-flame-3 mt-4 flex justify-between text-sm">
+          <div className="text-flame-3 mt-2 flex justify-between text-sm">
             <span>Ambassador discount (15%)</span>
             <span>-{formatCents(discountCents)}</span>
           </div>
@@ -235,10 +268,25 @@ export default function CheckoutForm({ ambassadorCode }: { ambassadorCode: strin
 
         <div>
           <span className="text-sm font-medium">Card</span>
-          <div
-            id="card-container"
-            className="mt-2 rounded-lg border border-border-strong bg-surface-raised px-4 py-3"
-          />
+          {scriptFailed ? (
+            <div className="mt-2 rounded-lg border border-flame-1/40 bg-flame-1/10 px-4 py-3 text-sm text-flame-3">
+              Payment couldn&apos;t load — this can happen with an ad blocker or a flaky
+              connection. Try disabling any ad/tracker blockers and{" "}
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="underline underline-offset-2"
+              >
+                reload the page
+              </button>
+              .
+            </div>
+          ) : (
+            <div
+              id="card-container"
+              className="mt-2 rounded-lg border border-border-strong bg-surface-raised px-4 py-3"
+            />
+          )}
         </div>
 
         {error && (
