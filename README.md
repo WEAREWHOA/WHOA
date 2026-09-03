@@ -110,7 +110,7 @@ revoked by deleting its row (which logout does).
 **Setup:**
 
 1. Create a Supabase project (or use an existing one).
-2. Run all five migrations against it, **in order** — paste each into the
+2. Run all nine migrations against it, **in order** — paste each into the
    Supabase SQL Editor, or apply them with the Supabase CLI if the project
    is linked (`supabase db push`):
    - `supabase/migrations/0001_init.sql` — creates `ambassadors` and
@@ -142,7 +142,9 @@ revoked by deleting its row (which logout does).
    - `supabase/migrations/0008_custom_design.sql` — creates
      `custom_design_submissions` for the Custom Design bleach editor. See
      [Custom Design](#custom-design).
-   All eight enable RLS with no public policies — only the `service_role`
+   - `supabase/migrations/0009_contact_messages.sql` — creates
+     `contact_messages` for the `/contact` page's message form.
+   All nine enable RLS with no public policies — only the `service_role`
    key (which is what this app uses) can read or write.
 3. **Bootstrap the first Super Admin** — there's no self-serve way to grant
    `is_super_admin` (by design), so after signing up your own account at
@@ -618,6 +620,35 @@ future work once the pipeline itself is proven out.
   so — like checkout and the ambassador referral lookup — the Supabase
   call is wrapped in try/catch and fails soft with an error message
   rather than throwing.
+
+## About, Contact & Policy pages
+
+`/about`, `/contact`, `/shipping-policy`, and `/return-policy` — real
+content, not placeholder copy. The migration from the previous Square
+Online site couldn't be automated (that site isn't reachable from this
+app's environment), so this content was supplied directly and transcribed
+here rather than scraped.
+
+- `/about` — the brand story and the two charitable donations ($888 to The
+  Surfrider Foundation USA, $500 to Children International), each linking
+  out to the real organization.
+- `/contact` (`components/contact/ContactForm.tsx`, `lib/contact.ts`) — a
+  themed message form (name/email, a topic picker, a message field) over
+  `PsychedelicBackground`, plus direct email and Instagram links. No email
+  service is wired up anywhere in this app, so submissions are stored in
+  `contact_messages` (via `submitContactAction` → `submitContactMessage`)
+  for staff to read later, rather than triggering a notification — same
+  posture as Custom Design's submission pipeline.
+- `/shipping-policy` and `/return-policy` — transcribed from the
+  previous site's real policy text, with one deliberate correction: the
+  old copy referenced calculated shipping rates and international
+  shipping, neither of which is true here (checkout is free-shipping,
+  US-only — see `app/checkout/actions.ts` and `lib/types.ts`'s
+  `ShippingAddress`), so those lines were updated to match actual current
+  behavior instead of carrying over a stale claim.
+
+Still missing, blocked on the user supplying real content: a Privacy
+Policy, Terms of Service, and FAQ page.
 
 ## Theme
 
