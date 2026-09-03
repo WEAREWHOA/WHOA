@@ -71,6 +71,16 @@ export interface Product {
   variations: ProductVariation[];
 }
 
+// US-only for now — international shipping isn't supported yet.
+export interface ShippingAddress {
+  line1: string;
+  line2?: string;
+  city: string;
+  state: string;
+  zip: string;
+  phone: string;
+}
+
 export interface CartLine {
   variationId: string;
   productId: string;

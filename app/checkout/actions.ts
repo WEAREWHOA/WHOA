@@ -6,7 +6,7 @@ import { getSquare, getSquareLocationId } from "@/lib/square";
 import { getByCode } from "@/lib/store";
 import { getSupabase } from "@/lib/supabase";
 import { REF_COOKIE } from "@/lib/attribution";
-import type { CartLine } from "@/lib/types";
+import type { CartLine, ShippingAddress } from "@/lib/types";
 import type { Money } from "square";
 
 export interface CheckoutResult {
@@ -20,9 +20,26 @@ export async function checkoutAction(input: {
   lines: CartLine[];
   customerName: string;
   customerEmail: string;
+  // Omitted for the POS register's in-person sales — a customer standing
+  // at the booth doesn't need a shipment fulfillment. Always present, and
+  // validated, for the online storefront's checkout.
+  shippingAddress?: ShippingAddress;
 }): Promise<CheckoutResult> {
   if (input.lines.length === 0) {
     return { ok: false, error: "Your cart is empty." };
+  }
+
+  const shipping = input.shippingAddress;
+  if (!input.customerName.trim()) {
+    return { ok: false, error: "Name is required." };
+  }
+  if (shipping) {
+    if (!shipping.line1?.trim() || !shipping.city?.trim() || !shipping.state?.trim() || !shipping.zip?.trim()) {
+      return { ok: false, error: "A complete shipping address is required." };
+    }
+    if (!shipping.phone?.trim()) {
+      return { ok: false, error: "A phone number is required for shipping." };
+    }
   }
 
   const store = await cookies();
@@ -58,6 +75,28 @@ export async function checkoutAction(input: {
                 type: "FIXED_PERCENTAGE",
                 percentage: "15",
                 scope: "ORDER",
+              },
+            ]
+          : undefined,
+        fulfillments: shipping
+          ? [
+              {
+                type: "SHIPMENT",
+                shipmentDetails: {
+                  recipient: {
+                    displayName: input.customerName.trim(),
+                    emailAddress: input.customerEmail || undefined,
+                    phoneNumber: shipping.phone.trim(),
+                    address: {
+                      addressLine1: shipping.line1.trim(),
+                      addressLine2: shipping.line2?.trim() || undefined,
+                      locality: shipping.city.trim(),
+                      administrativeDistrictLevel1: shipping.state.trim(),
+                      postalCode: shipping.zip.trim(),
+                      country: "US",
+                    },
+                  },
+                },
               },
             ]
           : undefined,
