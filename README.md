@@ -84,6 +84,7 @@ npm run build
 | `SQUARE_WEBHOOK_SIGNATURE_KEY`  | —          | Signing secret for `/api/webhooks/square`, returned when the webhook subscription is created — see [Square ↔ Supabase sync](#square--supabase-sync) |
 | `SQUARE_ADMIN_SECRET`           | —          | Shared secret gating the one-time `/api/admin/square/*` setup endpoints — pick any long random string |
 | `NEXT_PUBLIC_SITE_URL`          | `http://localhost:3000` | Production domain, used for `metadataBase`, `sitemap.xml`, and `robots.txt` — set once the real domain is known |
+| `SQUARE_ONLINE_CHANNEL_NAME`    | `Online Store` | Name of the Square sales channel that marks an item for `/shop` — set to `WHOA` for this account (see [Square ↔ Supabase sync](#square--supabase-sync)) |
 
 ## SEO & metadata
 
@@ -418,18 +419,27 @@ Square's rate limits.
 From then on, catalog/inventory/order changes in Square flow into Supabase
 automatically.
 
-**Diagnosing "`/shop` shows no products":** `/shop` only lists items with
-Square's "Online Store" channel checked (`lib/catalog.ts`'s
+**Diagnosing "`/shop` shows no products":** `/shop` only lists items in a
+designated "show this online" Square channel (`lib/catalog.ts`'s
 `listProducts({ onlineOnly: true })`), resolved by name via
 `channels.list()` — and fails closed (shows nothing) if that resolution
 comes back empty, rather than risk showing private/in-person-only
 inventory. On `/admin/square-sync`, the **"Diagnose /shop shows no
 products"** button (`/api/admin/square/catalog-debug`) dumps exactly what
 that check sees: Square's active channels, which one (if any) resolved as
-"Online Store", and per-item whether it's actually in that channel — so a
-broken match (e.g. no active Square Online site to resolve a channel
-against, even if an item's own "Online Store" toggle looks checked in the
-dashboard) shows up directly instead of just an empty page.
+the target channel, and per-item whether it's actually in that channel —
+so a broken match shows up directly instead of just an empty page.
+
+By default this looks for a channel literally named "Online Store" (what
+Square creates automatically for sellers using Square's own hosted site).
+This account doesn't have one — it uses a custom channel named **"WHOA"**
+to mark items for the site instead, confirmed against the diagnostic's
+real output (items in that channel line up almost exactly with the ones
+that have real photos, and internal-only items like "Donation Bin" or
+"CUSTOM ORDER ANY SIZE" correctly aren't in it). Set
+`SQUARE_ONLINE_CHANNEL_NAME=WHOA` in Vercel (see the table above) so
+`getOnlineStoreChannelId()` resolves to that channel instead of coming up
+empty.
 
 ### Per-vendor matching
 
