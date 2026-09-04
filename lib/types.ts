@@ -29,6 +29,7 @@ export interface AccountPermissions {
   vendor: boolean;
   music: boolean;
   ssbd: boolean;
+  eventsAdmin: boolean;
 }
 
 // Despite the name, this now represents any backend-portal account, not
