@@ -8,7 +8,7 @@ import { setSquareCustomerId } from "@/lib/store";
 import { findOrCreateSquareCustomerId } from "@/lib/squareCustomers";
 import { createRsvpRecord } from "@/lib/eventRsvps";
 import { sendEventConfirmationEmail } from "@/lib/email";
-import { EVENTS } from "@/lib/events";
+import { EVENTS, getCurrentPriceCents } from "@/lib/events";
 import { SITE_URL } from "@/lib/site";
 
 export interface EventRsvpResult {
@@ -51,7 +51,11 @@ export async function eventRsvpAction(input: {
     return { ok: false, error: "A valid email is required." };
   }
 
-  const priceCents = event.priceCents ?? 0;
+  // Computed server-side, from today's real date, at the moment of charge —
+  // never trusted from the client. This is what makes the early-bird
+  // discount actually enforce its cutoff instead of being a display-only
+  // label a client could ignore.
+  const priceCents = getCurrentPriceCents(event);
   if (priceCents > 0 && !input.token) {
     return { ok: false, error: "Card details are required for a paid ticket." };
   }
