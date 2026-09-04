@@ -1,3 +1,4 @@
+import { SquareError } from "square";
 import { getSquare, getSquareLocationId } from "./square";
 import type { Product, ProductCategory, ProductVariation } from "./types";
 
@@ -64,9 +65,7 @@ export async function listProducts(options?: { onlineOnly?: boolean }): Promise<
 
   // searchItems paginates (100 items per page by default) — a catalog
   // with more than one page's worth of items would otherwise silently
-  // lose everything past the first page, both from /shop's listing and
-  // from getProduct() (whose .find() below would just 404 on anything
-  // that got cut off).
+  // lose everything past the first page from /shop's listing.
   let items: NonNullable<Awaited<ReturnType<typeof square.catalog.searchItems>>["items"]> = [];
   let cursor: string | undefined;
   do {
@@ -175,9 +174,91 @@ export async function listProducts(options?: { onlineOnly?: boolean }): Promise<
   return products;
 }
 
+// A dedicated single-item fetch — getProduct() used to call listProducts()
+// (the entire catalog: every page of searchItems, every image/category
+// batchGet, every variation's inventory count) just to .find() one item
+// out of it. That's fine at a handful of products; at this catalog's real
+// size (~200 items) it made every single product-detail page load pull
+// the whole store first, which is what was actually behind the ~10s page
+// loads. catalog.object.get with includeRelatedObjects resolves the
+// item's images/categories in the same request, so this only ever touches
+// the one item plus a small inventory lookup for its own variations.
 export async function getProduct(itemId: string): Promise<Product | undefined> {
-  const products = await listProducts({ onlineOnly: true });
-  return products.find((p) => p.id === itemId);
+  const square = getSquare();
+  const locationId = getSquareLocationId();
+
+  let response;
+  try {
+    response = await square.catalog.object.get({ objectId: itemId, includeRelatedObjects: true });
+  } catch (err) {
+    // A nonexistent object ID is a normal 404, not a real failure —
+    // anything else (auth, network) should still propagate and surface as
+    // a real error rather than a misleading "not found".
+    if (err instanceof SquareError && err.statusCode === 404) return undefined;
+    throw err;
+  }
+
+  const item = response.object;
+  if (!item || item.type !== "ITEM" || !item.itemData) return undefined;
+
+  // Same online-visibility rule as listProducts({ onlineOnly: true }) —
+  // an item not checked for the Online Store channel shouldn't be
+  // reachable by direct URL either.
+  const channelId = await getOnlineStoreChannelId();
+  if (!channelId || !item.itemData.channels?.includes(channelId)) return undefined;
+
+  const data = item.itemData;
+
+  const imageUrlById = new Map<string, string>();
+  const categoryNameById = new Map<string, string>();
+  for (const obj of response.relatedObjects ?? []) {
+    if (obj.type === "IMAGE" && obj.imageData?.url) {
+      imageUrlById.set(obj.id, obj.imageData.url);
+    } else if (obj.type === "CATEGORY" && obj.id && obj.categoryData?.name) {
+      categoryNameById.set(obj.id, obj.categoryData.name);
+    }
+  }
+
+  const variationIds: string[] = [];
+  for (const variation of data.variations ?? []) {
+    if (variation.type === "ITEM_VARIATION") variationIds.push(variation.id);
+  }
+  const inventoryByVariationId = await getInventoryCounts(variationIds, locationId);
+
+  const variations: ProductVariation[] = [];
+  for (const variation of data.variations ?? []) {
+    if (variation.type !== "ITEM_VARIATION" || !variation.itemVariationData) continue;
+    const varData = variation.itemVariationData;
+    variations.push({
+      id: variation.id,
+      name: varData.name ?? "Default",
+      priceCents: Number(varData.priceMoney?.amount ?? 0),
+      inStock: inventoryByVariationId.get(variation.id) ?? null,
+    });
+  }
+
+  const imageUrls: string[] = [];
+  for (const id of data.imageIds ?? []) {
+    const url = imageUrlById.get(id);
+    if (url) imageUrls.push(url);
+  }
+
+  const categories: ProductCategory[] = [];
+  for (const category of data.categories ?? []) {
+    if (!category.id) continue;
+    const name = categoryNameById.get(category.id);
+    if (name) categories.push({ id: category.id, name });
+  }
+
+  return {
+    id: item.id,
+    name: data.name ?? "Untitled",
+    description: data.descriptionPlaintext ?? data.description ?? "",
+    imageUrl: imageUrls[0] ?? null,
+    imageUrls,
+    variations,
+    categories,
+  };
 }
 
 export async function getInventoryCounts(
