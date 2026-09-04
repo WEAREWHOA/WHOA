@@ -4,8 +4,8 @@ import { randomUUID } from "crypto";
 import { cookies } from "next/headers";
 import { getSquare, getSquareLocationId } from "@/lib/square";
 import { getInventoryCounts } from "@/lib/catalog";
-import { getByCode, getByEmail, getCredentialsByEmail, createAmbassador, setSquareCustomerId } from "@/lib/store";
-import { createSession, destroySession, getSessionAmbassadorCode, hashPassword, verifyPassword } from "@/lib/auth";
+import { getByCode, setSquareCustomerId } from "@/lib/store";
+import { resolveAccount } from "@/lib/accountAuth";
 import { findOrCreateSquareCustomerId } from "@/lib/squareCustomers";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { getSupabase } from "@/lib/supabase";
@@ -22,24 +22,6 @@ export interface CheckoutResult {
   // signed in beforehand, since there's nothing new to announce.
   accountCreated?: boolean;
   signedIn?: boolean;
-}
-
-// Checkout's own account bar (see CheckoutForm) reuses the same
-// email+password accounts as /login — this just returns who, if anyone,
-// the current session belongs to, so the form can prefill name/email and
-// skip the password field for a returning, already-signed-in customer.
-export async function getCheckoutAccountAction(): Promise<{ name: string; email: string } | null> {
-  const code = await getSessionAmbassadorCode();
-  if (!code) return null;
-  const account = await getByCode(code);
-  return account ? { name: account.name, email: account.email } : null;
-}
-
-// Deliberately doesn't redirect (unlike lib/actions.ts's logoutAction) —
-// this is called from the checkout page itself and must leave the buyer
-// right where they were, cart and page intact.
-export async function checkoutSignOutAction(): Promise<void> {
-  await destroySession();
 }
 
 export async function checkoutAction(input: {
@@ -77,37 +59,15 @@ export async function checkoutAction(input: {
   // money — a wrong password or a too-short new one should stop the order
   // cold, the same way a missing shipping field does above, rather than
   // surfacing after a card's already been charged.
-  let accountCreated = false;
-  let signedIn = false;
-  const alreadySignedIn = Boolean(await getSessionAmbassadorCode());
-  if (!alreadySignedIn && input.password) {
-    const email = input.customerEmail.trim();
-    const existingAccount = email ? await getByEmail(email) : undefined;
-
-    if (existingAccount) {
-      const credentials = await getCredentialsByEmail(email);
-      const valid = credentials ? await verifyPassword(input.password, credentials.passwordHash) : false;
-      if (!valid || !credentials) {
-        return {
-          ok: false,
-          error: "An account already exists for this email — enter the correct password to sign in, or check out as a guest.",
-        };
-      }
-      await createSession(credentials.code);
-      signedIn = true;
-    } else if (input.password.length < 8) {
-      return { ok: false, error: "Password must be at least 8 characters." };
-    } else {
-      const passwordHash = await hashPassword(input.password);
-      const created = await createAmbassador({ name: input.customerName.trim(), email, passwordHash });
-      await createSession(created.code);
-      accountCreated = true;
-    }
+  const account = await resolveAccount({
+    name: input.customerName,
+    email: input.customerEmail,
+    password: input.password,
+  });
+  if (account.error) {
+    return { ok: false, error: account.error };
   }
-
-  // The account this order belongs to, if any — resolved fresh so it
-  // covers both a pre-existing session and one just created above.
-  const accountCode = await getSessionAmbassadorCode();
+  const accountCode = account.code;
 
   const store = await cookies();
   const refCode = store.get(REF_COOKIE)?.value;
@@ -292,7 +252,7 @@ export async function checkoutAction(input: {
   return {
     ok: true,
     orderId,
-    accountCreated: accountCreated || undefined,
-    signedIn: signedIn || undefined,
+    accountCreated: account.accountCreated || undefined,
+    signedIn: account.signedIn || undefined,
   };
 }

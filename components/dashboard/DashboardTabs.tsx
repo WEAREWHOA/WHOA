@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 
 const ALL_TABS = [
   { id: "customer", label: "CUSTOMER" },
+  { id: "events", label: "EVENTS" },
   { id: "ambassador", label: "BRAND AMBASSADORS" },
   { id: "vendor", label: "ARTIST/VENDOR" },
   { id: "music", label: "MUSIC" },
@@ -14,6 +15,7 @@ type TabId = (typeof ALL_TABS)[number]["id"];
 
 export default function DashboardTabs({
   customer,
+  events,
   ambassador,
   vendor,
   music,
@@ -21,16 +23,20 @@ export default function DashboardTabs({
   visible,
 }: {
   customer: ReactNode;
+  events: ReactNode;
   ambassador: ReactNode;
   vendor: ReactNode;
   music: ReactNode;
   ssbd: ReactNode;
-  // Customer is always visible — everyone with an account is a customer.
-  // The rest are unlocked per-account by a Super Admin.
+  // Customer and Events are always visible — everyone with an account is a
+  // customer and can RSVP/buy tickets. The rest are unlocked per-account by
+  // a Super Admin.
   visible: { ambassador: boolean; vendor: boolean; music: boolean; ssbd: boolean };
 }) {
-  const content: Record<TabId, ReactNode> = { customer, ambassador, vendor, music, ssbd };
-  const tabs = ALL_TABS.filter((tab) => tab.id === "customer" || visible[tab.id]);
+  const content: Record<TabId, ReactNode> = { customer, events, ambassador, vendor, music, ssbd };
+  const tabs = ALL_TABS.filter(
+    (tab) => tab.id === "customer" || tab.id === "events" || visible[tab.id as keyof typeof visible],
+  );
 
   const [active, setActive] = useState<TabId>("customer");
 

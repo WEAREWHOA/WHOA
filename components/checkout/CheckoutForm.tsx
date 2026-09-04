@@ -5,7 +5,8 @@ import Script from "next/script";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/components/cart/CartProvider";
 import { formatCents } from "@/lib/money";
-import { checkoutAction, checkoutSignOutAction, getCheckoutAccountAction } from "@/app/checkout/actions";
+import { checkoutAction } from "@/app/checkout/actions";
+import { accountSignOutAction, getAccountAction } from "@/app/account/actions";
 
 interface SquareCard {
   attach: (selector: string) => Promise<void>;
@@ -108,7 +109,7 @@ export default function CheckoutForm({ ambassadorCode }: { ambassadorCode: strin
   // they're already in.
   useEffect(() => {
     let cancelled = false;
-    getCheckoutAccountAction()
+    getAccountAction()
       .then((result) => {
         if (cancelled) return;
         setAccount(result);
@@ -134,7 +135,7 @@ export default function CheckoutForm({ ambassadorCode }: { ambassadorCode: strin
   async function handleSignOut() {
     setSigningOut(true);
     try {
-      await checkoutSignOutAction();
+      await accountSignOutAction();
     } catch (err) {
       console.error("Failed to sign out during checkout:", err);
     }

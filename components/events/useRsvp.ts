@@ -56,6 +56,19 @@ export function toggleRsvp(id: string) {
   notify();
 }
 
+// Unlike toggleRsvp, never removes — used after a real backend RSVP/ticket
+// purchase succeeds, where "already marked" must stay marked rather than
+// flip off.
+export function markRsvped(id: string) {
+  hydrateFromStorage();
+  if (rsvped.has(id)) return;
+  const next = new Set(rsvped);
+  next.add(id);
+  rsvped = next;
+  persist();
+  notify();
+}
+
 export function useRsvpSet() {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }

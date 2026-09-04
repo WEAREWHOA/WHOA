@@ -34,7 +34,18 @@ function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] as string);
 }
 
-function buildHtml(input: {
+// Shared card shell every transactional email uses — order confirmations
+// and event RSVP/ticket confirmations alike.
+function wrapEmail(bodyHtml: string): string {
+  return `
+    <div style="background:#0a0806;padding:32px 16px;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;">
+      <div style="max-width:480px;margin:0 auto;background:#14100c;border:1px solid #2a231b;border-radius:16px;padding:32px;">
+        ${bodyHtml}
+      </div>
+    </div>`;
+}
+
+function buildOrderHtml(input: {
   customerName: string;
   orderId: string;
   lines: OrderConfirmationLine[];
@@ -50,9 +61,7 @@ function buildHtml(input: {
     )
     .join("");
 
-  return `
-    <div style="background:#0a0806;padding:32px 16px;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;">
-      <div style="max-width:480px;margin:0 auto;background:#14100c;border:1px solid #2a231b;border-radius:16px;padding:32px;">
+  return wrapEmail(`
         <p style="margin:0;color:#ff7a00;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;font-weight:600;">Order confirmed</p>
         <h1 style="margin:8px 0 0;color:#f7f0e6;font-size:28px;">Thanks, ${escapeHtml(input.customerName)}</h1>
         <p style="margin:12px 0 24px;color:#b8ada0;font-size:14px;line-height:1.5;">
@@ -70,9 +79,39 @@ function buildHtml(input: {
         <p style="margin:24px 0 0;color:#6b6157;font-size:12px;font-family:monospace;">Order ${escapeHtml(input.orderId)}</p>
         <p style="margin:24px 0 0;color:#b8ada0;font-size:13px;line-height:1.5;">
           Questions about your order? Just reply to this email.
+        </p>`);
+}
+
+function buildEventHtml(input: {
+  name: string;
+  eventTitle: string;
+  eventDateLabel: string;
+  eventVenue: string;
+  priceCents: number;
+}): string {
+  const isTicket = input.priceCents > 0;
+  return wrapEmail(`
+        <p style="margin:0;color:#ff7a00;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;font-weight:600;">${isTicket ? "Ticket confirmed" : "RSVP confirmed"}</p>
+        <h1 style="margin:8px 0 0;color:#f7f0e6;font-size:28px;">You&#39;re in, ${escapeHtml(input.name)}</h1>
+        <p style="margin:12px 0 24px;color:#b8ada0;font-size:14px;line-height:1.5;">
+          ${isTicket ? "Your ticket is confirmed for" : "You're RSVP'd for"}:
         </p>
-      </div>
-    </div>`;
+        <h2 style="margin:0;color:#f7f0e6;font-size:20px;">${escapeHtml(input.eventTitle)}</h2>
+        <p style="margin:6px 0 0;color:#b8ada0;font-size:14px;">${escapeHtml(input.eventDateLabel)}</p>
+        <p style="margin:2px 0 0;color:#b8ada0;font-size:14px;">${escapeHtml(input.eventVenue)}</p>
+        ${
+          isTicket
+            ? `<table style="width:100%;border-collapse:collapse;border-top:1px solid #2a231b;margin-top:20px;">
+                <tr>
+                  <td style="padding:12px 0 0;color:#f7f0e6;font-size:15px;font-weight:600;">Total paid</td>
+                  <td style="padding:12px 0 0;color:#f7f0e6;font-size:15px;font-weight:600;text-align:right;">${formatCents(input.priceCents)}</td>
+                </tr>
+              </table>`
+            : ""
+        }
+        <p style="margin:24px 0 0;color:#b8ada0;font-size:13px;line-height:1.5;">
+          See you there — questions? Just reply to this email.
+        </p>`);
 }
 
 // Best-effort by design — callers should catch and log rather than let an
@@ -93,10 +132,37 @@ export async function sendOrderConfirmationEmail(input: {
     to: input.to,
     replyTo: REPLY_TO,
     subject: `Your WHOA order is confirmed`,
-    html: buildHtml(input),
+    html: buildOrderHtml(input),
   });
 
   if (error) {
     throw new Error(`Resend failed to send order confirmation: ${error.message}`);
+  }
+}
+
+// Same best-effort posture as sendOrderConfirmationEmail — callers catch
+// and log rather than let an email hiccup fail an already-successful
+// RSVP or ticket purchase.
+export async function sendEventConfirmationEmail(input: {
+  to: string;
+  name: string;
+  eventTitle: string;
+  eventDateLabel: string;
+  eventVenue: string;
+  priceCents: number;
+}): Promise<void> {
+  const resend = getResend();
+  const isTicket = input.priceCents > 0;
+
+  const { error } = await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: input.to,
+    replyTo: REPLY_TO,
+    subject: isTicket ? `Your ticket for ${input.eventTitle} is confirmed` : `You're RSVP'd for ${input.eventTitle}`,
+    html: buildEventHtml(input),
+  });
+
+  if (error) {
+    throw new Error(`Resend failed to send event confirmation: ${error.message}`);
   }
 }

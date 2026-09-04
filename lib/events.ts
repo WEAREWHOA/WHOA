@@ -23,8 +23,16 @@ export interface EventInfo {
   tags?: string[];
   accent: string;
   gradient: [string, string, string];
+  // Present only for events with their own external ticketing (e.g. a
+  // festival WHOA just has a presence at) — those keep linking out rather
+  // than being sold through this app's checkout. Never set alongside
+  // priceCents.
   href?: string;
   rotate: number;
+  // In cents. Omitted or 0 means a free RSVP; set means "Buy Ticket"
+  // charges this amount through the same in-app Square checkout as the
+  // shop. Never set alongside href.
+  priceCents?: number;
 }
 
 export const EVENTS: EventInfo[] = [

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import type { EventInfo } from "@/lib/events";
 import { toggleRsvp, useRsvpSet } from "@/components/events/useRsvp";
+import { formatCents } from "@/lib/money";
 
 type Rect = { left: number; top: number; width: number; height: number };
 
@@ -26,17 +27,21 @@ export default function EventModal({
   originRect,
   closing,
   onClose,
+  onCheckout,
 }: {
   event: EventInfo;
   originRect: DOMRect;
   closing: boolean;
   onClose: () => void;
+  onCheckout?: (event: EventInfo) => void;
 }) {
   const [pos, setPos] = useState<Rect>(() => rectFromDomRect(originRect));
   const [flipped, setFlipped] = useState(false);
   const [mounted, setMounted] = useState(false);
   const rsvped = useRsvpSet();
   const isIn = rsvped.has(event.id);
+  const hasExternalTickets = Boolean(event.href);
+  const priceCents = event.priceCents ?? 0;
   const closeBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -192,12 +197,18 @@ export default function EventModal({
             <div className="mt-auto flex flex-col gap-3 pt-6">
               <button
                 type="button"
-                onClick={() => toggleRsvp(event.id)}
+                onClick={() => (hasExternalTickets ? toggleRsvp(event.id) : onCheckout?.(event))}
                 className={`w-full rounded-full px-6 py-3 text-sm font-semibold tracking-wide uppercase transition-colors ${
                   isIn ? "bg-white text-black" : "btn-flame"
                 }`}
               >
-                {isIn ? "You're in ✓" : "RSVP"}
+                {isIn
+                  ? "You're in ✓"
+                  : hasExternalTickets
+                    ? "RSVP"
+                    : priceCents > 0
+                      ? `Buy Ticket ${formatCents(priceCents)}`
+                      : "Free RSVP"}
               </button>
               {event.href && (
                 <a
