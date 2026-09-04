@@ -29,6 +29,12 @@ const PERMISSION_ROWS = [
     label: "SSBD",
     hint: "Same Same But Different crew submissions.",
   },
+  {
+    field: "perm_events_admin",
+    permission: "eventsAdmin",
+    label: "Events Admin",
+    hint: "EVENTS ADMIN tab — KPIs and guest lists for every event. Super Admins already have this.",
+  },
 ] as const;
 
 export default async function SuperAdminAccountPage(props: PageProps<"/super-admin/[code]">) {

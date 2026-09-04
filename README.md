@@ -161,7 +161,7 @@ revoked by deleting its row (which logout does).
 **Setup:**
 
 1. Create a Supabase project (or use an existing one).
-2. Run all ten migrations against it, **in order** — paste each into the
+2. Run all twelve migrations against it, **in order** — paste each into the
    Supabase SQL Editor, or apply them with the Supabase CLI if the project
    is linked (`supabase db push`):
    - `supabase/migrations/0001_init.sql` — creates `ambassadors` and
@@ -197,7 +197,12 @@ revoked by deleting its row (which logout does).
      `contact_messages` for the `/contact` page's message form.
    - `supabase/migrations/0010_event_rsvps.sql` — creates `event_rsvps` for
      event RSVPs and ticket purchases. See [Events](#events).
-   All ten enable RLS with no public policies — only the `service_role`
+   - `supabase/migrations/0011_events_admin_permission.sql` — adds
+     `perm_events_admin` to `ambassadors`, gating the EVENTS ADMIN tab.
+   - `supabase/migrations/0012_event_rsvp_artist.sql` — adds
+     `selected_artist` to `event_rsvps`, the optional "pick an artist"
+     answer on the RSVP/ticket form.
+   All twelve enable RLS with no public policies — only the `service_role`
    key (which is what this app uses) can read or write.
 3. **Bootstrap the first Super Admin** — there's no self-serve way to grant
    `is_super_admin` (by design), so after signing up your own account at
@@ -244,6 +249,11 @@ readability.
   for music-collective artists yet, same honesty-over-fake-data posture as
   everywhere else in this app.
 - **SSBD** (`perm_ssbd`) — Same Same But Different crew submissions tab.
+- **Events Admin** (`perm_events_admin`) — the EVENTS ADMIN tab: KPIs
+  (total guests, revenue, events with signups, most-requested artists) and
+  a per-event guest list across **every** event, not just the account's
+  own. Super Admins always have this, without needing the permission
+  toggled on. See [Events](#events) below.
 
 `components/dashboard/DashboardTabs.tsx` only renders the tab buttons a
 given account actually has permission for; `app/portal/[code]/page.tsx`
@@ -721,10 +731,21 @@ toggle:
   mutually exclusive per event.
 - **`components/events/EventCheckoutModal.tsx`** is the actual flow,
   opened from either `EventCard` or `EventModal`'s button — name, email,
-  optional phone, and the same inline "sign in or create an account with
-  this email" bar as checkout (see below). A paid event additionally loads
-  the Square Web Payments SDK card field, exactly like `CheckoutForm.tsx`;
-  a free RSVP never loads it at all.
+  optional phone, an optional "pick an artist" dropdown (see below), and
+  the same inline "sign in or create an account with this email" bar as
+  checkout (see below). A paid event additionally loads the Square Web
+  Payments SDK card field, exactly like `CheckoutForm.tsx`; a free RSVP
+  never loads it at all. On success it shows a QR code (generated
+  server-side by `eventRsvpAction`) linking to `/checkin/[rsvpId]` — a
+  public, read-only ticket page a guest can present at the door.
+- **Pick an artist** — when an event has a `lineup` (see `EventInfo.lineup`
+  in `lib/events.ts`), the form shows an optional "Pick an artist" `<select>`
+  populated straight from that lineup, defaulting to "No preference." The
+  choice is validated server-side against the event's own lineup (so a
+  tampered request can't inject an arbitrary string) and stored on the RSVP
+  row as `selected_artist`
+  (`supabase/migrations/0012_event_rsvp_artist.sql`) — it's purely a
+  reporting signal, not a seating or access restriction.
 - **`app/events/actions.ts`**'s `eventRsvpAction` does the work: resolves
   the account, and for a paid event creates an ad-hoc Square order (a
   `name` + `basePriceMoney` line item — events aren't Square catalog
@@ -737,6 +758,23 @@ toggle:
   always visible like Customer) reads that table back via
   `lib/eventRsvps.ts`'s `getEventHistoryForAccount`, joined against
   `EVENTS` and split into upcoming/past by date.
+- **The portal's EVENTS ADMIN tab** (`components/dashboard/tabs/EventsAdminTab.tsx`,
+  gated by `perm_events_admin` or Super Admin — see
+  [Backend Portal & permissions](#backend-portal--permissions)) is the
+  Eventbrite-style organizer view: KPI tiles (total guests, total revenue,
+  events with signups, most-requested artists across every event), then
+  every event — upcoming first, then past — as a collapsible guest list
+  (name, email, phone, picked artist, RSVP vs. ticket + price paid, and
+  when). `lib/eventsAdmin.ts`'s `getEventsAdminOverview()` builds this from
+  `lib/eventRsvps.ts`'s unscoped `getAllRsvps()` joined against every
+  `EVENTS` entry (including ones with zero signups, so a dead event is
+  visible as "0 guests" rather than missing). Unlike the customer-facing
+  Events tab, this function lets a real fetch failure throw instead of
+  degrading to an empty result — showing "0 guests" to staff on a broken
+  connection would be misleading, not a safe default. `app/portal/[code]/page.tsx`
+  only calls it when the logged-in account is actually authorized, so the
+  guest list/revenue data is never fetched (let alone rendered) for anyone
+  who shouldn't see it.
 - **Shared account bar**: the inline sign-in/sign-up logic checkout and
   event RSVPs both use lives in `lib/accountAuth.ts` (`resolveAccount`) and
   `app/account/actions.ts` (`getAccountAction`/`accountSignOutAction`) —

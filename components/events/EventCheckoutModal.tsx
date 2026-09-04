@@ -50,6 +50,7 @@ export default function EventCheckoutModal({ event, onClose }: { event: EventInf
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [selectedArtist, setSelectedArtist] = useState("");
   const [password, setPassword] = useState("");
   const [account, setAccount] = useState<{ name: string; email: string } | null>(null);
   const [accountChecked, setAccountChecked] = useState(false);
@@ -173,6 +174,7 @@ export default function EventCheckoutModal({ event, onClose }: { event: EventInf
       name,
       email,
       phone: phone || undefined,
+      selectedArtist: selectedArtist || undefined,
       password: account ? undefined : password || undefined,
       token,
     });
@@ -283,6 +285,27 @@ export default function EventCheckoutModal({ event, onClose }: { event: EventInf
                   className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
                 />
               </div>
+
+              {event.lineup && event.lineup.length > 0 && (
+                <div>
+                  <label htmlFor="rsvp-artist" className="text-sm font-medium">
+                    Pick an artist <span className="font-normal text-muted">(optional)</span>
+                  </label>
+                  <select
+                    id="rsvp-artist"
+                    value={selectedArtist}
+                    onChange={(e) => setSelectedArtist(e.target.value)}
+                    className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
+                  >
+                    <option value="">No preference</option>
+                    {event.lineup.map((artist) => (
+                      <option key={artist} value={artist}>
+                        {artist}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {account ? (
                 <div className="flex items-center justify-between rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm">

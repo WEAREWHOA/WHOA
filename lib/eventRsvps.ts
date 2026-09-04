@@ -12,6 +12,9 @@ export interface EventRsvpRecord {
   priceCents: number;
   squareOrderId: string | null;
   squarePaymentId: string | null;
+  // Which lineup artist the guest said they're there for — optional, picked
+  // from event.lineup on the RSVP/ticket form. Null means no preference.
+  selectedArtist: string | null;
   createdAt: string;
 }
 
@@ -25,6 +28,7 @@ interface EventRsvpRow {
   price_cents: number;
   square_order_id: string | null;
   square_payment_id: string | null;
+  selected_artist: string | null;
   created_at: string;
 }
 
@@ -39,6 +43,7 @@ function mapRow(row: EventRsvpRow): EventRsvpRecord {
     priceCents: row.price_cents,
     squareOrderId: row.square_order_id,
     squarePaymentId: row.square_payment_id,
+    selectedArtist: row.selected_artist,
     createdAt: row.created_at,
   };
 }
@@ -54,6 +59,7 @@ export async function createRsvpRecord(input: {
   priceCents: number;
   squareOrderId?: string | null;
   squarePaymentId?: string | null;
+  selectedArtist?: string | null;
 }): Promise<string> {
   const id = `rsvp_${randomUUID()}`;
   const { error } = await getSupabase()
@@ -68,6 +74,7 @@ export async function createRsvpRecord(input: {
       price_cents: input.priceCents,
       square_order_id: input.squareOrderId ?? null,
       square_payment_id: input.squarePaymentId ?? null,
+      selected_artist: input.selectedArtist ?? null,
     });
 
   if (error) {
@@ -105,6 +112,22 @@ export async function getRsvpsForAccount(accountCode: string): Promise<EventRsvp
 
   if (error) {
     throw new Error(`Failed to load RSVPs: ${error.message}`);
+  }
+
+  return (data ?? []).map((row) => mapRow(row as EventRsvpRow));
+}
+
+// Every RSVP/ticket on file, across every event — powers the EVENTS ADMIN
+// tab's KPIs and guest lists. Unlike getRsvpsForAccount this is unscoped, so
+// callers must already have confirmed the caller is allowed to see it.
+export async function getAllRsvps(): Promise<EventRsvpRecord[]> {
+  const { data, error } = await getSupabase()
+    .from("event_rsvps")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to load all RSVPs: ${error.message}`);
   }
 
   return (data ?? []).map((row) => mapRow(row as EventRsvpRow));

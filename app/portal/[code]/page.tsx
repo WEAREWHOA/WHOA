@@ -7,6 +7,7 @@ import { getArtist } from "@/lib/artists";
 import { getVendorProducts, getVendorStats } from "@/lib/vendor";
 import { getCustomerHistory } from "@/lib/squareCustomers";
 import { getEventHistoryForAccount } from "@/lib/eventRsvps";
+import { getEventsAdminOverview } from "@/lib/eventsAdmin";
 import LogoutButton from "@/components/portal/LogoutButton";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import AmbassadorTab from "@/components/dashboard/tabs/AmbassadorTab";
@@ -15,6 +16,7 @@ import EventsTab from "@/components/dashboard/tabs/EventsTab";
 import VendorTab from "@/components/dashboard/tabs/VendorTab";
 import MusicTab from "@/components/dashboard/tabs/MusicTab";
 import SsbdTab from "@/components/dashboard/tabs/SsbdTab";
+import EventsAdminTab from "@/components/dashboard/tabs/EventsAdminTab";
 import { getTier } from "@/lib/tiers";
 
 export default async function PortalDashboardPage(props: PageProps<"/portal/[code]">) {
@@ -42,6 +44,14 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
 
   const customerHistory = await getCustomerHistory(account);
   const eventHistory = await getEventHistoryForAccount(account.code);
+
+  // Gated server-side, not just by hiding the tab button: this tab's content
+  // is pre-rendered JSX handed to a client component, so an unauthorized
+  // viewer must never have this fetched in the first place — hiding it
+  // client-side would still leak every guest's name/email/phone into the
+  // page's RSC payload.
+  const canAccessEventsAdmin = account.isSuperAdmin || account.permissions.eventsAdmin;
+  const eventsAdminOverview = canAccessEventsAdmin ? await getEventsAdminOverview() : undefined;
 
   const isNew = searchParams?.new === "1";
   const payoutSaved = searchParams?.saved === "1";
@@ -105,11 +115,13 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
         }
         music={<MusicTab />}
         ssbd={<SsbdTab />}
+        eventsAdmin={eventsAdminOverview ? <EventsAdminTab data={eventsAdminOverview} /> : null}
         visible={{
           ambassador: account.permissions.ambassador,
           vendor: showVendor,
           music: account.permissions.music,
           ssbd: account.permissions.ssbd,
+          eventsAdmin: canAccessEventsAdmin,
         }}
       />
     </section>

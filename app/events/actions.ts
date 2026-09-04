@@ -32,6 +32,10 @@ export async function eventRsvpAction(input: {
   // Square card token from the Web Payments SDK — required only for a
   // paid event (event.priceCents > 0), same flow as shop checkout.
   token?: string;
+  // Which event.lineup artist the guest is there for — optional, shown only
+  // when the event has a lineup. Validated against the event's own lineup
+  // so a tampered request can't inject an arbitrary string into reports.
+  selectedArtist?: string;
 }): Promise<EventRsvpResult> {
   const event = EVENTS.find((e) => e.id === input.eventId);
   if (!event) {
@@ -51,6 +55,9 @@ export async function eventRsvpAction(input: {
   if (priceCents > 0 && !input.token) {
     return { ok: false, error: "Card details are required for a paid ticket." };
   }
+
+  const selectedArtist =
+    input.selectedArtist && event.lineup?.includes(input.selectedArtist) ? input.selectedArtist : null;
 
   // Sign the buyer in or create their account before charging anything —
   // same posture as checkout: a wrong password should stop this cold
@@ -135,6 +142,7 @@ export async function eventRsvpAction(input: {
       priceCents,
       squareOrderId,
       squarePaymentId,
+      selectedArtist,
     });
   } catch (err) {
     console.error("Failed to save RSVP/ticket record:", err);
