@@ -737,10 +737,11 @@ toggle:
   price after it's expired.
   `EventInfo.href`
   is the escape hatch for an event with its own real ticketing elsewhere
-  (e.g. a festival WHOA just has a presence at) — those keep the original
-  local-only "interested" toggle (`components/events/useRsvp.ts`) plus an
-  outbound link, and are never charged through this app. The two are
-  mutually exclusive per event.
+  (e.g. a festival WHOA just has a presence at, or Same Same But
+  Different's own `ssbdfest.com`) — those show a single outbound **Buy
+  Tickets** link instead of the in-app RSVP/checkout button, never both,
+  and are never charged through this app. `priceCents`/
+  `earlyBirdPriceCents` and `href` are mutually exclusive per event.
 - **`components/events/EventCheckoutModal.tsx`** is the actual flow,
   opened from either `EventCard` or `EventModal`'s button — name, email,
   optional phone, an optional "pick an artist" dropdown (see below), and

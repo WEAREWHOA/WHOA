@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { getCurrentPriceCents, type EventInfo } from "@/lib/events";
-import { toggleRsvp, useRsvpSet } from "@/components/events/useRsvp";
+import { useRsvpSet } from "@/components/events/useRsvp";
 import { formatCents } from "@/lib/money";
 
 type Rect = { left: number; top: number; width: number; height: number };
@@ -40,7 +40,6 @@ export default function EventModal({
   const [mounted, setMounted] = useState(false);
   const rsvped = useRsvpSet();
   const isIn = rsvped.has(event.id);
-  const hasExternalTickets = Boolean(event.href);
   const priceCents = getCurrentPriceCents(event);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -194,32 +193,30 @@ export default function EventModal({
               </div>
             )}
 
+            {/* An event with its own external ticketing gets exactly one
+                CTA — an outbound Buy Tickets link — never alongside an
+                in-app RSVP button. Real RSVP/ticket checkout is only for
+                events we run. */}
             <div className="mt-auto flex flex-col gap-3 pt-6">
-              <button
-                type="button"
-                onClick={() => (hasExternalTickets ? toggleRsvp(event.id) : onCheckout?.(event))}
-                className={`w-full rounded-full px-6 py-3 text-sm font-semibold tracking-wide uppercase transition-colors ${
-                  isIn ? "bg-white text-black" : "btn-flame"
-                }`}
-              >
-                {isIn
-                  ? "You're in ✓"
-                  : hasExternalTickets
-                    ? "RSVP"
-                    : priceCents > 0
-                      ? `Buy Ticket ${formatCents(priceCents)}`
-                      : "Free RSVP"}
-              </button>
-              {event.href && (
+              {event.href ? (
                 <a
                   href={event.href}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full rounded-full border-2 px-6 py-3 text-center text-sm font-semibold tracking-wide uppercase transition-colors hover:bg-white/10"
-                  style={{ borderColor: event.accent, color: event.accent }}
+                  className="w-full rounded-full px-6 py-3 text-center text-sm font-semibold tracking-wide uppercase transition-colors btn-flame"
                 >
                   Buy Tickets
                 </a>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onCheckout?.(event)}
+                  className={`w-full rounded-full px-6 py-3 text-sm font-semibold tracking-wide uppercase transition-colors ${
+                    isIn ? "bg-white text-black" : "btn-flame"
+                  }`}
+                >
+                  {isIn ? "You're in ✓" : priceCents > 0 ? `Buy Ticket ${formatCents(priceCents)}` : "Free RSVP"}
+                </button>
               )}
             </div>
           </div>

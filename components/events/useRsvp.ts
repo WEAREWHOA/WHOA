@@ -46,19 +46,8 @@ function getServerSnapshot() {
   return EMPTY_SET;
 }
 
-export function toggleRsvp(id: string) {
-  hydrateFromStorage();
-  const next = new Set(rsvped);
-  if (next.has(id)) next.delete(id);
-  else next.add(id);
-  rsvped = next;
-  persist();
-  notify();
-}
-
-// Unlike toggleRsvp, never removes — used after a real backend RSVP/ticket
-// purchase succeeds, where "already marked" must stay marked rather than
-// flip off.
+// Used after a real backend RSVP/ticket purchase succeeds, where "already
+// marked" must stay marked rather than flip off — this never removes.
 export function markRsvped(id: string) {
   hydrateFromStorage();
   if (rsvped.has(id)) return;

@@ -152,6 +152,7 @@ export const EVENTS: EventInfo[] = [
     ],
     accent: "#baff29",
     gradient: ["#0d3b3b", "#1a8a6b", "#baff29"],
+    href: "https://www.ssbdfest.com/",
     rotate: 2,
   },
   {
