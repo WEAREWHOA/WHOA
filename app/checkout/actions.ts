@@ -4,7 +4,8 @@ import { randomUUID } from "crypto";
 import { cookies } from "next/headers";
 import { getSquare, getSquareLocationId } from "@/lib/square";
 import { getInventoryCounts } from "@/lib/catalog";
-import { getByCode } from "@/lib/store";
+import { getByCode, getByEmail, getCredentialsByEmail, createAmbassador } from "@/lib/store";
+import { createSession, destroySession, getSessionAmbassadorCode, hashPassword, verifyPassword } from "@/lib/auth";
 import { getSupabase } from "@/lib/supabase";
 import { REF_COOKIE } from "@/lib/attribution";
 import type { CartLine, ShippingAddress } from "@/lib/types";
@@ -14,6 +15,29 @@ export interface CheckoutResult {
   ok: boolean;
   error?: string;
   orderId?: string;
+  // Lets the confirmation UI say "you're signed in" without a second
+  // round trip — omitted (not just false) when the buyer was already
+  // signed in beforehand, since there's nothing new to announce.
+  accountCreated?: boolean;
+  signedIn?: boolean;
+}
+
+// Checkout's own account bar (see CheckoutForm) reuses the same
+// email+password accounts as /login — this just returns who, if anyone,
+// the current session belongs to, so the form can prefill name/email and
+// skip the password field for a returning, already-signed-in customer.
+export async function getCheckoutAccountAction(): Promise<{ name: string; email: string } | null> {
+  const code = await getSessionAmbassadorCode();
+  if (!code) return null;
+  const account = await getByCode(code);
+  return account ? { name: account.name, email: account.email } : null;
+}
+
+// Deliberately doesn't redirect (unlike lib/actions.ts's logoutAction) —
+// this is called from the checkout page itself and must leave the buyer
+// right where they were, cart and page intact.
+export async function checkoutSignOutAction(): Promise<void> {
+  await destroySession();
 }
 
 export async function checkoutAction(input: {
@@ -21,6 +45,10 @@ export async function checkoutAction(input: {
   lines: CartLine[];
   customerName: string;
   customerEmail: string;
+  // Only ever sent from the online storefront's own account bar, and only
+  // when the buyer isn't already signed in — never sent from the POS
+  // register. Blank/omitted means "just check out as a guest."
+  password?: string;
   // Omitted for the POS register's in-person sales — a customer standing
   // at the booth doesn't need a shipment fulfillment. Always present, and
   // validated, for the online storefront's checkout.
@@ -40,6 +68,38 @@ export async function checkoutAction(input: {
     }
     if (!shipping.phone?.trim()) {
       return { ok: false, error: "A phone number is required for shipping." };
+    }
+  }
+
+  // Sign the buyer in or create their account before touching stock or
+  // money — a wrong password or a too-short new one should stop the order
+  // cold, the same way a missing shipping field does above, rather than
+  // surfacing after a card's already been charged.
+  let accountCreated = false;
+  let signedIn = false;
+  const alreadySignedIn = Boolean(await getSessionAmbassadorCode());
+  if (!alreadySignedIn && input.password) {
+    const email = input.customerEmail.trim();
+    const existingAccount = email ? await getByEmail(email) : undefined;
+
+    if (existingAccount) {
+      const credentials = await getCredentialsByEmail(email);
+      const valid = credentials ? await verifyPassword(input.password, credentials.passwordHash) : false;
+      if (!valid || !credentials) {
+        return {
+          ok: false,
+          error: "An account already exists for this email — enter the correct password to sign in, or check out as a guest.",
+        };
+      }
+      await createSession(credentials.code);
+      signedIn = true;
+    } else if (input.password.length < 8) {
+      return { ok: false, error: "Password must be at least 8 characters." };
+    } else {
+      const passwordHash = await hashPassword(input.password);
+      const created = await createAmbassador({ name: input.customerName.trim(), email, passwordHash });
+      await createSession(created.code);
+      accountCreated = true;
     }
   }
 
@@ -182,5 +242,10 @@ export async function checkoutAction(input: {
     }
   }
 
-  return { ok: true, orderId };
+  return {
+    ok: true,
+    orderId,
+    accountCreated: accountCreated || undefined,
+    signedIn: signedIn || undefined,
+  };
 }
