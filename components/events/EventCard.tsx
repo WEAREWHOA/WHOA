@@ -2,7 +2,7 @@
 
 import { useRef, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
 import { getCurrentPriceCents, type EventInfo } from "@/lib/events";
-import { toggleRsvp, useRsvpSet } from "@/components/events/useRsvp";
+import { useRsvpSet } from "@/components/events/useRsvp";
 import { formatCents } from "@/lib/money";
 
 export default function EventCard({
@@ -19,10 +19,6 @@ export default function EventCard({
   const ref = useRef<HTMLDivElement>(null);
   const rsvped = useRsvpSet();
   const isIn = rsvped.has(event.id);
-  // Events with their own external ticketing (a festival WHOA just shows
-  // up at) keep the old local-only "interested" toggle + outbound link —
-  // real RSVP/ticket checkout is only for events we actually run.
-  const hasExternalTickets = Boolean(event.href);
   const priceCents = getCurrentPriceCents(event);
 
   function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
@@ -133,32 +129,32 @@ export default function EventCard({
       </div>
 
       <div className="event-card-rsvp relative z-20 bg-black/70 p-4 backdrop-blur-sm">
-        <button
-          type="button"
-          onClick={(e: MouseEvent<HTMLButtonElement>) => {
-            e.stopPropagation();
-            if (hasExternalTickets) {
-              toggleRsvp(event.id);
-            } else {
-              onCheckout?.(event);
-            }
-          }}
-          className={`w-full scale-100 rounded-full px-4 py-3 text-sm font-semibold tracking-wide uppercase transition-[scale,background-color,color] duration-300 group-hover:scale-[1.04] ${
-            isIn ? "bg-white text-black" : "btn-flame"
-          }`}
-        >
-          {isIn ? "You're in ✓" : hasExternalTickets ? "RSVP" : priceCents > 0 ? `Buy Ticket ${formatCents(priceCents)}` : "Free RSVP"}
-        </button>
-        {event.href && (
+        {/* An event with its own external ticketing gets exactly one CTA —
+            an outbound Buy Tickets link — never alongside an in-app RSVP
+            button. Real RSVP/ticket checkout is only for events we run. */}
+        {event.href ? (
           <a
             href={event.href}
             target="_blank"
             rel="noreferrer"
             onClick={(e: MouseEvent<HTMLAnchorElement>) => e.stopPropagation()}
-            className="mt-0 block max-h-0 overflow-hidden text-center text-xs text-white/70 underline underline-offset-2 transition-[max-height,margin-top] duration-300 group-hover:mt-2 group-hover:max-h-8 group-focus-within:mt-2 group-focus-within:max-h-8 hover:text-white"
+            className="block w-full scale-100 rounded-full px-4 py-3 text-center text-sm font-semibold tracking-wide uppercase transition-[scale] duration-300 group-hover:scale-[1.04] btn-flame"
           >
-            Full lineup & tickets
+            Buy Tickets
           </a>
+        ) : (
+          <button
+            type="button"
+            onClick={(e: MouseEvent<HTMLButtonElement>) => {
+              e.stopPropagation();
+              onCheckout?.(event);
+            }}
+            className={`w-full scale-100 rounded-full px-4 py-3 text-sm font-semibold tracking-wide uppercase transition-[scale,background-color,color] duration-300 group-hover:scale-[1.04] ${
+              isIn ? "bg-white text-black" : "btn-flame"
+            }`}
+          >
+            {isIn ? "You're in ✓" : priceCents > 0 ? `Buy Ticket ${formatCents(priceCents)}` : "Free RSVP"}
+          </button>
         )}
       </div>
     </div>
