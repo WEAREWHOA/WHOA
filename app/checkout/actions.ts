@@ -7,6 +7,7 @@ import { getInventoryCounts } from "@/lib/catalog";
 import { getByCode, getByEmail, getCredentialsByEmail, createAmbassador, setSquareCustomerId } from "@/lib/store";
 import { createSession, destroySession, getSessionAmbassadorCode, hashPassword, verifyPassword } from "@/lib/auth";
 import { findOrCreateSquareCustomerId } from "@/lib/squareCustomers";
+import { sendOrderConfirmationEmail } from "@/lib/email";
 import { getSupabase } from "@/lib/supabase";
 import { REF_COOKIE } from "@/lib/attribution";
 import type { CartLine, ShippingAddress } from "@/lib/types";
@@ -249,6 +250,24 @@ export async function checkoutAction(input: {
   } catch (err) {
     console.error("Square payment failed", err);
     return { ok: false, error: "Payment did not go through. Please check your card details." };
+  }
+
+  if (input.customerEmail) {
+    // The payment already succeeded — a confirmation-email hiccup shouldn't
+    // fail the checkout, just get logged for follow-up.
+    await sendOrderConfirmationEmail({
+      to: input.customerEmail,
+      customerName: input.customerName.trim(),
+      orderId,
+      lines: input.lines.map((line) => ({
+        name: `${line.productName} (${line.variationName})`,
+        quantity: line.quantity,
+        totalCents: line.priceCents * line.quantity,
+      })),
+      totalCents: Number(totalMoney.amount),
+    }).catch((err) => {
+      console.error("Failed to send order confirmation email", err);
+    });
   }
 
   if (ambassador) {
