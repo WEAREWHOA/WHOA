@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
-import { getCurrentPriceCents, type EventInfo } from "@/lib/events";
+import { getCurrentPriceCents, isTicketingOpen, type EventInfo } from "@/lib/events";
 import { useRsvpSet } from "@/components/events/useRsvp";
 import { formatCents } from "@/lib/money";
 
@@ -198,7 +198,11 @@ export default function EventModal({
                 in-app RSVP button. Real RSVP/ticket checkout is only for
                 events we run. */}
             <div className="mt-auto flex flex-col gap-3 pt-6">
-              {event.href ? (
+              {!isTicketingOpen(event) ? (
+                <span className="w-full cursor-not-allowed rounded-full border border-border-strong px-6 py-3 text-center text-sm font-semibold tracking-wide text-muted uppercase">
+                  Event Ended
+                </span>
+              ) : event.href ? (
                 <a
                   href={event.href}
                   target="_blank"

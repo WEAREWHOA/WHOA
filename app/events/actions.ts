@@ -8,7 +8,7 @@ import { setSquareCustomerId } from "@/lib/store";
 import { findOrCreateSquareCustomerId } from "@/lib/squareCustomers";
 import { createRsvpRecord } from "@/lib/eventRsvps";
 import { sendEventConfirmationEmail } from "@/lib/email";
-import { EVENTS, getCurrentPriceCents } from "@/lib/events";
+import { EVENTS, getCurrentPriceCents, isTicketingOpen } from "@/lib/events";
 import { SITE_URL } from "@/lib/site";
 
 export interface EventRsvpResult {
@@ -40,6 +40,12 @@ export async function eventRsvpAction(input: {
   const event = EVENTS.find((e) => e.id === input.eventId);
   if (!event) {
     return { ok: false, error: "That event couldn't be found." };
+  }
+  // The UI already hides the button once an event has ended (see
+  // isTicketingOpen in lib/events.ts) — re-checked here since that's only
+  // ever a client-side courtesy, not enforcement.
+  if (!isTicketingOpen(event)) {
+    return { ok: false, error: "RSVPs/tickets for this event have closed." };
   }
 
   const name = input.name.trim();

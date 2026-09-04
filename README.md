@@ -742,6 +742,26 @@ toggle:
   Tickets** link instead of the in-app RSVP/checkout button, never both,
   and are never charged through this app. `priceCents`/
   `earlyBirdPriceCents` and `href` are mutually exclusive per event.
+- **Tickets close automatically once an event is over** —
+  `lib/events.ts`'s `isTicketingOpen(event)` (backed by
+  `getTicketingCloseDate(event)`) computes the moment purchasing/RSVPing
+  actually closes: the event's own stated end time on its last day
+  (`endDate ?? startDate`), parsed from `timeLabel` and rolled to the next
+  calendar day for an overnight window like "9PM – 4AM"; 11PM on its last
+  day when `timeLabel` has no parseable clock time at all ("3 Days", "4
+  Days"). Past that moment, `EventCard` and `EventModal` swap every CTA —
+  Buy Tickets, Free RSVP, or an external `href` link alike — for a
+  disabled "Event Ended" pill, and `eventRsvpAction` refuses server-side
+  regardless of what the client sends (the same never-trust-the-client
+  posture as `getCurrentPriceCents`). This is what lets the site keep a
+  full historical flyer archive (see below) without any of those old
+  events staying purchasable forever.
+- **Historical flyer archive** — every past WHOAdega/SH!FT/community flyer
+  WHOA has put out is in `EVENTS`, not just upcoming ones, so `/events`
+  doubles as a running archive. They stay fully visible (`isTicketingOpen`
+  is what closes their CTA, not a filter that hides them), transcribed
+  from the original flyer image for title, date, time, venue, lineup, and
+  any stated price/ticket link.
 - **`components/events/EventCheckoutModal.tsx`** is the actual flow,
   opened from either `EventCard` or `EventModal`'s button — name, email,
   optional phone, an optional "pick an artist" dropdown (see below), and
