@@ -27,12 +27,19 @@ export async function POST(req: Request) {
 
     const onlineStoreChannelId = await getOnlineStoreChannelId();
 
-    const itemsResponse = await square.catalog.searchItems({
-      enabledLocationIds: [locationId],
-      limit: 100,
-    });
+    let rawItems: NonNullable<Awaited<ReturnType<typeof square.catalog.searchItems>>["items"]> = [];
+    let cursor: string | undefined;
+    do {
+      const itemsResponse = await square.catalog.searchItems({
+        enabledLocationIds: [locationId],
+        limit: 100,
+        ...(cursor ? { cursor } : {}),
+      });
+      rawItems = rawItems.concat(itemsResponse.items ?? []);
+      cursor = itemsResponse.cursor;
+    } while (cursor);
 
-    const items = (itemsResponse.items ?? [])
+    const items = rawItems
       .filter((item) => item.type === "ITEM")
       .map((item) => {
         const data = item.itemData;

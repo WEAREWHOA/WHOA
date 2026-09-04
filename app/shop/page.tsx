@@ -18,7 +18,10 @@ export default async function ShopPage() {
 
   try {
     products = await listProducts({ onlineOnly: true });
-  } catch {
+  } catch (err) {
+    // Log the real cause server-side (visible in Vercel's function logs) —
+    // shoppers only ever see the friendly fallback message below.
+    console.error("Failed to load products for /shop:", err);
     error = "The shop is temporarily unavailable. Check back soon.";
   }
 
