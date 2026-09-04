@@ -23,6 +23,11 @@ export default function ShippingPolicyPage() {
             Processing may take longer during peak seasons and promotional periods due to the
             nature of our small business.
           </p>
+          <p className="mt-2">
+            Certain custom-made, hand-painted designs take longer to complete —{" "}
+            <span className="font-semibold text-foreground">2 weeks to 1 month</span> — since
+            each one is painted to order rather than pulled from existing stock.
+          </p>
         </div>
 
         <div>
@@ -31,6 +36,11 @@ export default function ShippingPolicyPage() {
             We currently offer <span className="font-semibold text-foreground">free shipping</span> on
             all online orders within the US, shipped via standard shipping unless otherwise
             specified. Shipping times vary depending on your location.
+          </p>
+          <p className="mt-2">
+            Free shipping is a limited-time offer. Going forward, shipping will be calculated
+            based on package weight and order amount once our real-time shipping calculator is
+            live — we&apos;ll post the updated rates here before that change takes effect.
           </p>
         </div>
 

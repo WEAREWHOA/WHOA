@@ -309,8 +309,12 @@ here.
 - `lib/square.ts` — a lazily-created Square SDK client (`getSquare()`), same
   pattern as `lib/supabase.ts`, so missing credentials don't break the build.
 - `lib/catalog.ts` — `listProducts()`/`getProduct()` call
-  `catalog.searchItems`, batch-fetch item/variation images and category
-  names, and `inventory.batchGetCounts` for stock levels. `listProducts({
+  `catalog.searchItems` (paginating via its `cursor` until exhausted — a
+  catalog bigger than one page, 100 items by default, would otherwise
+  silently lose everything past the first page from both `/shop`'s
+  listing and individual product pages), batch-fetch item/variation
+  images and category names, and `inventory.batchGetCounts` for stock
+  levels. `listProducts({
   onlineOnly: true })` (used by `/shop` and `getProduct()`) scopes results
   to items in a designated "show this online" Square channel — resolved by
   name via `channels.list()` (see [`SQUARE_ONLINE_CHANNEL_NAME`](#environment-variables)
