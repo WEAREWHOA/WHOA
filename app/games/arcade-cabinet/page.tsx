@@ -1,4 +1,10 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "WHOASIS Arcade Cabinet",
+  description: "This whole page, running kiosk-mode in the lounge on real hardware.",
+};
 
 export default function ArcadeCabinetPage() {
   return (

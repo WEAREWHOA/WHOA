@@ -1,5 +1,11 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import BeatPadGame from "@/components/games/beat-pad/BeatPadGame";
+
+export const metadata: Metadata = {
+  title: "Beat Pad",
+  description: "16 pads, tied into the Music Collective.",
+};
 
 export default function BeatPadPage() {
   return (

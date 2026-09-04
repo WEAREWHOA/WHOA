@@ -1,5 +1,11 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import HuntProgress from "@/components/games/hunt/HuntProgress";
+
+export const metadata: Metadata = {
+  title: "QR Scavenger Hunt",
+  description: "Six hidden codes, one per WHOA branch. Find them all.",
+};
 
 export default function HuntPage() {
   return (

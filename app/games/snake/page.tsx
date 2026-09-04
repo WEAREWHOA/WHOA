@@ -1,5 +1,11 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import SnakeGame from "@/components/games/snake/SnakeGame";
+
+export const metadata: Metadata = {
+  title: "WHOA Snake",
+  description: "A paint line eating 1-of-1 drops. Beat the score, unlock a code.",
+};
 
 export default function SnakeGamePage() {
   return (

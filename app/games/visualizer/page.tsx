@@ -1,5 +1,11 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import AudioVisualizer from "@/components/games/visualizer/AudioVisualizer";
+
+export const metadata: Metadata = {
+  title: "Visualizer",
+  description: "Mic-reactive visuals for whatever's playing in the room.",
+};
 
 export default function VisualizerPage() {
   return (

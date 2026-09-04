@@ -43,6 +43,7 @@ export default function CartPage() {
             <input
               type="number"
               min={1}
+              aria-label={`Quantity for ${line.productName} (${line.variationName})`}
               value={line.quantity}
               onChange={(e) => setQuantity(line.variationId, Number(e.target.value))}
               className="w-16 rounded-lg border border-border-strong bg-surface-raised px-2 py-1.5 text-center text-sm outline-none focus:border-flame-2"

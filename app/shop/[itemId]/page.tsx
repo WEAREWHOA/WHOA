@@ -5,8 +5,41 @@ import { getProduct } from "@/lib/catalog";
 import AddToCart from "@/components/shop/AddToCart";
 import ProductGallery from "@/components/shop/ProductGallery";
 import { formatCents } from "@/lib/money";
+import { SITE_URL } from "@/lib/site";
+import type { Product } from "@/lib/types";
 
 export const revalidate = 60;
+
+// schema.org Product markup — lets Google show price/availability directly
+// in search results instead of a plain link. JSON.stringify's output is
+// escaped (</script> in a Square-sourced name/description could otherwise
+// terminate the tag early) before being injected as raw HTML.
+function buildProductJsonLd(product: Product): string {
+  const prices = product.variations.map((v) => v.priceCents);
+  const lowPrice = prices.length > 0 ? Math.min(...prices) : 0;
+  const highPrice = prices.length > 0 ? Math.max(...prices) : 0;
+  const totalStock = product.variations.reduce((sum, v) => sum + (v.inStock ?? 1), 0);
+  const inStock = product.variations.length === 0 || totalStock > 0;
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    description: product.description || undefined,
+    image: product.imageUrls.length > 0 ? product.imageUrls : undefined,
+    url: `${SITE_URL}/shop/${product.id}`,
+    offers: {
+      "@type": "AggregateOffer",
+      priceCurrency: "USD",
+      lowPrice: (lowPrice / 100).toFixed(2),
+      highPrice: (highPrice / 100).toFixed(2),
+      offerCount: Math.max(product.variations.length, 1),
+      availability: inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+    },
+  };
+
+  return JSON.stringify(jsonLd).replace(/</g, "\\u003c");
+}
 
 export async function generateMetadata(props: PageProps<"/shop/[itemId]">): Promise<Metadata> {
   const { itemId } = await props.params;
@@ -44,6 +77,13 @@ export default async function ProductPage(props: PageProps<"/shop/[itemId]">) {
 
   return (
     <section className="mx-auto grid w-full max-w-5xl gap-10 px-6 py-16 lg:grid-cols-2">
+      {/* Product structured data — the difference between a plain blue link
+          and a Google result showing price/availability directly. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: buildProductJsonLd(product) }}
+      />
+
       <ProductGallery name={product.name} imageUrls={product.imageUrls} />
 
       <div>
