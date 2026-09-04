@@ -4,8 +4,9 @@ import { randomUUID } from "crypto";
 import { cookies } from "next/headers";
 import { getSquare, getSquareLocationId } from "@/lib/square";
 import { getInventoryCounts } from "@/lib/catalog";
-import { getByCode, getByEmail, getCredentialsByEmail, createAmbassador } from "@/lib/store";
+import { getByCode, getByEmail, getCredentialsByEmail, createAmbassador, setSquareCustomerId } from "@/lib/store";
 import { createSession, destroySession, getSessionAmbassadorCode, hashPassword, verifyPassword } from "@/lib/auth";
+import { findOrCreateSquareCustomerId } from "@/lib/squareCustomers";
 import { getSupabase } from "@/lib/supabase";
 import { REF_COOKIE } from "@/lib/attribution";
 import type { CartLine, ShippingAddress } from "@/lib/types";
@@ -103,6 +104,10 @@ export async function checkoutAction(input: {
     }
   }
 
+  // The account this order belongs to, if any — resolved fresh so it
+  // covers both a pre-existing session and one just created above.
+  const accountCode = await getSessionAmbassadorCode();
+
   const store = await cookies();
   const refCode = store.get(REF_COOKIE)?.value;
   // A referral-lookup hiccup should never block a real payment — worst
@@ -116,6 +121,27 @@ export async function checkoutAction(input: {
 
   const locationId = getSquareLocationId();
   const square = getSquare();
+
+  // Square's own docs warn that skipping `customer_id` on an order/payment
+  // "might result in the creation of new instant profiles" instead of
+  // linking to the real Customer record — which is exactly what silently
+  // broke purchase history before this: every order landed as a
+  // disconnected instant profile the portal's Customer tab could never
+  // find. Best-effort — a Square hiccup here shouldn't block a real sale,
+  // it just means this one order won't show up in purchase history.
+  const buyerEmail = input.customerEmail.trim();
+  const squareCustomerId = buyerEmail
+    ? await findOrCreateSquareCustomerId(buyerEmail, input.customerName).catch((err) => {
+        console.error("Failed to find/create Square customer during checkout:", err);
+        return undefined;
+      })
+    : undefined;
+
+  if (accountCode && squareCustomerId) {
+    await setSquareCustomerId(accountCode, squareCustomerId).catch((err) => {
+      console.error("Failed to cache Square customer id on account:", err);
+    });
+  }
 
   // Re-check live stock right before charging anything — a cart can go
   // stale between "add to cart" and "hit pay" (someone else buys the last
@@ -155,6 +181,7 @@ export async function checkoutAction(input: {
       idempotencyKey: randomUUID(),
       order: {
         locationId,
+        customerId: squareCustomerId,
         lineItems: input.lines.map((line) => ({
           catalogObjectId: line.variationId,
           quantity: String(line.quantity),
@@ -212,6 +239,7 @@ export async function checkoutAction(input: {
       amountMoney: totalMoney,
       locationId,
       orderId,
+      customerId: squareCustomerId,
       buyerEmailAddress: input.customerEmail || undefined,
     });
 
