@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Script from "next/script";
-import type { EventInfo } from "@/lib/events";
+import { getCurrentPriceCents, type EventInfo } from "@/lib/events";
 import { formatCents } from "@/lib/money";
 import { eventRsvpAction } from "@/app/events/actions";
 import { accountSignOutAction, getAccountAction } from "@/app/account/actions";
@@ -34,7 +34,7 @@ const SQUARE_JS_SRC =
     : "https://sandbox.web.squarecdn.com/v1/square.js";
 
 export default function EventCheckoutModal({ event, onClose }: { event: EventInfo; onClose: () => void }) {
-  const priceCents = event.priceCents ?? 0;
+  const priceCents = getCurrentPriceCents(event);
   const isPaid = priceCents > 0;
 
   const cardRef = useRef<SquareCard | null>(null);

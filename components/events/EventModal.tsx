@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
-import type { EventInfo } from "@/lib/events";
+import { getCurrentPriceCents, type EventInfo } from "@/lib/events";
 import { toggleRsvp, useRsvpSet } from "@/components/events/useRsvp";
 import { formatCents } from "@/lib/money";
 
@@ -41,7 +41,7 @@ export default function EventModal({
   const rsvped = useRsvpSet();
   const isIn = rsvped.has(event.id);
   const hasExternalTickets = Boolean(event.href);
-  const priceCents = event.priceCents ?? 0;
+  const priceCents = getCurrentPriceCents(event);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {

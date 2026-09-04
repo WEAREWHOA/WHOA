@@ -723,7 +723,19 @@ toggle:
 
 - **`EventInfo.priceCents`** (optional, in cents) decides the button:
   unset/`0` shows **Free RSVP**, set shows **Buy Ticket $X** and charges
-  through the same in-app Square checkout the shop uses. `EventInfo.href`
+  through the same in-app Square checkout the shop uses.
+- **Early-bird pricing** — `EventInfo.earlyBirdPriceCents` (optional)
+  discounts the ticket to that amount any day before `startDate`;
+  `priceCents` becomes the general-admission/door price starting the day
+  of the event itself. `lib/events.ts`'s `getCurrentPriceCents(event)` is
+  the single source of truth for "what does this cost right now" — every
+  place that shows or charges a price (`EventCard`, `EventModal`,
+  `EventCheckoutModal`, and `eventRsvpAction`) calls it instead of reading
+  `priceCents` directly. Critically, `eventRsvpAction` computes it
+  server-side from the real current date at the moment of charge, so the
+  cutoff is actually enforced — a client can't submit a stale early-bird
+  price after it's expired.
+  `EventInfo.href`
   is the escape hatch for an event with its own real ticketing elsewhere
   (e.g. a festival WHOA just has a presence at) — those keep the original
   local-only "interested" toggle (`components/events/useRsvp.ts`) plus an
@@ -781,8 +793,9 @@ toggle:
   extracted once a second flow needed the exact same "verify existing
   password, or create an account, or just continue as a guest" behavior.
 
-No current event has `priceCents` set — every WHOA-run event shows Free
-RSVP until a real price is set on it.
+The only WHOA-run event with a price set today is "WHOA Wednesday — Spooky
+Secret Lineup" ($10 early bird, $15 general admission at the door) — every
+other current event shows Free RSVP until a real price is set on it.
 
 ## About, Contact & Policy pages
 

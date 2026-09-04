@@ -31,8 +31,26 @@ export interface EventInfo {
   rotate: number;
   // In cents. Omitted or 0 means a free RSVP; set means "Buy Ticket"
   // charges this amount through the same in-app Square checkout as the
-  // shop. Never set alongside href.
+  // shop. Never set alongside href. When earlyBirdPriceCents is also set,
+  // this is the day-of/door price instead of the only price — see below.
   priceCents?: number;
+  // Optional discounted price (cents) in effect any day before startDate;
+  // priceCents becomes the door price starting the day of the event itself.
+  // Use getCurrentPriceCents(event) rather than reading priceCents directly
+  // wherever a ticket price is shown or charged.
+  earlyBirdPriceCents?: number;
+}
+
+// The price a ticket actually costs right now — priceCents, discounted to
+// earlyBirdPriceCents (when set) for any purchase before the event's own
+// startDate. Computed server-side at charge time in app/events/actions.ts,
+// never trusted from the client.
+export function getCurrentPriceCents(event: EventInfo, referenceDate: Date = new Date()): number {
+  const todayKey = referenceDate.toISOString().slice(0, 10);
+  if (event.earlyBirdPriceCents !== undefined && todayKey < event.startDate) {
+    return event.earlyBirdPriceCents;
+  }
+  return event.priceCents ?? 0;
 }
 
 export const EVENTS: EventInfo[] = [
@@ -146,9 +164,12 @@ export const EVENTS: EventInfo[] = [
     category: "whoadega",
     startDate: "2026-09-16",
     details: ["Spooky Secret DJ Lineup", "RSVP for 1 free NA drink"],
-    tags: ["$15 Entry", "$10 w/ RSVP"],
+    tags: ["$10 Early Bird", "$15 General Admission"],
     accent: "#ff5e1a",
     gradient: ["#1a0a2e", "#8a2be2", "#ff5e1a"],
     rotate: -3,
+    // General admission at the door, day-of; $10 any day before.
+    priceCents: 1500,
+    earlyBirdPriceCents: 1000,
   },
 ];

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
-import type { EventInfo } from "@/lib/events";
+import { getCurrentPriceCents, type EventInfo } from "@/lib/events";
 import { toggleRsvp, useRsvpSet } from "@/components/events/useRsvp";
 import { formatCents } from "@/lib/money";
 
@@ -23,7 +23,7 @@ export default function EventCard({
   // up at) keep the old local-only "interested" toggle + outbound link —
   // real RSVP/ticket checkout is only for events we actually run.
   const hasExternalTickets = Boolean(event.href);
-  const priceCents = event.priceCents ?? 0;
+  const priceCents = getCurrentPriceCents(event);
 
   function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
     const el = ref.current;
