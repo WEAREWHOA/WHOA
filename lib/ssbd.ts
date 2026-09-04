@@ -198,7 +198,7 @@ export const SCHEDULE_AREAS: ScheduleArea[] = [
       { name: "Mike", friday: "2 PM – 10 PM", saturday: "2 PM – 10 PM", sunday: "2 PM – 10 PM" },
       { name: "Ali", friday: "10 AM – 6 PM", saturday: "2 PM – 10 PM", sunday: "2 PM – 10 PM" },
       { name: "Dylan", friday: "6 PM – 2 AM", saturday: "10 PM – 6 AM", sunday: "8 PM – 4 AM" },
-      { name: "#5555", friday: "10 PM – 6 AM", saturday: "10 PM – 6 AM", sunday: "10 PM – 4 AM" },
+      { name: "Julianna", friday: "10 PM – 6 AM", saturday: "10 PM – 6 AM", sunday: "10 PM – 4 AM" },
       { name: "Bryce", friday: "10 PM – 6 AM", saturday: "10 PM – 6 AM", sunday: "6 PM – 2 AM" },
       { name: "James", friday: "10 PM – 6 AM", saturday: "6 PM – 2 AM", sunday: "10 PM – 4 AM" },
     ],

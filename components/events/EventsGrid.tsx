@@ -18,7 +18,6 @@ export default function EventsGrid({ events }: { events: EventInfo[] }) {
   // tile on /join) pre-filters the grid instead of dumping visitors on the
   // unfiltered list.
   const searchParams = useSearchParams();
-  const [view, setView] = useState<"cards" | "calendar">("cards");
   const [filter, setFilter] = useState<EventCategory | "all">(() => {
     const requested = searchParams.get("category");
     return isEventCategory(requested) ? requested : "all";
@@ -46,20 +45,12 @@ export default function EventsGrid({ events }: { events: EventInfo[] }) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setView(view === "cards" ? "calendar" : "cards")}
-        className="relative z-10 mt-8 rounded-full border-2 border-white/40 px-6 py-2 text-sm font-semibold tracking-wide text-white uppercase transition-colors hover:border-white hover:bg-white/10"
-      >
-        {view === "cards" ? "Calendar view" : "Flyer view"}
-      </button>
-
-      <div className="relative z-10 mt-6 flex flex-wrap items-center justify-center gap-2">
+      <div className="relative z-10 mt-8 flex flex-wrap items-center justify-center gap-2">
         <button
           type="button"
           onClick={() => setFilter("all")}
           className={`rounded-full px-4 py-1.5 text-sm font-semibold tracking-wide transition-colors ${
-            filter === "all" ? "btn-flame" : "border border-white/30 text-white/70 hover:text-white"
+            filter === "all" ? "btn-flame" : "border border-border-strong text-muted hover:text-foreground"
           }`}
         >
           All
@@ -70,7 +61,7 @@ export default function EventsGrid({ events }: { events: EventInfo[] }) {
             type="button"
             onClick={() => setFilter(cat.id)}
             className={`rounded-full px-4 py-1.5 text-sm font-semibold tracking-wide uppercase transition-colors ${
-              filter === cat.id ? "btn-flame" : "border border-white/30 text-white/70 hover:text-white"
+              filter === cat.id ? "btn-flame" : "border border-border-strong text-muted hover:text-foreground"
             }`}
           >
             {cat.label}
@@ -78,17 +69,20 @@ export default function EventsGrid({ events }: { events: EventInfo[] }) {
         ))}
       </div>
 
-      {view === "cards" ? (
-        <div className="relative z-10 mt-10 flex w-full max-w-6xl flex-wrap items-start justify-center gap-x-8 gap-y-14">
-          {filtered.map((event, i) => (
-            <EventCard key={event.id} event={event} delay={i * 0.45} onOpen={handleOpen} />
-          ))}
-        </div>
-      ) : (
-        <div className="relative z-10 mt-10 flex w-full justify-center px-2">
-          <EventsCalendar events={filtered} onOpen={handleOpen} />
-        </div>
-      )}
+      {/* Calendar always visible — no more toggling it away behind a
+          "Calendar view" button. */}
+      <div className="relative z-10 mt-8 flex w-full justify-center px-2">
+        <EventsCalendar events={filtered} onOpen={handleOpen} />
+      </div>
+
+      <h2 className="font-display relative z-10 mt-14 text-2xl tracking-wide text-foreground">
+        All flyers
+      </h2>
+      <div className="relative z-10 mt-8 flex w-full max-w-6xl flex-wrap items-start justify-center gap-x-8 gap-y-14">
+        {filtered.map((event, i) => (
+          <EventCard key={event.id} event={event} delay={i * 0.45} onOpen={handleOpen} />
+        ))}
+      </div>
 
       {openEvent && originRect && (
         <EventModal event={openEvent} originRect={originRect} closing={closing} onClose={handleClose} />

@@ -42,7 +42,7 @@ function DayChip({ event, onOpen }: { event: EventInfo; onOpen: (event: EventInf
       type="button"
       onClick={handleClick}
       style={{ "--accent": event.accent } as React.CSSProperties}
-      className="w-full truncate rounded-md border border-white/10 px-1.5 py-1 text-left text-[0.65rem] leading-tight text-white transition-colors hover:border-[var(--accent)] hover:bg-white/10"
+      className="w-full truncate rounded-md border border-border-strong bg-surface px-1.5 py-1 text-left text-[0.65rem] leading-tight text-foreground transition-colors hover:border-[var(--accent)] hover:bg-surface-raised"
     >
       <span aria-hidden className="mr-1 inline-block h-1.5 w-1.5 rounded-full align-middle" style={{ background: event.accent }} />
       {event.title}
@@ -85,24 +85,24 @@ export default function EventsCalendar({
   }, [year, month]);
 
   return (
-    <div className="w-full max-w-5xl">
+    <div className="card-surface w-full max-w-5xl rounded-2xl border border-border-strong p-4 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.8)] sm:p-6">
       <div className="flex items-center justify-center gap-4">
         <button
           type="button"
           onClick={() => setCursor(new Date(year, month - 1, 1))}
           aria-label="Previous month"
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-white/30 text-white/70 transition-colors hover:border-white hover:text-white"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-border-strong text-muted transition-colors hover:border-flame-2/60 hover:text-foreground"
         >
           ←
         </button>
-        <h2 className="font-display min-w-[12ch] text-center text-2xl tracking-wide text-white">
+        <h2 className="font-display min-w-[12ch] text-center text-2xl tracking-wide text-foreground">
           {MONTH_LABELS[month]} {year}
         </h2>
         <button
           type="button"
           onClick={() => setCursor(new Date(year, month + 1, 1))}
           aria-label="Next month"
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-white/30 text-white/70 transition-colors hover:border-white hover:text-white"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-border-strong text-muted transition-colors hover:border-flame-2/60 hover:text-foreground"
         >
           →
         </button>
@@ -110,7 +110,7 @@ export default function EventsCalendar({
 
       <div className="mt-6 grid grid-cols-7 gap-1.5 sm:gap-2">
         {WEEKDAY_LABELS.map((label) => (
-          <div key={label} className="pb-1 text-center text-[0.65rem] font-semibold tracking-wide text-white/50 uppercase">
+          <div key={label} className="pb-1 text-center text-[0.65rem] font-semibold tracking-wide text-muted uppercase">
             {label}
           </div>
         ))}
@@ -127,13 +127,13 @@ export default function EventsCalendar({
                   cell.day === null
                     ? "border-transparent"
                     : isToday
-                      ? "border-flame-2 bg-flame-2/10"
-                      : "border-white/10 bg-white/[0.03]"
+                      ? "border-flame-2 bg-flame-2/15"
+                      : "border-border bg-surface-raised"
                 }`}
               >
                 {cell.day !== null && (
                   <>
-                    <span className={`text-xs ${isToday ? "font-bold text-flame-2" : "text-white/50"}`}>
+                    <span className={`text-xs ${isToday ? "font-bold text-flame-2" : "text-muted"}`}>
                       {cell.day}
                     </span>
                     {dayEvents.length > 0 && (

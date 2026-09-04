@@ -36,9 +36,10 @@ const FAQS: FaqItem[] = [
     question: "How much does shipping cost, and how long does it take?",
     answer: (
       <>
-        Shipping is free on every online order. Orders are typically processed in 3-5 business
-        days, then arrive in another 5-7 business days within the continental US. Full details on
-        the{" "}
+        Shipping is currently free on every online order (a limited-time offer — rates will
+        eventually be calculated by weight and order amount). Orders are typically processed in
+        3-5 business days (2 weeks to 1 month for custom hand-painted designs), then arrive in
+        another 5-7 business days within the continental US. Full details on the{" "}
         <Link href="/shipping-policy" className="text-flame font-medium hover:underline">
           Shipping Policy
         </Link>{" "}

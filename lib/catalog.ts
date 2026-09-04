@@ -50,12 +50,22 @@ export async function listProducts(options?: { onlineOnly?: boolean }): Promise<
   const square = getSquare();
   const locationId = getSquareLocationId();
 
-  const response = await square.catalog.searchItems({
-    enabledLocationIds: [locationId],
-    limit: 100,
-  });
-
-  let items = response.items ?? [];
+  // searchItems paginates (100 items per page by default) — a catalog
+  // with more than one page's worth of items would otherwise silently
+  // lose everything past the first page, both from /shop's listing and
+  // from getProduct() (whose .find() below would just 404 on anything
+  // that got cut off).
+  let items: NonNullable<Awaited<ReturnType<typeof square.catalog.searchItems>>["items"]> = [];
+  let cursor: string | undefined;
+  do {
+    const response = await square.catalog.searchItems({
+      enabledLocationIds: [locationId],
+      limit: 100,
+      cursor,
+    });
+    items = items.concat(response.items ?? []);
+    cursor = response.cursor;
+  } while (cursor);
 
   if (options?.onlineOnly) {
     const channelId = await getOnlineStoreChannelId();
