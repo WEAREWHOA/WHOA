@@ -26,7 +26,8 @@ export default async function ProductPage(props: PageProps<"/shop/[itemId]">) {
   let product: Awaited<ReturnType<typeof getProduct>>;
   try {
     product = await getProduct(itemId);
-  } catch {
+  } catch (err) {
+    console.error(`Failed to load product ${itemId} for /shop/[itemId]:`, err);
     return (
       <section className="mx-auto w-full max-w-2xl px-6 py-16">
         <p className="rounded-lg border border-flame-1/40 bg-flame-1/10 px-4 py-3 text-sm text-flame-3">
