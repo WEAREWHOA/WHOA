@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "crypto";
+import QRCode from "qrcode";
 import { getSquare, getSquareLocationId } from "@/lib/square";
 import { resolveAccount } from "@/lib/accountAuth";
 import { setSquareCustomerId } from "@/lib/store";
@@ -8,12 +9,16 @@ import { findOrCreateSquareCustomerId } from "@/lib/squareCustomers";
 import { createRsvpRecord } from "@/lib/eventRsvps";
 import { sendEventConfirmationEmail } from "@/lib/email";
 import { EVENTS } from "@/lib/events";
+import { SITE_URL } from "@/lib/site";
 
 export interface EventRsvpResult {
   ok: boolean;
   error?: string;
   accountCreated?: boolean;
   signedIn?: boolean;
+  // A data: URL PNG — the presentable "ticket". Omitted (not a failure) if
+  // the RSVP itself couldn't be saved, or if QR generation hiccups.
+  qrDataUrl?: string;
 }
 
 export async function eventRsvpAction(input: {
@@ -119,8 +124,9 @@ export async function eventRsvpAction(input: {
     }
   }
 
+  let rsvpId: string | undefined;
   try {
-    await createRsvpRecord({
+    rsvpId = await createRsvpRecord({
       eventId: event.id,
       accountCode: account.code,
       name,
@@ -151,9 +157,21 @@ export async function eventRsvpAction(input: {
     console.error("Failed to send event confirmation email:", err);
   });
 
+  // The QR is just a shortcut to /checkin/[rsvpId] — generated server-side
+  // (same approach as the scavenger hunt's print sheet) so the client needs
+  // no QR library of its own. Best-effort: a generation hiccup shouldn't
+  // undo an RSVP/ticket that already saved successfully.
+  const qrDataUrl = rsvpId
+    ? await QRCode.toDataURL(`${SITE_URL}/checkin/${rsvpId}`, { margin: 1, width: 320 }).catch((err) => {
+        console.error("Failed to generate ticket QR code:", err);
+        return undefined;
+      })
+    : undefined;
+
   return {
     ok: true,
     accountCreated: account.accountCreated || undefined,
     signedIn: account.signedIn || undefined,
+    qrDataUrl,
   };
 }

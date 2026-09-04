@@ -43,6 +43,8 @@ function mapRow(row: EventRsvpRow): EventRsvpRecord {
   };
 }
 
+// Returns the new record's id — the caller needs it to generate the
+// presentable-ticket QR code (see app/events/actions.ts).
 export async function createRsvpRecord(input: {
   eventId: string;
   accountCode: string | null;
@@ -52,11 +54,12 @@ export async function createRsvpRecord(input: {
   priceCents: number;
   squareOrderId?: string | null;
   squarePaymentId?: string | null;
-}): Promise<void> {
+}): Promise<string> {
+  const id = `rsvp_${randomUUID()}`;
   const { error } = await getSupabase()
     .from("event_rsvps")
     .insert({
-      id: `rsvp_${randomUUID()}`,
+      id,
       event_id: input.eventId,
       account_code: input.accountCode,
       name: input.name,
@@ -70,6 +73,23 @@ export async function createRsvpRecord(input: {
   if (error) {
     throw new Error(`Failed to record RSVP: ${error.message}`);
   }
+
+  return id;
+}
+
+// Backs the public /checkin/[rsvpId] ticket-details page — deliberately
+// has no auth check (same posture as a paper ticket: whoever has the QR
+// code/link can see it) and no attendance-marking side effect. Verifying
+// entry and preventing a ticket being reused is real door-staff tooling
+// this doesn't attempt to be yet.
+export async function getRsvpById(id: string): Promise<EventRsvpRecord | undefined> {
+  const { data, error } = await getSupabase().from("event_rsvps").select("*").eq("id", id).maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to look up RSVP: ${error.message}`);
+  }
+
+  return data ? mapRow(data as EventRsvpRow) : undefined;
 }
 
 // Powers the portal's Events tab — every RSVP/ticket linked to this

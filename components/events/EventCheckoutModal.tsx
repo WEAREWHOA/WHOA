@@ -45,6 +45,7 @@ export default function EventCheckoutModal({ event, onClose }: { event: EventInf
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -183,6 +184,7 @@ export default function EventCheckoutModal({ event, onClose }: { event: EventInf
     }
 
     markRsvped(event.id);
+    setQrDataUrl(outcome.qrDataUrl ?? null);
     setDone(true);
     setSubmitting(false);
   }
@@ -213,6 +215,19 @@ export default function EventCheckoutModal({ event, onClose }: { event: EventInf
             <p className="mt-3 text-sm text-muted">
               {event.title} — {event.dateLabel}. A confirmation is on its way to {email}.
             </p>
+
+            {qrDataUrl && (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={qrDataUrl}
+                  alt="Ticket QR code"
+                  className="mt-6 h-44 w-44 rounded-xl border border-border-strong bg-white p-2"
+                />
+                <p className="mt-3 text-xs text-muted">Present this at the door — it&apos;s also saved to your portal.</p>
+              </>
+            )}
+
             <button type="button" onClick={onClose} className="btn-flame mt-6 rounded-full px-8 py-3 text-sm">
               Done
             </button>
