@@ -39,6 +39,34 @@ export async function findSquareCustomerIdByEmail(email: string): Promise<string
   return response.customers?.[0]?.id ?? null;
 }
 
+// Square's own docs warn that omitting `customer_id` on an order/payment
+// "might result in the creation of new instant profiles" instead of
+// reliably linking to the real Customer record — which is exactly what
+// was happening here: checkout created orders with no customer_id at all,
+// so every purchase landed as a disconnected instant profile that this
+// email search could never find, and the buyer's own purchase never
+// showed up in their portal. Called from checkout right before charging,
+// so every order carries a real, findable customer_id from the start.
+export async function findOrCreateSquareCustomerId(email: string, name: string): Promise<string> {
+  const existing = await findSquareCustomerIdByEmail(email);
+  if (existing) return existing;
+
+  const square = getSquare();
+  const trimmedName = name.trim();
+  const [givenName, ...rest] = trimmedName.split(/\s+/);
+
+  const response = await square.customers.create({
+    emailAddress: email.trim().toLowerCase(),
+    givenName: givenName || undefined,
+    familyName: rest.length > 0 ? rest.join(" ") : undefined,
+  });
+
+  if (!response.customer?.id) {
+    throw new Error("Square didn't return a customer id after creating a customer.");
+  }
+  return response.customer.id;
+}
+
 // Square's own Orders Search, filtered to just this customer — this is
 // the authoritative source (not our square_orders sync mirror, which only
 // captures orders synced via the webhook and has no customer_id column),
