@@ -5,7 +5,7 @@ import Script from "next/script";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/components/cart/CartProvider";
 import { formatCents } from "@/lib/money";
-import { checkoutAction } from "@/app/checkout/actions";
+import { checkoutAction, checkoutSignOutAction, getCheckoutAccountAction } from "@/app/checkout/actions";
 
 interface SquareCard {
   attach: (selector: string) => Promise<void>;
@@ -45,6 +45,10 @@ export default function CheckoutForm({ ambassadorCode }: { ambassadorCode: strin
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [account, setAccount] = useState<{ name: string; email: string } | null>(null);
+  const [accountChecked, setAccountChecked] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
   const [line1, setLine1] = useState("");
   const [line2, setLine2] = useState("");
   const [city, setCity] = useState("");
@@ -99,6 +103,46 @@ export default function CheckoutForm({ ambassadorCode }: { ambassadorCode: strin
     return () => clearTimeout(timer);
   }, []);
 
+  // Prefills name/email for a returning, already-signed-in customer and
+  // hides the password field entirely — there's nothing to sign into,
+  // they're already in.
+  useEffect(() => {
+    let cancelled = false;
+    getCheckoutAccountAction()
+      .then((result) => {
+        if (cancelled) return;
+        setAccount(result);
+        if (result) {
+          setName((prev) => prev || result.name);
+          setEmail((prev) => prev || result.email);
+        }
+      })
+      .catch((err) => {
+        // Not being able to check sign-in status shouldn't block anyone
+        // from checking out as a guest — just fall back to a blank,
+        // signed-out form.
+        console.error("Failed to check checkout account status:", err);
+      })
+      .finally(() => {
+        if (!cancelled) setAccountChecked(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    try {
+      await checkoutSignOutAction();
+    } catch (err) {
+      console.error("Failed to sign out during checkout:", err);
+    }
+    setAccount(null);
+    setPassword("");
+    setSigningOut(false);
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!cardRef.current || lines.length === 0) return;
@@ -118,6 +162,7 @@ export default function CheckoutForm({ ambassadorCode }: { ambassadorCode: strin
       lines,
       customerName: name,
       customerEmail: email,
+      password: account ? undefined : password || undefined,
       shippingAddress: { line1, line2, city, state, zip, phone },
     });
 
@@ -128,7 +173,10 @@ export default function CheckoutForm({ ambassadorCode }: { ambassadorCode: strin
     }
 
     clear();
-    router.push(`/order-confirmed?order=${outcome.orderId ?? ""}`);
+    const accountParam = outcome.accountCreated ? "created" : outcome.signedIn ? "signedin" : "";
+    const params = new URLSearchParams({ order: outcome.orderId ?? "" });
+    if (accountParam) params.set("account", accountParam);
+    router.push(`/order-confirmed?${params.toString()}`);
   }
 
   if (lines.length === 0) {
@@ -210,6 +258,43 @@ export default function CheckoutForm({ ambassadorCode }: { ambassadorCode: strin
             className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
           />
         </div>
+
+        {account ? (
+          <div className="flex items-center justify-between rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm">
+            <span className="text-muted">
+              Signed in as <span className="text-foreground">{account.email}</span>
+            </span>
+            <button
+              type="button"
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="text-flame font-medium underline underline-offset-2 disabled:opacity-50"
+            >
+              Not you?
+            </button>
+          </div>
+        ) : (
+          accountChecked && (
+            <div>
+              <label htmlFor="password" className="text-sm font-medium">
+                Password <span className="font-normal text-muted">(optional)</span>
+              </label>
+              <input
+                id="password"
+                type="password"
+                minLength={8}
+                autoComplete="new-password"
+                placeholder="Save your info & track this order — or leave blank for guest checkout"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
+              />
+              <p className="mt-2 text-xs text-muted">
+                Have an account already? Enter your password here to sign in.
+              </p>
+            </div>
+          )
+        )}
 
         <div>
           <span className="text-sm font-medium">Shipping address</span>
