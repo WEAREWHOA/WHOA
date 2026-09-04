@@ -10,6 +10,9 @@ import { createRsvpRecord } from "@/lib/eventRsvps";
 import { sendEventConfirmationEmail } from "@/lib/email";
 import { EVENTS, getCurrentPriceCents, isTicketingOpen } from "@/lib/events";
 import { SITE_URL } from "@/lib/site";
+import { subscribeToNewsletter } from "@/lib/mailchimp";
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export interface EventRsvpResult {
   ok: boolean;
@@ -192,4 +195,24 @@ export async function eventRsvpAction(input: {
     signedIn: account.signedIn || undefined,
     qrDataUrl,
   };
+}
+
+// Powers the /events page's newsletter banner. Public-facing, so this
+// fails soft (returns an error string) rather than throwing — same
+// posture as lib/contact.ts's submitContactMessage.
+export async function subscribeEventsNewsletterAction(input: { email: string }): Promise<{
+  ok: boolean;
+  error?: string;
+}> {
+  const email = input.email.trim().slice(0, 200);
+  if (!EMAIL_PATTERN.test(email)) {
+    return { ok: false, error: "Enter a valid email." };
+  }
+
+  try {
+    return await subscribeToNewsletter(email, ["event"]);
+  } catch (err) {
+    console.error("subscribeEventsNewsletterAction failed:", err);
+    return { ok: false, error: "Newsletter signup isn't set up yet — try again later." };
+  }
 }

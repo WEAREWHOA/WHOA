@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 import EventsGrid from "@/components/events/EventsGrid";
+import EventsNewsletterBanner from "@/components/events/EventsNewsletterBanner";
 import { EVENTS } from "@/lib/events";
 
 export const metadata: Metadata = {
@@ -25,6 +26,8 @@ export default function EventsPage() {
           Tap a flyer for full details. Hover to RSVP.
         </p>
       </div>
+
+      <EventsNewsletterBanner />
 
       <Suspense>
         <EventsGrid events={EVENTS} />
