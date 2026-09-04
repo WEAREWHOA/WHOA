@@ -3,19 +3,27 @@
 import { useRef, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
 import type { EventInfo } from "@/lib/events";
 import { toggleRsvp, useRsvpSet } from "@/components/events/useRsvp";
+import { formatCents } from "@/lib/money";
 
 export default function EventCard({
   event,
   delay = 0,
   onOpen,
+  onCheckout,
 }: {
   event: EventInfo;
   delay?: number;
   onOpen?: (event: EventInfo, rect: DOMRect) => void;
+  onCheckout?: (event: EventInfo) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const rsvped = useRsvpSet();
   const isIn = rsvped.has(event.id);
+  // Events with their own external ticketing (a festival WHOA just shows
+  // up at) keep the old local-only "interested" toggle + outbound link —
+  // real RSVP/ticket checkout is only for events we actually run.
+  const hasExternalTickets = Boolean(event.href);
+  const priceCents = event.priceCents ?? 0;
 
   function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
     const el = ref.current;
@@ -129,13 +137,17 @@ export default function EventCard({
           type="button"
           onClick={(e: MouseEvent<HTMLButtonElement>) => {
             e.stopPropagation();
-            toggleRsvp(event.id);
+            if (hasExternalTickets) {
+              toggleRsvp(event.id);
+            } else {
+              onCheckout?.(event);
+            }
           }}
           className={`w-full scale-100 rounded-full px-4 py-3 text-sm font-semibold tracking-wide uppercase transition-[scale,background-color,color] duration-300 group-hover:scale-[1.04] ${
             isIn ? "bg-white text-black" : "btn-flame"
           }`}
         >
-          {isIn ? "You're in ✓" : "RSVP"}
+          {isIn ? "You're in ✓" : hasExternalTickets ? "RSVP" : priceCents > 0 ? `Buy Ticket ${formatCents(priceCents)}` : "Free RSVP"}
         </button>
         {event.href && (
           <a

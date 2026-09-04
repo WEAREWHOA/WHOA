@@ -134,6 +134,7 @@ npm run build
 | `SQUARE_ADMIN_SECRET`           | —          | Shared secret gating the one-time `/api/admin/square/*` setup endpoints — pick any long random string |
 | `NEXT_PUBLIC_SITE_URL`          | `http://localhost:3000` | Production domain, used for `metadataBase`, `sitemap.xml`, and `robots.txt` — set once the real domain is known |
 | `SQUARE_ONLINE_CHANNEL_NAME`    | `Online Store` | Name of the Square sales channel that marks an item for `/shop` — set to `WHOA` for this account (see [Square ↔ Supabase sync](#square--supabase-sync)) |
+| `RESEND_API_KEY`                | —          | Resend API key — sends order confirmation and event RSVP/ticket confirmation emails. `wearewhoa.art` must be a verified sending domain in Resend (see `lib/email.ts`) |
 
 ## SEO & metadata
 
@@ -160,7 +161,7 @@ revoked by deleting its row (which logout does).
 **Setup:**
 
 1. Create a Supabase project (or use an existing one).
-2. Run all nine migrations against it, **in order** — paste each into the
+2. Run all ten migrations against it, **in order** — paste each into the
    Supabase SQL Editor, or apply them with the Supabase CLI if the project
    is linked (`supabase db push`):
    - `supabase/migrations/0001_init.sql` — creates `ambassadors` and
@@ -194,7 +195,9 @@ revoked by deleting its row (which logout does).
      [Custom Design](#custom-design).
    - `supabase/migrations/0009_contact_messages.sql` — creates
      `contact_messages` for the `/contact` page's message form.
-   All nine enable RLS with no public policies — only the `service_role`
+   - `supabase/migrations/0010_event_rsvps.sql` — creates `event_rsvps` for
+     event RSVPs and ticket purchases. See [Events](#events).
+   All ten enable RLS with no public policies — only the `service_role`
    key (which is what this app uses) can read or write.
 3. **Bootstrap the first Super Admin** — there's no self-serve way to grant
    `is_super_admin` (by design), so after signing up your own account at
@@ -700,6 +703,48 @@ future work once the pipeline itself is proven out.
   so — like checkout and the ambassador referral lookup — the Supabase
   call is wrapped in try/catch and fails soft with an error message
   rather than throwing.
+
+## Events
+
+`/events` (`lib/events.ts`, `components/events/`) — flyer grid + calendar for
+a static `EVENTS` list. Every event without its own external ticketing now
+runs a real RSVP/ticket flow through this app rather than a local-only
+toggle:
+
+- **`EventInfo.priceCents`** (optional, in cents) decides the button:
+  unset/`0` shows **Free RSVP**, set shows **Buy Ticket $X** and charges
+  through the same in-app Square checkout the shop uses. `EventInfo.href`
+  is the escape hatch for an event with its own real ticketing elsewhere
+  (e.g. a festival WHOA just has a presence at) — those keep the original
+  local-only "interested" toggle (`components/events/useRsvp.ts`) plus an
+  outbound link, and are never charged through this app. The two are
+  mutually exclusive per event.
+- **`components/events/EventCheckoutModal.tsx`** is the actual flow,
+  opened from either `EventCard` or `EventModal`'s button — name, email,
+  optional phone, and the same inline "sign in or create an account with
+  this email" bar as checkout (see below). A paid event additionally loads
+  the Square Web Payments SDK card field, exactly like `CheckoutForm.tsx`;
+  a free RSVP never loads it at all.
+- **`app/events/actions.ts`**'s `eventRsvpAction` does the work: resolves
+  the account, and for a paid event creates an ad-hoc Square order (a
+  `name` + `basePriceMoney` line item — events aren't Square catalog
+  items, so there's no `catalogObjectId` to reference) and payment, the
+  same customer-linking and best-effort confirmation email as checkout.
+  Every RSVP/ticket — free or paid — is recorded in `event_rsvps`
+  (`supabase/migrations/0010_event_rsvps.sql`), linked to the account if
+  one exists.
+- **The portal's Events tab** (`components/dashboard/tabs/EventsTab.tsx`,
+  always visible like Customer) reads that table back via
+  `lib/eventRsvps.ts`'s `getEventHistoryForAccount`, joined against
+  `EVENTS` and split into upcoming/past by date.
+- **Shared account bar**: the inline sign-in/sign-up logic checkout and
+  event RSVPs both use lives in `lib/accountAuth.ts` (`resolveAccount`) and
+  `app/account/actions.ts` (`getAccountAction`/`accountSignOutAction`) —
+  extracted once a second flow needed the exact same "verify existing
+  password, or create an account, or just continue as a guest" behavior.
+
+No current event has `priceCents` set — every WHOA-run event shows Free
+RSVP until a real price is set on it.
 
 ## About, Contact & Policy pages
 

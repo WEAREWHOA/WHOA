@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import EventCard from "@/components/events/EventCard";
 import EventModal from "@/components/events/EventModal";
+import EventCheckoutModal from "@/components/events/EventCheckoutModal";
 import EventsCalendar from "@/components/events/EventsCalendar";
 import { EVENT_CATEGORIES, type EventCategory, type EventInfo } from "@/lib/events";
 
@@ -25,6 +26,7 @@ export default function EventsGrid({ events }: { events: EventInfo[] }) {
   const [openEvent, setOpenEvent] = useState<EventInfo | null>(null);
   const [originRect, setOriginRect] = useState<DOMRect | null>(null);
   const [closing, setClosing] = useState(false);
+  const [checkoutEvent, setCheckoutEvent] = useState<EventInfo | null>(null);
 
   const filtered = filter === "all" ? events : events.filter((event) => event.category === filter);
 
@@ -80,13 +82,21 @@ export default function EventsGrid({ events }: { events: EventInfo[] }) {
       </h2>
       <div className="relative z-10 mt-8 flex w-full max-w-6xl flex-wrap items-start justify-center gap-x-8 gap-y-14">
         {filtered.map((event, i) => (
-          <EventCard key={event.id} event={event} delay={i * 0.45} onOpen={handleOpen} />
+          <EventCard key={event.id} event={event} delay={i * 0.45} onOpen={handleOpen} onCheckout={setCheckoutEvent} />
         ))}
       </div>
 
       {openEvent && originRect && (
-        <EventModal event={openEvent} originRect={originRect} closing={closing} onClose={handleClose} />
+        <EventModal
+          event={openEvent}
+          originRect={originRect}
+          closing={closing}
+          onClose={handleClose}
+          onCheckout={setCheckoutEvent}
+        />
       )}
+
+      {checkoutEvent && <EventCheckoutModal event={checkoutEvent} onClose={() => setCheckoutEvent(null)} />}
     </>
   );
 }

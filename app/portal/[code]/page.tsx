@@ -6,10 +6,12 @@ import { getSessionAmbassadorCode } from "@/lib/auth";
 import { getArtist } from "@/lib/artists";
 import { getVendorProducts, getVendorStats } from "@/lib/vendor";
 import { getCustomerHistory } from "@/lib/squareCustomers";
+import { getEventHistoryForAccount } from "@/lib/eventRsvps";
 import LogoutButton from "@/components/portal/LogoutButton";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import AmbassadorTab from "@/components/dashboard/tabs/AmbassadorTab";
 import CustomerTab from "@/components/dashboard/tabs/CustomerTab";
+import EventsTab from "@/components/dashboard/tabs/EventsTab";
 import VendorTab from "@/components/dashboard/tabs/VendorTab";
 import MusicTab from "@/components/dashboard/tabs/MusicTab";
 import SsbdTab from "@/components/dashboard/tabs/SsbdTab";
@@ -39,6 +41,7 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
     : [undefined, undefined];
 
   const customerHistory = await getCustomerHistory(account);
+  const eventHistory = await getEventHistoryForAccount(account.code);
 
   const isNew = searchParams?.new === "1";
   const payoutSaved = searchParams?.saved === "1";
@@ -86,6 +89,7 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
             orders={customerHistory.orders}
           />
         }
+        events={<EventsTab upcoming={eventHistory.upcoming} past={eventHistory.past} />}
         ambassador={
           <AmbassadorTab
             ambassador={account}
