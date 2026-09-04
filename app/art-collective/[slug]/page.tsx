@@ -22,9 +22,12 @@ export async function generateMetadata(
   };
 }
 
-// Product data is live from Square (via the sync), not static — always
-// fetch fresh rather than caching a stale price/stock snapshot at build time.
-export const dynamic = "force-dynamic";
+// Product data is live from Square (via the sync), not static — but
+// force-dynamic here defeated generateStaticParams above (all ~28 vendor
+// pages, most of them pure placeholder bios with zero products) by forcing
+// a live Supabase round-trip on every single request instead of letting
+// them be statically generated and revalidated, same as /shop.
+export const revalidate = 60;
 
 export default async function ArtistPage(props: PageProps<"/art-collective/[slug]">) {
   const { slug } = await props.params;

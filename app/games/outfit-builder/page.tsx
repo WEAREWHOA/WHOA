@@ -1,6 +1,18 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { listProducts } from "@/lib/catalog";
 import OutfitBuilder from "@/components/games/outfit-builder/OutfitBuilder";
+
+export const metadata: Metadata = {
+  title: "Outfit Builder",
+  description: "Pick real WHOADEGA pieces. Download your fit.",
+};
+
+// Same as /shop — listProducts() is a live Square fetch, not a Next
+// fetch(), so it isn't covered by Next's own fetch cache. Without this,
+// the page would be frozen with whatever stock/prices existed at the last
+// build and never see a restock or price change without a redeploy.
+export const revalidate = 60;
 
 export default async function OutfitBuilderPage() {
   let products: Awaited<ReturnType<typeof listProducts>> = [];

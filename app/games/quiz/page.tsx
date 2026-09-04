@@ -1,5 +1,11 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import QuizGame from "@/components/games/quiz/QuizGame";
+
+export const metadata: Metadata = {
+  title: "Which WHOA Piece Are You",
+  description: "6 questions, one psychedelic result card built to share.",
+};
 
 export default function QuizPage() {
   return (

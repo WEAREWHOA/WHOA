@@ -1,7 +1,13 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import GraffitiCanvas from "@/components/games/graffiti/GraffitiCanvas";
 import DrawingThumbnail from "@/components/games/graffiti/DrawingThumbnail";
 import { getRecentDrawings } from "@/lib/graffiti";
+
+export const metadata: Metadata = {
+  title: "Graffiti Wall",
+  description: "Draw on the wall. It saves to the public gallery.",
+};
 
 export const dynamic = "force-dynamic";
 

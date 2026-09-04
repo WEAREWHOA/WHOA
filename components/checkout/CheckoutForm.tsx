@@ -303,6 +303,7 @@ export default function CheckoutForm({ ambassadorCode }: { ambassadorCode: strin
           <input
             type="text"
             required
+            aria-label="Address line 1"
             placeholder="Address line 1"
             value={line1}
             onChange={(e) => setLine1(e.target.value)}
@@ -310,6 +311,7 @@ export default function CheckoutForm({ ambassadorCode }: { ambassadorCode: strin
           />
           <input
             type="text"
+            aria-label="Apt, suite, etc. (optional)"
             placeholder="Apt, suite, etc. (optional)"
             value={line2}
             onChange={(e) => setLine2(e.target.value)}
@@ -319,6 +321,7 @@ export default function CheckoutForm({ ambassadorCode }: { ambassadorCode: strin
             <input
               type="text"
               required
+              aria-label="City"
               placeholder="City"
               value={city}
               onChange={(e) => setCity(e.target.value)}
@@ -327,6 +330,7 @@ export default function CheckoutForm({ ambassadorCode }: { ambassadorCode: strin
             <input
               type="text"
               required
+              aria-label="State"
               placeholder="State"
               value={state}
               onChange={(e) => setState(e.target.value)}
@@ -335,6 +339,7 @@ export default function CheckoutForm({ ambassadorCode }: { ambassadorCode: strin
             <input
               type="text"
               required
+              aria-label="ZIP"
               placeholder="ZIP"
               value={zip}
               onChange={(e) => setZip(e.target.value)}
@@ -344,6 +349,7 @@ export default function CheckoutForm({ ambassadorCode }: { ambassadorCode: strin
           <input
             type="tel"
             required
+            aria-label="Phone (for shipping updates)"
             placeholder="Phone (for shipping updates)"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}

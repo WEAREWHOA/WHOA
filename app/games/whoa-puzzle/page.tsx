@@ -1,5 +1,11 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import WhoaPuzzle from "@/components/games/whoa-puzzle/WhoaPuzzle";
+
+export const metadata: Metadata = {
+  title: "WHOA Puzzle",
+  description: "Slide the tiles into place. It only says WHOA when you solve it.",
+};
 
 export default function WhoaPuzzlePage() {
   return (

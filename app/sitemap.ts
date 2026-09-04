@@ -4,6 +4,12 @@ import { ARTISTS } from "@/lib/artists";
 import { MUSICIANS } from "@/lib/musicians";
 import { SITE_URL } from "@/lib/site";
 
+// Without this, a sitemap with no dynamic-request APIs (cookies/headers) —
+// this one only calls listProducts(), a plain external fetch — gets frozen
+// at build time: a new product added in Square wouldn't reach the sitemap,
+// and search engines wouldn't discover it, until the next full redeploy.
+export const revalidate = 3600;
+
 const STATIC_ROUTES = [
   { path: "/", priority: 1 },
   { path: "/shop", priority: 0.9 },

@@ -1,5 +1,11 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import MysteryDropSpinner from "@/components/games/mystery-drop/MysteryDropSpinner";
+
+export const metadata: Metadata = {
+  title: "Mystery Drop Spinner",
+  description: "Spin to reveal what's in the blind box.",
+};
 
 export default function MysteryDropPage() {
   return (
