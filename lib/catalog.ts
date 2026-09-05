@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { SquareError } from "square";
 import { getSquare, getSquareLocationId } from "./square";
 import type { Product, ProductCategory, ProductVariation } from "./types";
@@ -296,8 +297,50 @@ export async function getInventoryCounts(
 // items) — see checkoutAction. Cached per server instance, same posture
 // as getOnlineStoreChannelId above: categories essentially never change,
 // so a cold start just re-fetches once.
-const ARTIST_SALES_CATEGORY_NAME = "artist sales";
+export const ARTIST_SALES_CATEGORY_DISPLAY_NAME = "Artist Sales";
+const ARTIST_SALES_CATEGORY_NAME = ARTIST_SALES_CATEGORY_DISPLAY_NAME.toLowerCase();
 let artistSalesCategoryId: string | null | undefined;
+
+// General get-or-create for any Square category by name, case-insensitive.
+// Used to give each artist their own category in addition to "Artist
+// Sales" (see pushArtProductToSquare in lib/artCollective.ts), so Square's
+// own Items list and Sales reports can be filtered/broken out per artist
+// instead of one undifferentiated bucket. Cached per server instance per
+// name, same posture as getOnlineStoreChannelId above. Not deduped across
+// concurrent cold-start calls for a brand-new artist — an extremely rare
+// race (two approvals for the same never-before-seen artist within
+// milliseconds) that would just leave one harmless duplicate category to
+// merge by hand in Square, not worth guarding against here.
+const categoryIdByName = new Map<string, string>();
+
+export async function getOrCreateCategoryId(name: string): Promise<string> {
+  const key = name.trim().toLowerCase();
+  const cached = categoryIdByName.get(key);
+  if (cached) return cached;
+
+  const square = getSquare();
+  const page = await square.catalog.list({ types: "CATEGORY" });
+  for await (const obj of page) {
+    if (obj.type === "CATEGORY" && obj.id && obj.categoryData?.name?.trim().toLowerCase() === key) {
+      categoryIdByName.set(key, obj.id);
+      return obj.id;
+    }
+  }
+
+  const response = await square.catalog.object.upsert({
+    idempotencyKey: `category-${randomUUID()}`,
+    object: {
+      type: "CATEGORY",
+      id: `#category-${randomUUID()}`,
+      categoryData: { name: name.trim() },
+    },
+  });
+
+  const id = response.catalogObject?.id;
+  if (!id) throw new Error(`Square did not return a category id for "${name}"`);
+  categoryIdByName.set(key, id);
+  return id;
+}
 
 async function getArtistSalesCategoryId(): Promise<string | null> {
   if (artistSalesCategoryId !== undefined) return artistSalesCategoryId;

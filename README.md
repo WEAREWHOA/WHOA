@@ -543,6 +543,25 @@ system, which stays as-is for already-curated artists.
   [Environment variables](#environment-variables)'s
   `SQUARE_ONLINE_CHANNEL_NAME`) so it shows on `/shop` right away — no
   waiting on the webhook sync.
+- **Every artist also gets their own Square category**, not just the
+  umbrella "Artist Sales" one: `pushArtProductToSquare`
+  (`lib/artCollective.ts`) assigns each approved item to both
+  `ARTIST_SALES_CATEGORY_DISPLAY_NAME` (checkout's discount exclusion still
+  keys off this — see `getArtistSalesProductIds` below) and a category
+  named after the artist, creating either one in Square on first use via
+  `getOrCreateCategoryId` (`lib/catalog.ts`) — no Square plan upgrade
+  needed, categories are free and unlimited. The per-artist category is
+  also set as the item's `reportingCategory`, so Square's own Sales reports
+  break sales out per artist instead of lumping everyone under one
+  category. `/admin/square-sync`'s "Organize artist products by category"
+  button (`backfillArtistCategories`, `lib/squareSync.ts`) does the same
+  for every artist/vendor product already in the catalog — including
+  consignment items entered directly in Square for the static `ARTISTS`
+  list — by re-deriving the artist name from each item's `"- <Artist
+  Name>"` suffix (same convention as `matchArtCollectiveCode`/
+  `matchVendorSlug`) and re-upserting just the category fields, preserving
+  everything else about the item. Safe to re-run; already-correct items
+  are skipped.
 - **Why the item is named `"<Product Name> - <Artist Name>"`**: the
   existing Square→Supabase sync (`lib/squareSync.ts`'s `syncFullCatalog`)
   re-derives every product's `owner_code` from scratch on *every* full
@@ -775,6 +794,12 @@ Square's rate limits.
   gated by `SQUARE_ADMIN_SECRET` (sent as `Authorization: Bearer <secret>`).
   Not meant to be called repeatedly, and safe to re-run if you do — every
   sync step is an upsert.
+- `app/api/admin/square/categorize-artists/route.ts` — not part of initial
+  setup; an on-demand catch-up (`backfillArtistCategories`,
+  `lib/squareSync.ts`) that gives every artist/vendor product in the
+  catalog its own Square category alongside "Artist Sales" — see
+  [Art Collective](#art-collective) above. Same `SQUARE_ADMIN_SECRET` gate,
+  safe to re-run any time.
 
 **Setup (after the env vars above are already in place):**
 
@@ -794,11 +819,17 @@ Square's rate limits.
    - **Run backfill** — pulls the full existing catalog, inventory, and
      order history in. Can take a while on a large history; safe to click
      again if it times out, since every step upserts.
+   - **Organize artist products by category** — not part of this initial
+     setup sequence; a separate, click-anytime catch-up that gives every
+     artist/vendor product its own Square category (in addition to
+     "Artist Sales") and sets it as the reporting category. Worth running
+     once after the steps above, and again any time a consignment item is
+     added directly in Square. See [Art Collective](#art-collective).
 
    (Equivalent `curl` commands, if you'd rather script it: the same
    `-H "Authorization: Bearer $SQUARE_ADMIN_SECRET"` POST against
-   `/api/admin/square/locations`, `/api/admin/square/register-webhook`, and
-   `/api/admin/square/backfill`.)
+   `/api/admin/square/locations`, `/api/admin/square/register-webhook`,
+   `/api/admin/square/backfill`, and `/api/admin/square/categorize-artists`.)
 
 From then on, catalog/inventory/order changes in Square flow into Supabase
 automatically.

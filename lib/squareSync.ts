@@ -1,8 +1,11 @@
+import { randomUUID } from "crypto";
 import type { Square } from "square";
 import { getSquare } from "./square";
 import { getSupabase } from "./supabase";
 import { matchVendorSlug } from "./vendorMatch";
 import { getAllArtProfileNames, matchArtCollectiveCode } from "./artCollective";
+import { getOrCreateCategoryId, ARTIST_SALES_CATEGORY_DISPLAY_NAME } from "./catalog";
+import { ARTISTS } from "./artists";
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const result: T[][] = [];
@@ -230,4 +233,101 @@ export async function backfillOrders(): Promise<number> {
   } while (cursor);
 
   return count;
+}
+
+function normalizeName(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+// Same longest-suffix-match convention as matchVendorSlug/
+// matchArtCollectiveCode (a Square product's title ends with
+// "- <Artist Name>"), but returning the artist's real display name
+// directly instead of a slug/ambassador code — that's what's needed to
+// get-or-create the artist's own Square category.
+function resolveArtistName(productName: string, names: string[]): string | undefined {
+  const normalizedProduct = normalizeName(productName);
+  if (!normalizedProduct) return undefined;
+
+  const sorted = [...names].sort((a, b) => b.length - a.length);
+  for (const name of sorted) {
+    const normalized = normalizeName(name);
+    if (normalized && normalizedProduct.endsWith(normalized)) return name;
+  }
+  return undefined;
+}
+
+export interface CategorizeArtistsResult {
+  updated: number;
+  skipped: number;
+  artists: string[];
+}
+
+// Catch-up for every artist/vendor product already sitting in Square
+// (static ARTISTS consignment items entered by hand, plus any Art
+// Collective product approved before per-artist categories existed) —
+// assigns each to both "Artist Sales" and its own per-artist category, and
+// sets the per-artist category as the reporting category. New Art
+// Collective approvals get this automatically going forward (see
+// pushArtProductToSquare in lib/artCollective.ts); this is what makes it
+// show up for everything already in the catalog too. Safe to re-run —
+// already-correct items are skipped rather than re-upserted.
+export async function backfillArtistCategories(): Promise<CategorizeArtistsResult> {
+  const square = getSquare();
+  const artProfiles = await getAllArtProfileNames();
+  const names = [...artProfiles.map((p) => p.artistName), ...ARTISTS.map((a) => a.name)];
+
+  const artistSalesCategoryId = await getOrCreateCategoryId(ARTIST_SALES_CATEGORY_DISPLAY_NAME);
+  const updatedArtists = new Set<string>();
+  let updated = 0;
+  let skipped = 0;
+  let cursor: string | undefined;
+
+  do {
+    const response = await square.catalog.searchItems({ limit: 100, cursor });
+
+    for (const item of response.items ?? []) {
+      if (item.type !== "ITEM" || !item.itemData || !item.id) continue;
+
+      const artistName = resolveArtistName(item.itemData.name ?? "", names);
+      if (!artistName) {
+        skipped += 1;
+        continue;
+      }
+
+      const artistCategoryId = await getOrCreateCategoryId(artistName);
+      const existingCategoryIds = new Set((item.itemData.categories ?? []).map((c) => c.id));
+      const alreadyCorrect =
+        existingCategoryIds.has(artistSalesCategoryId) &&
+        existingCategoryIds.has(artistCategoryId) &&
+        item.itemData.reportingCategory?.id === artistCategoryId;
+
+      if (alreadyCorrect) {
+        skipped += 1;
+        continue;
+      }
+
+      // Full-replacement semantics — reuse the exact object Square just
+      // returned (variations, channels, version, etc. all intact) and only
+      // touch the two category fields, rather than reconstructing the item
+      // from scratch and risking dropping something.
+      await square.catalog.object.upsert({
+        idempotencyKey: randomUUID(),
+        object: {
+          ...item,
+          itemData: {
+            ...item.itemData,
+            categories: [{ id: artistSalesCategoryId }, { id: artistCategoryId }],
+            reportingCategory: { id: artistCategoryId },
+          },
+        },
+      });
+
+      updatedArtists.add(artistName);
+      updated += 1;
+    }
+
+    cursor = response.cursor;
+  } while (cursor);
+
+  return { updated, skipped, artists: Array.from(updatedArtists).sort() };
 }
