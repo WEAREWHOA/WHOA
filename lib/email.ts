@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { formatCents } from "./money";
+import { createApprovalLinks, type ApprovalKind } from "./approvalTokens";
 
 let client: Resend | null = null;
 
@@ -172,7 +173,11 @@ export async function sendEventConfirmationEmail(input: {
   }
 }
 
-function buildAdminNotificationHtml(input: { heading: string; rows: { label: string; value: string }[] }): string {
+function buildAdminNotificationHtml(input: {
+  heading: string;
+  rows: { label: string; value: string }[];
+  actions?: { approveUrl: string; declineUrl: string; approveLabel: string; declineLabel: string };
+}): string {
   const rows = input.rows
     .map(
       (row) => `
@@ -183,12 +188,29 @@ function buildAdminNotificationHtml(input: { heading: string; rows: { label: str
     )
     .join("");
 
+  const actionsHtml = input.actions
+    ? `<table style="width:100%;border-collapse:collapse;margin-top:24px;">
+        <tr>
+          <td style="padding:0 8px 0 0;">
+            <a href="${input.actions.approveUrl}" style="display:block;text-align:center;background:#ff7a00;color:#14100c;font-weight:600;font-size:13px;letter-spacing:0.05em;text-transform:uppercase;text-decoration:none;border-radius:999px;padding:12px 0;">${escapeHtml(input.actions.approveLabel)}</a>
+          </td>
+          <td style="padding:0 0 0 8px;">
+            <a href="${input.actions.declineUrl}" style="display:block;text-align:center;background:transparent;border:1px solid #4a3f33;color:#b8ada0;font-weight:600;font-size:13px;letter-spacing:0.05em;text-transform:uppercase;text-decoration:none;border-radius:999px;padding:11px 0;">${escapeHtml(input.actions.declineLabel)}</a>
+          </td>
+        </tr>
+      </table>
+      <p style="margin:12px 0 0;color:#6b6157;font-size:11px;line-height:1.5;">
+        One click, no login needed — the buttons expire in 30 days and each can only be used once.
+      </p>`
+    : "";
+
   return wrapEmail(`
         <p style="margin:0;color:#ff7a00;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;font-weight:600;">New submission</p>
         <h1 style="margin:8px 0 20px;color:#f7f0e6;font-size:24px;">${escapeHtml(input.heading)}</h1>
         <table style="width:100%;border-collapse:collapse;">
           ${rows}
-        </table>`);
+        </table>
+        ${actionsHtml}`);
 }
 
 // Internal staff notification, not a customer-facing email — reply-to'd to
@@ -201,6 +223,7 @@ async function sendAdminNotification(input: {
   heading: string;
   rows: { label: string; value: string }[];
   replyTo?: string;
+  actions?: { approveUrl: string; declineUrl: string; approveLabel: string; declineLabel: string };
 }): Promise<void> {
   const resend = getResend();
 
@@ -209,12 +232,23 @@ async function sendAdminNotification(input: {
     to: ADMIN_NOTIFY_ADDRESS,
     replyTo: input.replyTo || REPLY_TO,
     subject: input.subject,
-    html: buildAdminNotificationHtml({ heading: input.heading, rows: input.rows }),
+    html: buildAdminNotificationHtml({ heading: input.heading, rows: input.rows, actions: input.actions }),
   });
 
   if (error) {
     throw new Error(`Resend failed to send admin notification: ${error.message}`);
   }
+}
+
+// Shared by every notification below that offers one-click Approve/Decline
+// buttons — builds the magic-link pair for a given approval_tokens row.
+async function buildApprovalActions(
+  kind: ApprovalKind,
+  subject: { code?: string; id?: string },
+  labels: { approveLabel: string; declineLabel: string },
+): Promise<{ approveUrl: string; declineUrl: string; approveLabel: string; declineLabel: string }> {
+  const { approveUrl, declineUrl } = await createApprovalLinks(kind, subject);
+  return { approveUrl, declineUrl, ...labels };
 }
 
 export async function sendAmbassadorApplicationNotification(input: {
@@ -223,6 +257,17 @@ export async function sendAmbassadorApplicationNotification(input: {
   instagram?: string;
   code: string;
 }): Promise<void> {
+  // Ambassador access is granted instantly at signup (see app/apply), so
+  // there's nothing pending to "approve" here — Approve is just an
+  // acknowledgment. Decline is the useful button: it revokes the access
+  // that was already auto-granted, a fast one-click undo for a bad-faith
+  // signup without a trip to Super Admin.
+  const actions = await buildApprovalActions(
+    "ambassador_application",
+    { code: input.code },
+    { approveLabel: "Looks good", declineLabel: "Revoke access" },
+  );
+
   await sendAdminNotification({
     subject: `New Brand Ambassador application: ${input.name}`,
     heading: "New Brand Ambassador application",
@@ -231,8 +276,10 @@ export async function sendAmbassadorApplicationNotification(input: {
       { label: "Email", value: input.email },
       { label: "Instagram", value: input.instagram || "—" },
       { label: "Assigned code", value: input.code },
+      { label: "Status", value: "Already has ambassador access — approval is instant." },
     ],
     replyTo: input.email,
+    actions,
   });
 }
 
@@ -282,6 +329,12 @@ export async function sendEventSalesApplicationNotification(input: {
   message?: string;
   code: string;
 }): Promise<void> {
+  const actions = await buildApprovalActions(
+    "event_sales_application",
+    { code: input.code },
+    { approveLabel: "Approve", declineLabel: "Decline" },
+  );
+
   await sendAdminNotification({
     subject: `New Sell For Us application: ${input.name}`,
     heading: "New Sell For Us application",
@@ -292,9 +345,9 @@ export async function sendEventSalesApplicationNotification(input: {
       { label: "Instagram", value: input.instagram || "—" },
       { label: "Message", value: input.message || "—" },
       { label: "Account", value: input.code },
-      { label: "To approve", value: "Grant Event Sales from Super Admin for this account." },
     ],
     replyTo: input.email,
+    actions,
   });
 }
 
@@ -303,7 +356,14 @@ export async function sendEventWorkSignupNotification(input: {
   email: string;
   eventTitle: string;
   eventDateLabel: string;
+  signupId: string;
 }): Promise<void> {
+  const actions = await buildApprovalActions(
+    "event_sales_signup",
+    { id: input.signupId },
+    { approveLabel: "Approve", declineLabel: "Decline" },
+  );
+
   await sendAdminNotification({
     subject: `${input.name} wants to work ${input.eventTitle}`,
     heading: "New event work signup",
@@ -312,9 +372,9 @@ export async function sendEventWorkSignupNotification(input: {
       { label: "Email", value: input.email },
       { label: "Event", value: input.eventTitle },
       { label: "Date", value: input.eventDateLabel },
-      { label: "To approve", value: "Review it from the Events Admin tab in the portal." },
     ],
     replyTo: input.email,
+    actions,
   });
 }
 
@@ -326,6 +386,12 @@ export async function sendMusicApplicationNotification(input: {
   bio?: string;
   code: string;
 }): Promise<void> {
+  const actions = await buildApprovalActions(
+    "music_application",
+    { code: input.code },
+    { approveLabel: "Approve", declineLabel: "Decline" },
+  );
+
   await sendAdminNotification({
     subject: `New Music Collective application: ${input.artistName}`,
     heading: "New Music Collective application",
@@ -336,8 +402,71 @@ export async function sendMusicApplicationNotification(input: {
       { label: "Genre", value: input.subgenre || "—" },
       { label: "Bio", value: input.bio || "—" },
       { label: "Account", value: input.code },
-      { label: "To approve", value: "Grant Music from Super Admin for this account." },
     ],
     replyTo: input.email,
+    actions,
+  });
+}
+
+export async function sendArtApplicationNotification(input: {
+  name: string;
+  email: string;
+  artistName: string;
+  medium?: string;
+  bio?: string;
+  code: string;
+}): Promise<void> {
+  const actions = await buildApprovalActions(
+    "art_application",
+    { code: input.code },
+    { approveLabel: "Approve", declineLabel: "Decline" },
+  );
+
+  await sendAdminNotification({
+    subject: `New Art Collective application: ${input.artistName}`,
+    heading: "New Art Collective application",
+    rows: [
+      { label: "Contact name", value: input.name },
+      { label: "Email", value: input.email },
+      { label: "Artist name", value: input.artistName },
+      { label: "Medium", value: input.medium || "—" },
+      { label: "Bio", value: input.bio || "—" },
+      { label: "Account", value: input.code },
+    ],
+    replyTo: input.email,
+    actions,
+  });
+}
+
+// One email per submitted product (not per batch) — each gets its own
+// Approve/Decline buttons so a batch of up to 5 can be handled individually
+// right from the inbox; "approve all" for the whole batch at once is a
+// button in the ART ADMIN tab instead, since a single magic link approving
+// N products at once doesn't fit this module's one-token-one-decision model.
+export async function sendArtProductSubmissionNotification(input: {
+  artistName: string;
+  email: string;
+  productName: string;
+  priceCents: number;
+  alsoRetailEvents: boolean;
+  productId: string;
+}): Promise<void> {
+  const actions = await buildApprovalActions(
+    "art_product",
+    { id: input.productId },
+    { approveLabel: "Approve", declineLabel: "Decline" },
+  );
+
+  await sendAdminNotification({
+    subject: `New product from ${input.artistName}: ${input.productName}`,
+    heading: "New Art Collective product submission",
+    rows: [
+      { label: "Artist", value: input.artistName },
+      { label: "Product", value: input.productName },
+      { label: "Price", value: formatCents(input.priceCents) },
+      { label: "Also wants", value: input.alsoRetailEvents ? "Retail store & events" : "Online store only" },
+    ],
+    replyTo: input.email,
+    actions,
   });
 }

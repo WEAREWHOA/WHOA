@@ -66,17 +66,19 @@ function mapSignup(row: EventSalesSignupRow): EventSalesSignup {
 export async function requestEventWorkSignup(
   ambassadorCode: string,
   eventId: string,
-): Promise<{ ok: boolean; error?: string }> {
-  const { error } = await getSupabase()
+): Promise<{ ok: boolean; id?: string; error?: string }> {
+  const { data, error } = await getSupabase()
     .from("event_sales_signups")
-    .insert({ ambassador_code: ambassadorCode, event_id: eventId });
+    .insert({ ambassador_code: ambassadorCode, event_id: eventId })
+    .select("id")
+    .single();
 
   if (error) {
     if (error.code === "23505") return { ok: false, error: "You've already signed up to work this event." };
     return { ok: false, error: error.message };
   }
 
-  return { ok: true };
+  return { ok: true, id: data.id };
 }
 
 // Powers the EVENT SALES tab — this account's own signup for every event,

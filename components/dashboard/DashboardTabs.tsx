@@ -7,10 +7,12 @@ const ALL_TABS = [
   { id: "events", label: "EVENTS" },
   { id: "ambassador", label: "BRAND AMBASSADORS" },
   { id: "vendor", label: "ARTIST/VENDOR" },
+  { id: "art", label: "ART" },
   { id: "music", label: "MUSIC" },
   { id: "ssbd", label: "SSBD" },
   { id: "eventsAdmin", label: "EVENTS ADMIN" },
   { id: "eventSales", label: "EVENT SALES" },
+  { id: "artAdmin", label: "ART ADMIN" },
   { id: "settings", label: "SETTINGS" },
 ] as const;
 
@@ -23,10 +25,12 @@ export default function DashboardTabs({
   events,
   ambassador,
   vendor,
+  art,
   music,
   ssbd,
   eventsAdmin,
   eventSales,
+  artAdmin,
   settings,
   visible,
 }: {
@@ -34,10 +38,12 @@ export default function DashboardTabs({
   events: ReactNode;
   ambassador: ReactNode;
   vendor: ReactNode;
+  art: ReactNode;
   music: ReactNode;
   ssbd: ReactNode;
   eventsAdmin: ReactNode;
   eventSales: ReactNode;
+  artAdmin: ReactNode;
   settings: ReactNode;
   // Customer, Events, and Settings are always visible — everyone with an
   // account is a customer, can RSVP/buy tickets, and manages their own
@@ -45,10 +51,12 @@ export default function DashboardTabs({
   visible: {
     ambassador: boolean;
     vendor: boolean;
+    art: boolean;
     music: boolean;
     ssbd: boolean;
     eventsAdmin: boolean;
     eventSales: boolean;
+    artAdmin: boolean;
   };
 }) {
   const content: Record<TabId, ReactNode> = {
@@ -56,10 +64,12 @@ export default function DashboardTabs({
     events,
     ambassador,
     vendor,
+    art,
     music,
     ssbd,
     eventsAdmin,
     eventSales,
+    artAdmin,
     settings,
   };
   const tabs = ALL_TABS.filter(

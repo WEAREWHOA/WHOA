@@ -17,7 +17,15 @@ import { createSession, destroySession, getSessionAmbassadorCode, hashPassword, 
 import { EVENTS } from "./events";
 import { requestEventWorkSignup } from "./eventSales";
 import { saveMusicianProfile, type MusicProfileLink } from "./musicianProfiles";
-import { sendEventWorkSignupNotification } from "./email";
+import {
+  getArtProfile,
+  saveArtProfile,
+  submitArtProducts,
+  uploadArtPhoto,
+  type ArtLink,
+  type SubmitArtProductInput,
+} from "./artCollective";
+import { sendEventWorkSignupNotification, sendArtProductSubmissionNotification } from "./email";
 import type { PayoutSettings } from "./types";
 
 export async function loginAction(formData: FormData) {
@@ -254,7 +262,7 @@ export async function signupToWorkEventAction(formData: FormData) {
 
   const result = await requestEventWorkSignup(code, eventId);
 
-  if (result.ok) {
+  if (result.ok && result.id) {
     // Best-effort — the signup itself is already recorded either way.
     try {
       await sendEventWorkSignupNotification({
@@ -262,6 +270,7 @@ export async function signupToWorkEventAction(formData: FormData) {
         email: account.email,
         eventTitle: event.title,
         eventDateLabel: event.dateLabel,
+        signupId: result.id,
       });
     } catch (emailErr) {
       console.error("sendEventWorkSignupNotification failed:", emailErr);
@@ -315,4 +324,159 @@ export async function saveMusicianProfileAction(formData: FormData) {
   }
 
   redirect(`/portal/${code}?musicSaved=1`);
+}
+
+const ART_LINK_FIELDS: { label: string; field: string }[] = [
+  { label: "Instagram", field: "linkInstagram" },
+  { label: "Etsy", field: "linkEtsy" },
+  { label: "Website", field: "linkWebsite" },
+  { label: "TikTok", field: "linkTikTok" },
+];
+
+// Backs the ART tab's profile form — same shape as
+// saveMusicianProfileAction, plus an optional profile photo upload. A
+// re-save without a new photo keeps whatever's already on file.
+export async function saveArtProfileAction(formData: FormData) {
+  const code = String(formData.get("code") || "").trim();
+  const sessionCode = await getSessionAmbassadorCode();
+  if (!sessionCode || sessionCode.toUpperCase() !== code.toUpperCase()) {
+    redirect("/login");
+  }
+
+  const account = await getByCode(code);
+  if (!account?.permissions.art) redirect(`/portal/${code}`);
+
+  const artistName = String(formData.get("artistName") || "").trim();
+  if (!artistName) redirect(`/portal/${code}?artError=missing`);
+
+  const medium = String(formData.get("medium") || "").trim();
+  const tagline = String(formData.get("tagline") || "").trim();
+  const bio = String(formData.get("bio") || "").trim();
+  const links: ArtLink[] = ART_LINK_FIELDS.map(({ label, field }) => ({
+    label,
+    url: String(formData.get(field) || "").trim(),
+  })).filter((link) => link.url.length > 0);
+
+  let profileImageUrl: string | undefined;
+  const photo = formData.get("profileImage");
+  if (photo instanceof File && photo.size > 0) {
+    try {
+      profileImageUrl = await uploadArtPhoto("profile", code, photo);
+    } catch (err) {
+      console.error("Failed to upload profile photo:", err);
+    }
+  }
+
+  try {
+    const existing = await getArtProfile(code);
+    await saveArtProfile(code, {
+      artistName,
+      medium,
+      tagline,
+      bio,
+      profileImageUrl: profileImageUrl ?? existing?.profileImageUrl ?? undefined,
+      links,
+    });
+  } catch (err) {
+    unstable_rethrow(err);
+    console.error("saveArtProfileAction failed:", err);
+    redirect(`/portal/${code}?artError=server`);
+  }
+
+  redirect(`/portal/${code}?artSaved=1`);
+}
+
+const MAX_ART_PRODUCTS_PER_SUBMISSION = 5;
+const MAX_PHOTOS_PER_PRODUCT = 5;
+
+// Backs the ART tab's "Submit products" form — up to 5 products in one
+// batch (see lib/artCollective.ts's submitArtProducts), each with its own
+// photos uploaded to Storage, plus the required online-only vs.
+// online+retail/events choice shared by the whole batch. Sends one
+// notification email per product so each can be approved individually
+// right from the inbox; approving/declining the whole batch at once is a
+// button in the ART ADMIN tab instead.
+export async function submitArtProductsAction(formData: FormData) {
+  const code = String(formData.get("code") || "").trim();
+  const sessionCode = await getSessionAmbassadorCode();
+  if (!sessionCode || sessionCode.toUpperCase() !== code.toUpperCase()) {
+    redirect("/login");
+  }
+
+  const account = await getByCode(code);
+  if (!account?.permissions.art) redirect(`/portal/${code}`);
+
+  const retailChoice = String(formData.get("alsoRetailEvents") || "");
+  if (retailChoice !== "yes" && retailChoice !== "no") {
+    redirect(`/portal/${code}?artProductError=missing-choice`);
+  }
+  const alsoRetailEvents = retailChoice === "yes";
+
+  const products: SubmitArtProductInput[] = [];
+  for (let i = 0; i < MAX_ART_PRODUCTS_PER_SUBMISSION; i++) {
+    const name = String(formData.get(`product-${i}-name`) || "").trim();
+    if (!name) continue;
+
+    const priceDollars = parseFloat(String(formData.get(`product-${i}-price`) || ""));
+    const priceCents = Math.round(priceDollars * 100);
+    if (!Number.isFinite(priceCents) || priceCents <= 0) {
+      redirect(`/portal/${code}?artProductError=invalid-price`);
+    }
+
+    const files = formData
+      .getAll(`product-${i}-photos`)
+      .filter((f): f is File => f instanceof File && f.size > 0)
+      .slice(0, MAX_PHOTOS_PER_PRODUCT);
+
+    const photoUrls: string[] = [];
+    for (const file of files) {
+      try {
+        photoUrls.push(await uploadArtPhoto("products", code, file));
+      } catch (err) {
+        console.error(`Failed to upload photo for product ${i}:`, err);
+      }
+    }
+
+    products.push({
+      ambassadorCode: code,
+      name,
+      description: String(formData.get(`product-${i}-description`) || "").trim(),
+      priceCents,
+      size: String(formData.get(`product-${i}-size`) || "").trim(),
+      details: String(formData.get(`product-${i}-details`) || "").trim(),
+      photoUrls,
+      alsoRetailEvents,
+    });
+  }
+
+  if (products.length === 0) redirect(`/portal/${code}?artProductError=empty`);
+
+  try {
+    const inserted = await submitArtProducts(products);
+    const profile = await getArtProfile(code);
+    const artistName = profile?.artistName ?? account.name;
+
+    for (const product of inserted) {
+      // Best-effort per product — one failed notification shouldn't block
+      // the others, and the submission is already safely stored either way.
+      try {
+        await sendArtProductSubmissionNotification({
+          artistName,
+          email: account.email,
+          productName: product.name,
+          priceCents: product.priceCents,
+          alsoRetailEvents: product.alsoRetailEvents,
+          productId: product.id,
+        });
+      } catch (emailErr) {
+        console.error("sendArtProductSubmissionNotification failed:", emailErr);
+      }
+    }
+  } catch (err) {
+    unstable_rethrow(err);
+    console.error("submitArtProductsAction failed:", err);
+    redirect(`/portal/${code}?artProductError=server`);
+  }
+
+  redirect(`/portal/${code}?artProductSubmitted=1`);
 }

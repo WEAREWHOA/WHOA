@@ -2,6 +2,7 @@ import type { Square } from "square";
 import { getSquare } from "./square";
 import { getSupabase } from "./supabase";
 import { matchVendorSlug } from "./vendorMatch";
+import { getAllArtProfileNames, matchArtCollectiveCode } from "./artCollective";
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const result: T[][] = [];
@@ -27,6 +28,13 @@ export async function syncFullCatalog(): Promise<{ productIds: string[]; variati
   const productIds: string[] = [];
   const variationIds: string[] = [];
   let cursor: string | undefined;
+
+  // Fetched once per resync (not per item) — dynamic Art Collective
+  // artists are matched the same way as the static ARTISTS list (name
+  // suffix), so a product created via the Art Collective pipeline keeps
+  // its owner_code across every future full resync instead of it being
+  // wiped back to null (see lib/artCollective.ts's matchArtCollectiveCode).
+  const artProfiles = await getAllArtProfileNames();
 
   do {
     const response = await square.catalog.searchItems({ limit: 100, cursor });
@@ -64,7 +72,7 @@ export async function syncFullCatalog(): Promise<{ productIds: string[]; variati
         name,
         description: data.descriptionPlaintext ?? data.description ?? null,
         image_url: firstImageId ? (imageUrlById.get(firstImageId) ?? null) : null,
-        owner_code: matchVendorSlug(name) ?? null,
+        owner_code: matchArtCollectiveCode(name, artProfiles) ?? matchVendorSlug(name) ?? null,
         updated_at: new Date().toISOString(),
       });
       productIds.push(item.id);
