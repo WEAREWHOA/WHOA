@@ -60,6 +60,7 @@ function slugify(name: string): string {
 const VENDOR_NAMES = [
   "Alex Wilson",
   "Ascension Society",
+  "Audee Hautee",
   "Barely Awake",
   "Chris Param",
   "Cosmic Braids",
