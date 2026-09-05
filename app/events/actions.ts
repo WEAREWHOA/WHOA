@@ -8,7 +8,7 @@ import { setSquareCustomerId } from "@/lib/store";
 import { findOrCreateSquareCustomerId } from "@/lib/squareCustomers";
 import { createRsvpRecord } from "@/lib/eventRsvps";
 import { sendEventConfirmationEmail } from "@/lib/email";
-import { EVENTS, getCurrentPriceCents, isTicketingOpen } from "@/lib/events";
+import { EVENTS, getCurrentPriceCents, isTicketingOpen, requiresDamageWaiver } from "@/lib/events";
 import { SITE_URL } from "@/lib/site";
 import { subscribeToNewsletter } from "@/lib/mailchimp";
 
@@ -39,6 +39,10 @@ export async function eventRsvpAction(input: {
   // when the event has a lineup. Validated against the event's own lineup
   // so a tampered request can't inject an arbitrary string into reports.
   selectedArtist?: string;
+  // Whether the guest clicked "Agree" on the damage-responsibility waiver.
+  // Required (and re-checked here, never trusted from the client alone)
+  // for any event at the WHOAdega/SH!FT Gallery — see requiresDamageWaiver.
+  waiverAgreed?: boolean;
 }): Promise<EventRsvpResult> {
   const event = EVENTS.find((e) => e.id === input.eventId);
   if (!event) {
@@ -49,6 +53,12 @@ export async function eventRsvpAction(input: {
   // ever a client-side courtesy, not enforcement.
   if (!isTicketingOpen(event)) {
     return { ok: false, error: "RSVPs/tickets for this event have closed." };
+  }
+  // Same never-trust-the-client posture as the ticketing-closed check above
+  // — the waiver modal gates the checkout form client-side, but this is
+  // what actually stops a bypassed request from creating an RSVP without it.
+  if (requiresDamageWaiver(event) && !input.waiverAgreed) {
+    return { ok: false, error: "You must agree to the damage responsibility waiver to continue." };
   }
 
   const name = input.name.trim();
@@ -156,6 +166,7 @@ export async function eventRsvpAction(input: {
       squareOrderId,
       squarePaymentId,
       selectedArtist,
+      waiverAgreedAt: input.waiverAgreed ? new Date().toISOString() : null,
     });
   } catch (err) {
     console.error("Failed to save RSVP/ticket record:", err);

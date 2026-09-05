@@ -15,6 +15,9 @@ export interface EventRsvpRecord {
   // Which lineup artist the guest said they're there for — optional, picked
   // from event.lineup on the RSVP/ticket form. Null means no preference.
   selectedArtist: string | null;
+  // When the guest agreed to the damage-responsibility waiver — null if the
+  // event didn't require one (see lib/events.ts's requiresDamageWaiver).
+  waiverAgreedAt: string | null;
   createdAt: string;
 }
 
@@ -29,6 +32,7 @@ interface EventRsvpRow {
   square_order_id: string | null;
   square_payment_id: string | null;
   selected_artist: string | null;
+  waiver_agreed_at: string | null;
   created_at: string;
 }
 
@@ -44,6 +48,7 @@ function mapRow(row: EventRsvpRow): EventRsvpRecord {
     squareOrderId: row.square_order_id,
     squarePaymentId: row.square_payment_id,
     selectedArtist: row.selected_artist,
+    waiverAgreedAt: row.waiver_agreed_at,
     createdAt: row.created_at,
   };
 }
@@ -60,6 +65,7 @@ export async function createRsvpRecord(input: {
   squareOrderId?: string | null;
   squarePaymentId?: string | null;
   selectedArtist?: string | null;
+  waiverAgreedAt?: string | null;
 }): Promise<string> {
   const id = `rsvp_${randomUUID()}`;
   const { error } = await getSupabase()
@@ -75,6 +81,7 @@ export async function createRsvpRecord(input: {
       square_order_id: input.squareOrderId ?? null,
       square_payment_id: input.squarePaymentId ?? null,
       selected_artist: input.selectedArtist ?? null,
+      waiver_agreed_at: input.waiverAgreedAt ?? null,
     });
 
   if (error) {

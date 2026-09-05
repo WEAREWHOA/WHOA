@@ -114,6 +114,13 @@ export default function EventModal({
               className="absolute inset-0 -z-10"
               style={{ background: `linear-gradient(160deg, ${c1} 0%, ${c2} 55%, ${c3} 100%)` }}
             />
+            {event.imageUrl && (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={event.imageUrl} alt="" className="absolute inset-0 -z-10 h-full w-full object-cover" />
+                <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-t from-black/90 via-black/25 to-black/40" />
+              </>
+            )}
             <div aria-hidden className="event-card-noise absolute inset-0 -z-10" />
             <span className="text-psychedelic font-display text-2xl tracking-wide">WHOA</span>
             <h3 className="font-display mt-2 text-3xl leading-none text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]">
@@ -140,9 +147,14 @@ export default function EventModal({
 
             <div
               aria-hidden
-              className="-mx-6 -mt-6 mb-5 h-28 shrink-0"
+              className="relative -mx-6 -mt-6 mb-5 h-28 shrink-0 overflow-hidden"
               style={{ background: `linear-gradient(160deg, ${c1} 0%, ${c2} 55%, ${c3} 100%)` }}
-            />
+            >
+              {event.imageUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={event.imageUrl} alt="" className="h-full w-full object-cover" />
+              )}
+            </div>
 
             <span className="text-xs font-semibold tracking-[0.2em] text-muted uppercase">
               {event.venue}

@@ -119,11 +119,15 @@ export default function EventsCalendar({
           week.map((cell, j) => {
             const isToday = cell.dateKey === todayKey;
             const dayEvents = cell.dateKey ? eventsOnDate(events, cell.dateKey) : [];
+            // When more than one event lands on the same day, only the
+            // first's flyer fills the cell — the day still lists every
+            // event as its own chip on top.
+            const cellImage = dayEvents.find((event) => event.imageUrl)?.imageUrl;
 
             return (
               <div
                 key={`${i}-${j}`}
-                className={`min-h-20 rounded-lg border p-1.5 sm:min-h-24 sm:p-2 ${
+                className={`relative min-h-20 overflow-hidden rounded-lg border p-1.5 sm:min-h-24 sm:p-2 ${
                   cell.day === null
                     ? "border-transparent"
                     : isToday
@@ -131,9 +135,25 @@ export default function EventsCalendar({
                       : "border-border bg-surface-raised"
                 }`}
               >
-                {cell.day !== null && (
+                {cellImage && (
                   <>
-                    <span className={`text-xs ${isToday ? "font-bold text-flame-2" : "text-muted"}`}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={cellImage} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                    <div aria-hidden className="absolute inset-0 bg-black/55" />
+                  </>
+                )}
+
+                {cell.day !== null && (
+                  <div className="relative">
+                    <span
+                      className={`text-xs ${
+                        cellImage
+                          ? "font-semibold text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
+                          : isToday
+                            ? "font-bold text-flame-2"
+                            : "text-muted"
+                      }`}
+                    >
                       {cell.day}
                     </span>
                     {dayEvents.length > 0 && (
@@ -143,7 +163,7 @@ export default function EventsCalendar({
                         ))}
                       </div>
                     )}
-                  </>
+                  </div>
                 )}
               </div>
             );

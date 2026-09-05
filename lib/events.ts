@@ -23,6 +23,10 @@ export interface EventInfo {
   tags?: string[];
   accent: string;
   gradient: [string, string, string];
+  // Real flyer photo, under public/events/ — shown as the card/calendar
+  // cover in place of the CSS gradient when set. Omitted means the event
+  // still gets the gradient-only treatment (no flyer image on file yet).
+  imageUrl?: string;
   // Present only for events with their own external ticketing (e.g. a
   // festival WHOA just has a presence at) — those keep linking out rather
   // than being sold through this app's checkout. Never set alongside
@@ -100,6 +104,16 @@ export function isTicketingOpen(event: EventInfo, referenceDate: Date = new Date
 // handful of actually-upcoming events under a growing pile of historical
 // flyers on /events — this is what /events' grid/calendar display order
 // should use instead of the array's raw order.
+// Whether an event needs the damage-responsibility waiver before checkout
+// — any event held at the WHOAdega or SH!FT Gallery, derived from the
+// venue text rather than a manually-set flag so a newly authored event
+// picks it up automatically as long as its venue says so. Only matters for
+// events with an in-app checkout — one with its own external href never
+// reaches this app's checkout at all, waiver or not.
+export function requiresDamageWaiver(event: EventInfo): boolean {
+  return /WHOAdega|SH!FT/i.test(event.venue);
+}
+
 export function sortEventsByProximity(events: EventInfo[], referenceDate: Date = new Date()): EventInfo[] {
   const todayKey = referenceDate.toISOString().slice(0, 10);
   const upcoming: EventInfo[] = [];
@@ -120,6 +134,7 @@ export function sortEventsByProximity(events: EventInfo[], referenceDate: Date =
 export const EVENTS: EventInfo[] = [
   {
     id: "auf-eddym-jan24",
+    imageUrl: "/events/auf-eddym-jan24.webp",
     title: "AUF Presents: Eddy M",
     dateLabel: "January 24",
     timeLabel: "9PM – Late",
@@ -136,6 +151,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "whoa-wed-jan28",
+    imageUrl: "/events/whoa-wed-jan28.webp",
     title: "WHOA Wednesday",
     dateLabel: "January 28",
     timeLabel: "7PM – 11PM",
@@ -151,6 +167,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "happy-world-jan30",
+    imageUrl: "/events/happy-world-jan30.jpg",
     title: "Happy World Fundraiser",
     dateLabel: "January 30",
     timeLabel: "7PM – 11PM",
@@ -166,6 +183,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "whoa-wed-feb4",
+    imageUrl: "/events/whoa-wed-feb4.webp",
     title: "WHOA Wednesday",
     dateLabel: "February 4",
     timeLabel: "7PM – 11PM",
@@ -181,6 +199,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "whoa-wed-feb11",
+    imageUrl: "/events/whoa-wed-feb11.webp",
     title: "WHOA Wednesday",
     dateLabel: "February 11",
     timeLabel: "7PM – 11PM",
@@ -196,6 +215,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "quartyard-valentines-feb14",
+    imageUrl: "/events/quartyard-valentines-feb14.webp",
     title: "Every Time We Touch — A Valentine's Day Special",
     dateLabel: "February 14",
     timeLabel: "5PM – 9PM",
@@ -213,6 +233,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "whoa-wed-feb18",
+    imageUrl: "/events/whoa-wed-feb18.webp",
     title: "WHOA Wednesday",
     dateLabel: "February 18",
     timeLabel: "7PM – 11PM",
@@ -227,6 +248,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "girls-gallery-feb25",
+    imageUrl: "/events/girls-gallery-feb25.jpg",
     title: "It's A Girls Gallery Art Show",
     dateLabel: "February 25",
     timeLabel: "6PM – 10PM",
@@ -241,6 +263,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "whoa-wed-mar11",
+    imageUrl: "/events/whoa-wed-mar11.webp",
     title: "WHOA Wednesday",
     dateLabel: "March 11",
     timeLabel: "7PM – 11PM",
@@ -255,6 +278,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "skyisa-mar14",
+    imageUrl: "/events/skyisa-mar14.webp",
     title: "Skyisa — Gradient Bloom Tour",
     dateLabel: "March 14",
     timeLabel: "Evening",
@@ -270,6 +294,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "wicked-wellness-mar14",
+    imageUrl: "/events/wicked-wellness-mar14.webp",
     title: "Wicked Wellness — A One-Day Yoga & Wellness Festival",
     dateLabel: "March 14",
     timeLabel: "11AM – 3PM",
@@ -304,6 +329,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "whoa-wed-mar18",
+    imageUrl: "/events/whoa-wed-mar18.webp",
     title: "WHOA Wednesday — Celebrating Wasani's 30th Birthday",
     dateLabel: "March 18",
     timeLabel: "7PM – 12AM",
@@ -317,6 +343,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "whoa-wed-mar25",
+    imageUrl: "/events/whoa-wed-mar25.webp",
     title: "WHOA Wednesday",
     dateLabel: "March 25",
     timeLabel: "8PM – 11PM",
@@ -331,6 +358,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "whoa-wed-apr1",
+    imageUrl: "/events/whoa-wed-apr1.webp",
     title: "WHOA Wednesday",
     dateLabel: "April 1",
     timeLabel: "7PM – 11PM",
@@ -345,6 +373,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "shlump-apr4",
+    imageUrl: "/events/shlump-apr4.webp",
     title: "The Chronicles of Shlump Tour",
     dateLabel: "April 4",
     timeLabel: "Evening",
@@ -359,6 +388,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "whoa-wed-apr8",
+    imageUrl: "/events/whoa-wed-apr8.webp",
     title: "WHOA Wednesday",
     dateLabel: "April 8",
     timeLabel: "7PM – 11PM",
@@ -373,6 +403,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "jantsen-apr10",
+    imageUrl: "/events/jantsen-apr10.jpg",
     title: "Jantsen + Ruvlo",
     dateLabel: "April 10",
     timeLabel: "8PM",
@@ -390,6 +421,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "psychedelic-artshow-apr15",
+    imageUrl: "/events/psychedelic-artshow-apr15.jpg",
     title: "It's A Psychedelic Art Show",
     dateLabel: "April 15",
     timeLabel: "6PM – 10PM",
@@ -404,6 +436,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "whoadega-anniversary-apr20",
+    imageUrl: "/events/whoadega-anniversary-apr20.webp",
     title: "WHOADEGA 1 Year Anniversary",
     dateLabel: "April 20",
     timeLabel: "12PM – 8PM",
@@ -418,6 +451,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "whoa-wed-anniversary-apr22",
+    imageUrl: "/events/whoa-wed-anniversary-apr22.webp",
     title: "WHOA Wednesday — 1 Year Anniversary",
     dateLabel: "April 22",
     timeLabel: "7PM – 11PM",
@@ -448,6 +482,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "other-worlds-apr25",
+    imageUrl: "/events/other-worlds-apr25.jpg",
     title: "Bazaar Presents: Other Worlds",
     dateLabel: "April 25",
     timeLabel: "Evening",
@@ -462,6 +497,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "whoa-wed-apr29",
+    imageUrl: "/events/whoa-wed-apr29.webp",
     title: "WHOA Wednesday",
     dateLabel: "April 29",
     timeLabel: "7PM – 11PM",
@@ -476,6 +512,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "visual-voyage-may6",
+    imageUrl: "/events/visual-voyage-may6.jpg",
     title: "Visual Voyage — Immersive Lighting Exhibit",
     dateLabel: "May 6",
     timeLabel: "6PM – 10PM",
@@ -490,6 +527,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "wicked-wellness-may9",
+    imageUrl: "/events/wicked-wellness-may9.jpg",
     title: "Wicked Wellness — A One-Day Yoga & Wellness Festival",
     dateLabel: "May 9",
     timeLabel: "11AM – 3PM",
@@ -504,6 +542,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "whoa-wed-may13",
+    imageUrl: "/events/whoa-wed-may13.webp",
     title: "WHOA Wednesday",
     dateLabel: "May 13",
     timeLabel: "7PM – 11PM",
@@ -518,6 +557,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "whoa-wed-may20",
+    imageUrl: "/events/whoa-wed-may20.webp",
     title: "WHOA Wednesday",
     dateLabel: "May 20",
     timeLabel: "7PM – 11PM",
@@ -532,6 +572,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "whoa-wed-may27",
+    imageUrl: "/events/whoa-wed-may27.webp",
     title: "WHOA Wednesday",
     dateLabel: "May 27",
     timeLabel: "7PM – 11PM",
@@ -546,6 +587,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "whoa-wed-jun3",
+    imageUrl: "/events/whoa-wed-jun3.webp",
     title: "WHOA Wednesday",
     dateLabel: "June 3",
     timeLabel: "7PM – 11PM",
@@ -576,6 +618,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "whoa-wed-jun17",
+    imageUrl: "/events/whoa-wed-jun17.webp",
     title: "WHOA Wednesday — Not Not A Birthday Throwdown",
     dateLabel: "June 17",
     timeLabel: "7PM – 11PM",
@@ -590,6 +633,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "submerged-jun20",
+    imageUrl: "/events/submerged-jun20.webp",
     title: "Same Same Presents: Submerged",
     dateLabel: "June 20",
     timeLabel: "9PM – Late",
@@ -605,6 +649,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "whoa-wed-jun24",
+    imageUrl: "/events/whoa-wed-jun24.webp",
     title: "WHOA Wednesday",
     dateLabel: "June 24",
     timeLabel: "7PM – 11PM",
@@ -619,6 +664,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "smoakland-jul4",
+    imageUrl: "/events/smoakland-jul4.webp",
     title: "Smoakland: Project Cosmic",
     dateLabel: "July 4",
     timeLabel: "9PM – 4AM",
@@ -647,6 +693,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "whoa-wed-jul8",
+    imageUrl: "/events/whoa-wed-jul8.webp",
     title: "WHOA Wednesday",
     dateLabel: "July 8",
     timeLabel: "7PM – 11PM",
@@ -662,6 +709,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "mythic-imagination-jul8",
+    imageUrl: "/events/mythic-imagination-jul8.jpg",
     title: "Mythic Imagination — Sojourner Solo Show",
     dateLabel: "July 8",
     timeLabel: "6PM – 10PM",
@@ -690,6 +738,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "whoa-wed-jul15",
+    imageUrl: "/events/whoa-wed-jul15.webp",
     title: "WHOA Wednesday",
     dateLabel: "July 15",
     timeLabel: "7PM – 11PM",
@@ -705,6 +754,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "whoa-wed-jul22",
+    imageUrl: "/events/whoa-wed-jul22.webp",
     title: "WHOA Wednesday",
     dateLabel: "July 22",
     timeLabel: "7PM – Midnight",
@@ -719,6 +769,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "whoa-wed-jul29",
+    imageUrl: "/events/whoa-wed-jul29.webp",
     title: "WHOA Wednesday",
     dateLabel: "July 29",
     timeLabel: "7PM – 11PM",
@@ -749,6 +800,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "bayfest-2026",
+    imageUrl: "/events/bayfest-2026.webp",
     title: "Mission Bayfest 2026",
     dateLabel: "Oct 16 – 18",
     timeLabel: "3 Days",
@@ -770,6 +822,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "ssbd-2026",
+    imageUrl: "/events/ssbd-2026.webp",
     title: "Same Same But Different",
     dateLabel: "Sept 25 – 27, 2026",
     timeLabel: "WHOADEGA Art Gallery Experience",
@@ -806,6 +859,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "whoa-wed-sep16",
+    imageUrl: "/events/whoa-wed-sep16.webp",
     title: "WHOA Wednesday — Spooky Secret Lineup",
     dateLabel: "September 16",
     timeLabel: "7PM – Midnight",

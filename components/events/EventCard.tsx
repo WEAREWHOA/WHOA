@@ -74,6 +74,13 @@ export default function EventCard({
         className="absolute inset-0"
         style={{ background: `linear-gradient(160deg, ${c1} 0%, ${c2} 55%, ${c3} 100%)` }}
       />
+      {event.imageUrl && (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={event.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-black/40" />
+        </>
+      )}
       <div aria-hidden className="event-card-noise absolute inset-0" />
 
       <div className="relative z-10 flex h-full flex-col p-5">

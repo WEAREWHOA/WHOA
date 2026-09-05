@@ -5,8 +5,9 @@ import { useSearchParams } from "next/navigation";
 import EventCard from "@/components/events/EventCard";
 import EventModal from "@/components/events/EventModal";
 import EventCheckoutModal from "@/components/events/EventCheckoutModal";
+import DamageWaiverModal from "@/components/events/DamageWaiverModal";
 import EventsCalendar from "@/components/events/EventsCalendar";
-import { EVENT_CATEGORIES, sortEventsByProximity, type EventCategory, type EventInfo } from "@/lib/events";
+import { EVENT_CATEGORIES, requiresDamageWaiver, sortEventsByProximity, type EventCategory, type EventInfo } from "@/lib/events";
 
 const CLOSE_DURATION = 520;
 
@@ -27,8 +28,33 @@ export default function EventsGrid({ events }: { events: EventInfo[] }) {
   const [originRect, setOriginRect] = useState<DOMRect | null>(null);
   const [closing, setClosing] = useState(false);
   const [checkoutEvent, setCheckoutEvent] = useState<EventInfo | null>(null);
+  const [waiverEvent, setWaiverEvent] = useState<EventInfo | null>(null);
+  const [waiverAgreed, setWaiverAgreed] = useState(false);
 
   const filtered = sortEventsByProximity(filter === "all" ? events : events.filter((event) => event.category === filter));
+
+  // Every RSVP/Buy Ticket button (card or modal) routes through here rather
+  // than setCheckoutEvent directly — a WHOAdega/SH!FT Gallery event needs
+  // the damage-responsibility waiver agreed to first (see
+  // lib/events.ts's requiresDamageWaiver). Re-checked server-side in
+  // eventRsvpAction regardless — this is only what decides which modal
+  // opens first.
+  function handleCheckoutRequest(event: EventInfo) {
+    if (requiresDamageWaiver(event)) {
+      setWaiverAgreed(false);
+      setWaiverEvent(event);
+    } else {
+      setCheckoutEvent(event);
+    }
+  }
+
+  function handleWaiverAgree() {
+    if (waiverEvent) {
+      setWaiverAgreed(true);
+      setCheckoutEvent(waiverEvent);
+    }
+    setWaiverEvent(null);
+  }
 
   function handleOpen(event: EventInfo, rect: DOMRect) {
     setOpenEvent(event);
@@ -82,7 +108,13 @@ export default function EventsGrid({ events }: { events: EventInfo[] }) {
       </h2>
       <div className="relative z-10 mt-8 flex w-full max-w-6xl flex-wrap items-start justify-center gap-x-8 gap-y-14">
         {filtered.map((event, i) => (
-          <EventCard key={event.id} event={event} delay={i * 0.45} onOpen={handleOpen} onCheckout={setCheckoutEvent} />
+          <EventCard
+            key={event.id}
+            event={event}
+            delay={i * 0.45}
+            onOpen={handleOpen}
+            onCheckout={handleCheckoutRequest}
+          />
         ))}
       </div>
 
@@ -92,11 +124,24 @@ export default function EventsGrid({ events }: { events: EventInfo[] }) {
           originRect={originRect}
           closing={closing}
           onClose={handleClose}
-          onCheckout={setCheckoutEvent}
+          onCheckout={handleCheckoutRequest}
         />
       )}
 
-      {checkoutEvent && <EventCheckoutModal event={checkoutEvent} onClose={() => setCheckoutEvent(null)} />}
+      {waiverEvent && (
+        <DamageWaiverModal event={waiverEvent} onAgree={handleWaiverAgree} onClose={() => setWaiverEvent(null)} />
+      )}
+
+      {checkoutEvent && (
+        <EventCheckoutModal
+          event={checkoutEvent}
+          waiverAgreed={waiverAgreed}
+          onClose={() => {
+            setCheckoutEvent(null);
+            setWaiverAgreed(false);
+          }}
+        />
+      )}
     </>
   );
 }
