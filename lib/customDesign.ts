@@ -1,4 +1,5 @@
 import { getSupabase } from "./supabase";
+import { sendCustomDesignNotification } from "./email";
 
 export type GarmentId = "tshirt" | "hoodie" | "tapered-sweatpants" | "wide-leg-sweatpants";
 
@@ -415,6 +416,13 @@ export async function submitDesign(input: SubmitDesignInput): Promise<{ ok: bool
     });
 
     if (error) return { ok: false, error: error.message };
+
+    try {
+      await sendCustomDesignNotification({ name, email, phone, templateLabel: template.label });
+    } catch (emailErr) {
+      console.error("sendCustomDesignNotification failed:", emailErr);
+    }
+
     return { ok: true };
   } catch (err) {
     console.error("submitDesign failed:", err);

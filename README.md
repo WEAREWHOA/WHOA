@@ -87,7 +87,14 @@ except the immersive home hub and `/pos`.
 - `/about-us` — "About Us" hub: story, mission, partnerships, contact,
   and legal/info pages, all in one place
 - `/apply` — creates a password-protected account with Brand Ambassador
-  access already granted (name, email, Instagram, password); approval is instant
+  access already granted (name, email, Instagram, password); approval is
+  instant. The ambassador code is generated from the applicant's first and
+  last name run together (e.g. "Jane Doe" → `JANEDOE`, collisions get a
+  trailing 2/3/4...) rather than the old `WHOA-<NAME>15` pattern — see
+  `generateAmbassadorCode` in `lib/store.ts`. Submitting also emails
+  info@wearewhoa.com via Resend (`sendAmbassadorApplicationNotification` in
+  `lib/email.ts`), reply-to'd to the applicant; a failed notification is
+  logged, not surfaced, so it never blocks the signup that already succeeded
 - `/login`, `/portal` — log in (or sign up with just email + password) —
   every account, whatever its permissions, uses the same login
 - `/portal/[code]` — the account's dashboard (session-protected — only the
@@ -134,7 +141,7 @@ npm run build
 | `SQUARE_ADMIN_SECRET`           | —          | Shared secret gating the one-time `/api/admin/square/*` setup endpoints — pick any long random string |
 | `NEXT_PUBLIC_SITE_URL`          | `http://localhost:3000` | Production domain, used for `metadataBase`, `sitemap.xml`, and `robots.txt` — set once the real domain is known |
 | `SQUARE_ONLINE_CHANNEL_NAME`    | `Online Store` | Name of the Square sales channel that marks an item for `/shop` — set to `WHOA` for this account (see [Square ↔ Supabase sync](#square--supabase-sync)) |
-| `RESEND_API_KEY`                | —          | Resend API key — sends order confirmation and event RSVP/ticket confirmation emails. `wearewhoa.art` must be a verified sending domain in Resend (see `lib/email.ts`) |
+| `RESEND_API_KEY`                | —          | Resend API key — sends order confirmation and event RSVP/ticket confirmation emails, plus info@wearewhoa.com staff notifications on every `/apply`, `/contact`, and Custom Design submission. `wearewhoa.art` must be a verified sending domain in Resend (see `lib/email.ts`) |
 | `MAILCHIMP_API_KEY`             | —          | Mailchimp API key (Account → Extras → API keys). Its `-<datacenter>` suffix (e.g. `-us21`) is required and is parsed to build the API host — see `lib/mailchimp.ts` |
 | `MAILCHIMP_AUDIENCE_ID`         | —          | The Mailchimp Audience/List ID (Audience → Settings → Audience name and defaults) that the `/events` newsletter signup subscribes into |
 
@@ -737,10 +744,13 @@ future work once the pipeline itself is proven out.
   sanitizes and inserts the stroke data (jsonb, same normalized-point-path
   posture as `graffiti_drawings`) plus a flattened PNG preview (so a
   submission is inspectable without a staff-facing viewer that replays
-  strokes) into `custom_design_submissions`. It's public/customer-facing,
-  so — like checkout and the ambassador referral lookup — the Supabase
-  call is wrapped in try/catch and fails soft with an error message
-  rather than throwing.
+  strokes) into `custom_design_submissions`, then emails info@wearewhoa.com
+  via Resend (`sendCustomDesignNotification`, reply-to'd to the customer).
+  It's public/customer-facing, so — like checkout and the ambassador
+  referral lookup — the Supabase call is wrapped in try/catch and fails
+  soft with an error message rather than throwing; the email notification
+  is its own inner try/catch, logged on failure rather than surfaced,
+  since the submission is already safely stored by that point.
 
 ## Events
 
@@ -798,6 +808,12 @@ toggle:
   legible, falling back to the plain gradient card when unset. A calendar
   day with more than one event only shows the first event's photo as the
   cell background — every event that day still gets its own chip on top.
+- **Flyer-shaped cards** — `EventCard`'s cover (gradient/photo + the text
+  overlay on top of it) is fixed to standard 8.5×11 flyer proportions
+  (`aspect-[8.5/11]`) rather than growing to fit each event's own amount of
+  text, so the grid reads like a wall of actual posters instead of
+  mismatched cards; the RSVP/Buy Ticket bar sits below that box, not inside
+  it.
 - **Damage responsibility waiver** — any event whose venue mentions
   "WHOAdega" or "SH!FT" (`lib/events.ts`'s `requiresDamageWaiver(event)`,
   derived from `venue` text rather than a manually-set flag, so a newly
@@ -909,11 +925,14 @@ here rather than scraped.
   out to the real organization.
 - `/contact` (`components/contact/ContactForm.tsx`, `lib/contact.ts`) — a
   themed message form (name/email, a topic picker, a message field) over
-  `PsychedelicBackground`, plus direct email and Instagram links. No email
-  service is wired up anywhere in this app, so submissions are stored in
-  `contact_messages` (via `submitContactAction` → `submitContactMessage`)
-  for staff to read later, rather than triggering a notification — same
-  posture as Custom Design's submission pipeline.
+  `PsychedelicBackground`, plus direct email and Instagram links.
+  Submissions are stored in `contact_messages` (via `submitContactAction` →
+  `submitContactMessage`) for staff to read later, and also email
+  info@wearewhoa.com via Resend (`sendContactMessageNotification`,
+  reply-to'd to the sender) — same notify-on-submit posture as `/apply` and
+  Custom Design's submission pipeline. The notification is best-effort: the
+  message is already safely stored by the time it's attempted, so a Resend
+  hiccup is logged, not surfaced to the visitor.
 - `/shipping-policy` and `/return-policy` — transcribed from the
   previous site's real policy text, with one deliberate correction: the
   old copy referenced calculated shipping rates and international

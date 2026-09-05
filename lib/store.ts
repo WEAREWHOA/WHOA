@@ -97,8 +97,8 @@ function mapAmbassador(row: AmbassadorRow): Ambassador {
   };
 }
 
-function slugify(text: string): string {
-  return text.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
+function slugify(text: string, maxLength = 12): string {
+  return text.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, maxLength);
 }
 
 async function codeExists(code: string): Promise<boolean> {
@@ -117,16 +117,22 @@ async function linkSlugExists(slug: string): Promise<boolean> {
   return data !== null;
 }
 
+// First name + last name, run together (e.g. "Jane Doe" -> "JANEDOE") —
+// easier to hand out and remember than the old "WHOA-<NAME>15" scheme. A
+// single-word name just uses that word. Collisions (two "Jane Doe"s) fall
+// back to appending 2, 3, 4...
 async function generateAmbassadorCode(name: string): Promise<string> {
-  const base = slugify(name.trim().split(/\s+/)[0] ?? "") || "AMBASSADOR";
-  const preferred = `WHOA-${base}15`;
-  if (!(await codeExists(preferred))) return preferred;
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  const first = parts[0] ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1] : "";
+  const base = slugify(`${first}${last}`, 20) || "AMBASSADOR";
+  if (!(await codeExists(base))) return base;
 
-  let suffix = 16;
-  let candidate = `WHOA-${base}${suffix}`;
+  let suffix = 2;
+  let candidate = `${base}${suffix}`;
   while (await codeExists(candidate)) {
     suffix += 1;
-    candidate = `WHOA-${base}${suffix}`;
+    candidate = `${base}${suffix}`;
   }
   return candidate;
 }

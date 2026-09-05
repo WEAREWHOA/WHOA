@@ -24,6 +24,11 @@ function getResend(): Resend {
 const FROM_ADDRESS = "WHOA <orders@wearewhoa.art>";
 const REPLY_TO = "info@wearewhoa.com";
 
+// Every form on the site (ambassador application, contact, custom design)
+// notifies this same inbox on submit, reply-to'd to the submitter so staff
+// can just hit reply.
+const ADMIN_NOTIFY_ADDRESS = "info@wearewhoa.com";
+
 export interface OrderConfirmationLine {
   name: string;
   quantity: number;
@@ -165,4 +170,106 @@ export async function sendEventConfirmationEmail(input: {
   if (error) {
     throw new Error(`Resend failed to send event confirmation: ${error.message}`);
   }
+}
+
+function buildAdminNotificationHtml(input: { heading: string; rows: { label: string; value: string }[] }): string {
+  const rows = input.rows
+    .map(
+      (row) => `
+        <tr>
+          <td style="padding:6px 12px 6px 0;color:#6b6157;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;vertical-align:top;white-space:nowrap;">${escapeHtml(row.label)}</td>
+          <td style="padding:6px 0;color:#f7f0e6;font-size:14px;">${escapeHtml(row.value).replace(/\n/g, "<br/>")}</td>
+        </tr>`,
+    )
+    .join("");
+
+  return wrapEmail(`
+        <p style="margin:0;color:#ff7a00;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;font-weight:600;">New submission</p>
+        <h1 style="margin:8px 0 20px;color:#f7f0e6;font-size:24px;">${escapeHtml(input.heading)}</h1>
+        <table style="width:100%;border-collapse:collapse;">
+          ${rows}
+        </table>`);
+}
+
+// Internal staff notification, not a customer-facing email — reply-to'd to
+// the submitter so a reply from info@wearewhoa.com goes straight back to
+// them. Same best-effort posture as the rest of this module: callers catch
+// and log rather than let a Resend hiccup fail an already-successful
+// submission.
+async function sendAdminNotification(input: {
+  subject: string;
+  heading: string;
+  rows: { label: string; value: string }[];
+  replyTo?: string;
+}): Promise<void> {
+  const resend = getResend();
+
+  const { error } = await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: ADMIN_NOTIFY_ADDRESS,
+    replyTo: input.replyTo || REPLY_TO,
+    subject: input.subject,
+    html: buildAdminNotificationHtml({ heading: input.heading, rows: input.rows }),
+  });
+
+  if (error) {
+    throw new Error(`Resend failed to send admin notification: ${error.message}`);
+  }
+}
+
+export async function sendAmbassadorApplicationNotification(input: {
+  name: string;
+  email: string;
+  instagram?: string;
+  code: string;
+}): Promise<void> {
+  await sendAdminNotification({
+    subject: `New Brand Ambassador application: ${input.name}`,
+    heading: "New Brand Ambassador application",
+    rows: [
+      { label: "Name", value: input.name },
+      { label: "Email", value: input.email },
+      { label: "Instagram", value: input.instagram || "—" },
+      { label: "Assigned code", value: input.code },
+    ],
+    replyTo: input.email,
+  });
+}
+
+export async function sendContactMessageNotification(input: {
+  name: string;
+  email: string;
+  topic: string;
+  message: string;
+}): Promise<void> {
+  await sendAdminNotification({
+    subject: `New contact message: ${input.topic}`,
+    heading: "New contact form message",
+    rows: [
+      { label: "Name", value: input.name },
+      { label: "Email", value: input.email },
+      { label: "Topic", value: input.topic },
+      { label: "Message", value: input.message },
+    ],
+    replyTo: input.email,
+  });
+}
+
+export async function sendCustomDesignNotification(input: {
+  name: string;
+  email: string;
+  phone: string;
+  templateLabel: string;
+}): Promise<void> {
+  await sendAdminNotification({
+    subject: `New custom design submission: ${input.name}`,
+    heading: "New custom design submission",
+    rows: [
+      { label: "Name", value: input.name },
+      { label: "Email", value: input.email },
+      { label: "Phone", value: input.phone },
+      { label: "Garment", value: input.templateLabel },
+    ],
+    replyTo: input.email,
+  });
 }

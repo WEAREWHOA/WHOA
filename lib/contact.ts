@@ -1,4 +1,5 @@
 import { getSupabase } from "./supabase";
+import { sendContactMessageNotification } from "./email";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -12,10 +13,11 @@ export interface ContactMessageInput {
   message: string;
 }
 
-// No email service is wired up anywhere in this app — same posture as
-// Custom Design's submission pipeline, this just stores the message for
-// staff to read later rather than sending a notification. Public-facing,
-// so it fails soft (returns an error string) rather than throwing.
+// Stores the message, then notifies info@wearewhoa.com via Resend (see
+// lib/email.ts). The notification is best-effort — the message is already
+// safely stored by the time it's attempted, so an email hiccup here just
+// gets logged, not surfaced to the visitor. Public-facing, so this fails
+// soft (returns an error string) rather than throwing.
 export async function submitContactMessage(
   input: ContactMessageInput,
 ): Promise<{ ok: boolean; error?: string }> {
@@ -31,6 +33,13 @@ export async function submitContactMessage(
   try {
     const { error } = await getSupabase().from("contact_messages").insert({ name, email, topic, message });
     if (error) return { ok: false, error: error.message };
+
+    try {
+      await sendContactMessageNotification({ name, email, topic, message });
+    } catch (emailErr) {
+      console.error("sendContactMessageNotification failed:", emailErr);
+    }
+
     return { ok: true };
   } catch (err) {
     console.error("submitContactMessage failed:", err);
