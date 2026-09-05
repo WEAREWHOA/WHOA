@@ -4,7 +4,7 @@ import { getSquare } from "./square";
 import { getSupabase } from "./supabase";
 import { matchVendorSlug } from "./vendorMatch";
 import { getAllArtProfileNames, matchArtCollectiveCode } from "./artCollective";
-import { getOrCreateCategoryId, ARTIST_SALES_CATEGORY_DISPLAY_NAME } from "./catalog";
+import { getOrCreateArtCollectiveCategoryId, getOrCreateArtistCategoryId } from "./catalog";
 import { ARTISTS } from "./artists";
 
 function chunk<T>(arr: T[], size: number): T[][] {
@@ -258,28 +258,47 @@ function resolveArtistName(productName: string, names: string[]): string | undef
 
 export interface CategorizeArtistsResult {
   updated: number;
-  skipped: number;
+  skippedAlreadyCorrect: number;
+  skippedNoMatch: number;
   artists: string[];
+  // Names of items that couldn't be matched to any known artist, so staff
+  // can see exactly what's still sitting uncategorized instead of just a
+  // count — most likely items that don't follow the "<Product> - <Artist
+  // Name>" naming convention this matches against at all. Capped so a
+  // catalog with hundreds of unrelated items doesn't blow up the response.
+  unmatchedSample: string[];
 }
+
+const UNMATCHED_SAMPLE_LIMIT = 25;
 
 // Catch-up for every artist/vendor product already sitting in Square
 // (static ARTISTS consignment items entered by hand, plus any Art
 // Collective product approved before per-artist categories existed) —
-// assigns each to both "Artist Sales" and its own per-artist category, and
-// sets the per-artist category as the reporting category. New Art
-// Collective approvals get this automatically going forward (see
-// pushArtProductToSquare in lib/artCollective.ts); this is what makes it
-// show up for everything already in the catalog too. Safe to re-run —
-// already-correct items are skipped rather than re-upserted.
+// assigns each to both "Art Collective" and its own per-artist
+// subcategory nested underneath it, and sets the per-artist subcategory
+// as the reporting category. New Art Collective approvals get this
+// automatically going forward (see pushArtProductToSquare in
+// lib/artCollective.ts); this is what makes it show up for everything
+// already in the catalog too. Safe to re-run — already-correct items are
+// skipped rather than re-upserted.
+//
+// Only items whose Square name ends in "- <Artist Name>" can be matched
+// at all (the same convention pushArtProductToSquare/matchVendorSlug use)
+// — a consignment item entered directly in Square without that suffix has
+// no reliable signal to attribute it by, so it's left exactly where it
+// was (still directly in "Art Collective" if it was already there) rather
+// than guessed at. See unmatchedSample above for what's left uncategorized.
 export async function backfillArtistCategories(): Promise<CategorizeArtistsResult> {
   const square = getSquare();
   const artProfiles = await getAllArtProfileNames();
   const names = [...artProfiles.map((p) => p.artistName), ...ARTISTS.map((a) => a.name)];
 
-  const artistSalesCategoryId = await getOrCreateCategoryId(ARTIST_SALES_CATEGORY_DISPLAY_NAME);
+  const artCollectiveCategoryId = await getOrCreateArtCollectiveCategoryId();
   const updatedArtists = new Set<string>();
+  const unmatchedSample: string[] = [];
   let updated = 0;
-  let skipped = 0;
+  let skippedAlreadyCorrect = 0;
+  let skippedNoMatch = 0;
   let cursor: string | undefined;
 
   do {
@@ -290,19 +309,20 @@ export async function backfillArtistCategories(): Promise<CategorizeArtistsResul
 
       const artistName = resolveArtistName(item.itemData.name ?? "", names);
       if (!artistName) {
-        skipped += 1;
+        skippedNoMatch += 1;
+        if (unmatchedSample.length < UNMATCHED_SAMPLE_LIMIT) unmatchedSample.push(item.itemData.name ?? item.id);
         continue;
       }
 
-      const artistCategoryId = await getOrCreateCategoryId(artistName);
+      const artistCategoryId = await getOrCreateArtistCategoryId(artistName, artCollectiveCategoryId);
       const existingCategoryIds = new Set((item.itemData.categories ?? []).map((c) => c.id));
       const alreadyCorrect =
-        existingCategoryIds.has(artistSalesCategoryId) &&
+        existingCategoryIds.has(artCollectiveCategoryId) &&
         existingCategoryIds.has(artistCategoryId) &&
         item.itemData.reportingCategory?.id === artistCategoryId;
 
       if (alreadyCorrect) {
-        skipped += 1;
+        skippedAlreadyCorrect += 1;
         continue;
       }
 
@@ -316,7 +336,7 @@ export async function backfillArtistCategories(): Promise<CategorizeArtistsResul
           ...item,
           itemData: {
             ...item.itemData,
-            categories: [{ id: artistSalesCategoryId }, { id: artistCategoryId }],
+            categories: [{ id: artCollectiveCategoryId }, { id: artistCategoryId }],
             reportingCategory: { id: artistCategoryId },
           },
         },
@@ -329,5 +349,11 @@ export async function backfillArtistCategories(): Promise<CategorizeArtistsResul
     cursor = response.cursor;
   } while (cursor);
 
-  return { updated, skipped, artists: Array.from(updatedArtists).sort() };
+  return {
+    updated,
+    skippedAlreadyCorrect,
+    skippedNoMatch,
+    artists: Array.from(updatedArtists).sort(),
+    unmatchedSample,
+  };
 }

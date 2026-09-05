@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { getSupabase } from "./supabase";
 import { getSquare, getSquareLocationId } from "./square";
-import { getOnlineStoreChannelId, getOrCreateCategoryId, ARTIST_SALES_CATEGORY_DISPLAY_NAME } from "./catalog";
+import { getOnlineStoreChannelId, getOrCreateArtCollectiveCategoryId, getOrCreateArtistCategoryId } from "./catalog";
 
 export interface ArtLink {
   label: string;
@@ -296,16 +296,15 @@ async function pushArtProductToSquare(product: ArtProduct, artistName: string): 
   const onlineChannelId = await getOnlineStoreChannelId();
   const idempotencyKey = `art-product-${product.id}`;
 
-  // Every approved product gets the umbrella "Artist Sales" category
+  // Every approved product gets the umbrella "Art Collective" category
   // (which checkout's discount exclusion keys off — see
-  // getArtistSalesProductIds in lib/catalog.ts) *and* its own per-artist
-  // category, set as the reporting category — so Square's own Items list
-  // and Sales reports break sales out by artist instead of lumping
-  // everyone under one undifferentiated bucket.
-  const [artistSalesCategoryId, artistCategoryId] = await Promise.all([
-    getOrCreateCategoryId(ARTIST_SALES_CATEGORY_DISPLAY_NAME),
-    getOrCreateCategoryId(artistName),
-  ]);
+  // getArtCollectiveProductIds in lib/catalog.ts) *and* its own per-artist
+  // subcategory nested underneath it, set as the reporting category — so
+  // Square's own Items list and Sales reports show "Art Collective >
+  // <Artist>" and break sales out by artist instead of lumping everyone
+  // under one undifferentiated bucket.
+  const artCollectiveCategoryId = await getOrCreateArtCollectiveCategoryId();
+  const artistCategoryId = await getOrCreateArtistCategoryId(artistName, artCollectiveCategoryId);
 
   const upsertResponse = await square.catalog.object.upsert({
     idempotencyKey,
@@ -317,7 +316,7 @@ async function pushArtProductToSquare(product: ArtProduct, artistName: string): 
         name: buildSquareItemName(product, artistName),
         descriptionPlaintext: [product.description, product.details].filter(Boolean).join("\n\n") || undefined,
         channels: onlineChannelId ? [onlineChannelId] : undefined,
-        categories: [{ id: artistSalesCategoryId }, { id: artistCategoryId }],
+        categories: [{ id: artCollectiveCategoryId }, { id: artistCategoryId }],
         reportingCategory: { id: artistCategoryId },
         variations: [
           {

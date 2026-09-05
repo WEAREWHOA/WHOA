@@ -269,12 +269,21 @@ export default function SquareSyncAdminPage() {
         <h2 className="font-display text-2xl">Organize artist products by category</h2>
         <p className="mt-2 text-sm text-muted">
           Instead of every artist&apos;s inventory sitting in one massive &ldquo;Artist Sales&rdquo;
-          category, this gives each artist their own category too (created automatically the first
-          time it&apos;s needed — no Square plan upgrade required) and sets it as that item&apos;s
-          reporting category, so Square&apos;s own Items list and Sales reports can filter and break
-          out sales per artist. New Art Collective approvals do this automatically going forward —
-          this catches up everything already in the catalog (including consignment items entered by
-          hand). Safe to run again any time; already-correct items are skipped.
+          category, this renames it to &ldquo;Art Collective&rdquo; (same category, same id — nothing
+          already assigned to it gets orphaned) and gives each artist their own subcategory nested
+          underneath it, created automatically the first time it&apos;s needed — no Square plan
+          upgrade required. The subcategory is also set as that item&apos;s reporting category, so
+          Square&apos;s own Items list and Sales reports show &ldquo;Art Collective &gt;
+          Artist&rdquo; and break sales out per artist. New Art Collective approvals do this
+          automatically going forward — this catches up everything already in the catalog. Safe to
+          run again any time; already-correct items are skipped.
+        </p>
+        <p className="mt-3 text-sm text-muted">
+          Only items whose Square name ends in &ldquo;- Artist Name&rdquo; can be matched at all —
+          the result includes <code className="font-mono-code">unmatchedSample</code>, a preview of
+          item names that couldn&apos;t be matched to any known artist and are left exactly where
+          they were, so you can see what&apos;s actually still sitting uncategorized rather than
+          guess.
         </p>
         <button
           type="button"

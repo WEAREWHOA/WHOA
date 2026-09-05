@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { SquareError } from "square";
+import { SquareError, type Square } from "square";
 import { getSquare, getSquareLocationId } from "./square";
 import type { Product, ProductCategory, ProductVariation } from "./types";
 
@@ -292,38 +292,61 @@ export async function getInventoryCounts(
   return counts;
 }
 
-// The one Square category that promo codes/discounts never apply to
-// (artist inventory — everyone's cut except WHOA's own WHOAdega/WHOA
-// items) — see checkoutAction. Cached per server instance, same posture
-// as getOnlineStoreChannelId above: categories essentially never change,
-// so a cold start just re-fetches once.
-export const ARTIST_SALES_CATEGORY_DISPLAY_NAME = "Artist Sales";
-const ARTIST_SALES_CATEGORY_NAME = ARTIST_SALES_CATEGORY_DISPLAY_NAME.toLowerCase();
-let artistSalesCategoryId: string | null | undefined;
+// The umbrella category holding every artist's inventory, with each
+// artist's own subcategory nested underneath it in Square (see
+// getOrCreateArtistCategoryId below) — so Square's own Items list and
+// reports show "Art Collective > <Artist Name>" instead of one flat,
+// undifferentiated pile. Promo codes/discounts never apply to anything in
+// it (everyone's cut except WHOA's own WHOAdega/WHOA products) — see
+// checkoutAction. Was named "Artist Sales" before this hierarchy existed;
+// getOrCreateArtCollectiveCategoryId renames the existing category in
+// place (same id) rather than abandoning it, so every item already
+// assigned to it stays assigned.
+export const ART_COLLECTIVE_CATEGORY_DISPLAY_NAME = "Art Collective";
+const ART_COLLECTIVE_CATEGORY_NAME = ART_COLLECTIVE_CATEGORY_DISPLAY_NAME.toLowerCase();
+const LEGACY_ARTIST_SALES_CATEGORY_NAME = "artist sales";
 
-// General get-or-create for any Square category by name, case-insensitive.
-// Used to give each artist their own category in addition to "Artist
-// Sales" (see pushArtProductToSquare in lib/artCollective.ts), so Square's
-// own Items list and Sales reports can be filtered/broken out per artist
-// instead of one undifferentiated bucket. Cached per server instance per
-// name, same posture as getOnlineStoreChannelId above. Not deduped across
-// concurrent cold-start calls for a brand-new artist — an extremely rare
-// race (two approvals for the same never-before-seen artist within
-// milliseconds) that would just leave one harmless duplicate category to
-// merge by hand in Square, not worth guarding against here.
-const categoryIdByName = new Map<string, string>();
-
-export async function getOrCreateCategoryId(name: string): Promise<string> {
+async function findCategoryObjectByName(name: string): Promise<Square.CatalogObject.Category | undefined> {
   const key = name.trim().toLowerCase();
-  const cached = categoryIdByName.get(key);
-  if (cached) return cached;
-
   const square = getSquare();
   const page = await square.catalog.list({ types: "CATEGORY" });
   for await (const obj of page) {
-    if (obj.type === "CATEGORY" && obj.id && obj.categoryData?.name?.trim().toLowerCase() === key) {
-      categoryIdByName.set(key, obj.id);
-      return obj.id;
+    if (obj.type === "CATEGORY" && obj.categoryData?.name?.trim().toLowerCase() === key) return obj;
+  }
+  return undefined;
+}
+
+let artCollectiveCategoryId: string | undefined;
+
+// Get-or-create for the top-level "Art Collective" category, including a
+// one-time migration: if it's still sitting under the old "Artist Sales"
+// name, renames that exact object in place instead of creating a second,
+// disconnected one. Cached per server instance — categories essentially
+// never change once resolved.
+export async function getOrCreateArtCollectiveCategoryId(): Promise<string> {
+  if (artCollectiveCategoryId) return artCollectiveCategoryId;
+
+  const existing = await findCategoryObjectByName(ART_COLLECTIVE_CATEGORY_DISPLAY_NAME);
+  if (existing?.id) {
+    artCollectiveCategoryId = existing.id;
+    return existing.id;
+  }
+
+  const square = getSquare();
+
+  const legacy = await findCategoryObjectByName(LEGACY_ARTIST_SALES_CATEGORY_NAME);
+  if (legacy?.id) {
+    const response = await square.catalog.object.upsert({
+      idempotencyKey: `category-rename-${randomUUID()}`,
+      object: {
+        ...legacy,
+        categoryData: { ...legacy.categoryData, name: ART_COLLECTIVE_CATEGORY_DISPLAY_NAME },
+      },
+    });
+    const renamedId = response.catalogObject?.id;
+    if (renamedId) {
+      artCollectiveCategoryId = renamedId;
+      return renamedId;
     }
   }
 
@@ -332,44 +355,99 @@ export async function getOrCreateCategoryId(name: string): Promise<string> {
     object: {
       type: "CATEGORY",
       id: `#category-${randomUUID()}`,
-      categoryData: { name: name.trim() },
+      categoryData: { name: ART_COLLECTIVE_CATEGORY_DISPLAY_NAME, isTopLevel: true },
     },
   });
 
   const id = response.catalogObject?.id;
-  if (!id) throw new Error(`Square did not return a category id for "${name}"`);
-  categoryIdByName.set(key, id);
+  if (!id) throw new Error(`Square did not return a category id for "${ART_COLLECTIVE_CATEGORY_DISPLAY_NAME}"`);
+  artCollectiveCategoryId = id;
   return id;
 }
 
-async function getArtistSalesCategoryId(): Promise<string | null> {
-  if (artistSalesCategoryId !== undefined) return artistSalesCategoryId;
+// Get-or-create for one artist's subcategory, nested under Art Collective
+// via categoryData.parentCategory. If the category already exists but was
+// created before this hierarchy existed (or its parent ever changes),
+// patches the parent link in place rather than leaving it a stray
+// top-level category. Cached per server instance per artist name. Not
+// deduped across concurrent cold-start calls for a brand-new artist — an
+// extremely rare race (two approvals for the same never-before-seen
+// artist within milliseconds) that would just leave one harmless
+// duplicate category to merge by hand in Square, not worth guarding
+// against here.
+const artistCategoryIdByName = new Map<string, string>();
+
+export async function getOrCreateArtistCategoryId(artistName: string, parentCategoryId: string): Promise<string> {
+  const key = artistName.trim().toLowerCase();
+  const cached = artistCategoryIdByName.get(key);
+  if (cached) return cached;
 
   const square = getSquare();
-  const page = await square.catalog.list({ types: "CATEGORY" });
+  const existing = await findCategoryObjectByName(artistName);
 
-  let found: string | null = null;
-  for await (const obj of page) {
-    if (obj.type === "CATEGORY" && obj.id && obj.categoryData?.name?.trim().toLowerCase() === ARTIST_SALES_CATEGORY_NAME) {
-      found = obj.id;
-      break;
+  if (existing?.id) {
+    if (existing.categoryData?.parentCategory?.id !== parentCategoryId) {
+      await square.catalog.object.upsert({
+        idempotencyKey: `category-parent-${randomUUID()}`,
+        object: {
+          ...existing,
+          categoryData: { ...existing.categoryData, parentCategory: { id: parentCategoryId } },
+        },
+      });
     }
+    artistCategoryIdByName.set(key, existing.id);
+    return existing.id;
   }
 
-  artistSalesCategoryId = found;
-  return artistSalesCategoryId;
+  const response = await square.catalog.object.upsert({
+    idempotencyKey: `category-${randomUUID()}`,
+    object: {
+      type: "CATEGORY",
+      id: `#category-${randomUUID()}`,
+      categoryData: { name: artistName.trim(), parentCategory: { id: parentCategoryId } },
+    },
+  });
+
+  const id = response.catalogObject?.id;
+  if (!id) throw new Error(`Square did not return a category id for "${artistName}"`);
+  artistCategoryIdByName.set(key, id);
+  return id;
+}
+
+// Read-only lookup used by checkout's discount exclusion below — never
+// writes to Square from the checkout hot path. Checks the current "Art
+// Collective" name first, falling back to the legacy "Artist Sales" name
+// in case the rename migration (getOrCreateArtCollectiveCategoryId,
+// triggered from the ART ADMIN approval flow or the /admin/square-sync
+// backfill button) hasn't run yet in this environment. Cached per server
+// instance, same posture as getOnlineStoreChannelId above.
+let checkoutCategoryId: string | null | undefined;
+
+async function getArtCollectiveCategoryIdForCheckout(): Promise<string | null> {
+  if (checkoutCategoryId !== undefined) return checkoutCategoryId;
+
+  const found =
+    (await findCategoryObjectByName(ART_COLLECTIVE_CATEGORY_NAME))?.id ??
+    (await findCategoryObjectByName(LEGACY_ARTIST_SALES_CATEGORY_NAME))?.id ??
+    null;
+
+  checkoutCategoryId = found;
+  return checkoutCategoryId;
 }
 
 // Given a set of catalog item (product) IDs, returns the subset that
-// belong to the "Artist Sales" category — checked server-side at
-// checkout, never trusting whatever category info (if any) the client
-// sent, the same never-trust-the-client posture as stock/price checks
-// elsewhere in checkout.
-export async function getArtistSalesProductIds(productIds: string[]): Promise<Set<string>> {
+// belong to the Art Collective category. Every Art Collective item is
+// assigned to the parent "Art Collective" category directly (in addition
+// to its artist subcategory — see getOrCreateArtistCategoryId), so this
+// only needs to check for direct membership, not walk the category tree.
+// Checked server-side at checkout, never trusting whatever category info
+// (if any) the client sent, the same never-trust-the-client posture as
+// stock/price checks elsewhere in checkout.
+export async function getArtCollectiveProductIds(productIds: string[]): Promise<Set<string>> {
   const result = new Set<string>();
   if (productIds.length === 0) return result;
 
-  const categoryId = await getArtistSalesCategoryId();
+  const categoryId = await getArtCollectiveCategoryIdForCheckout();
   if (!categoryId) return result;
 
   const square = getSquare();
