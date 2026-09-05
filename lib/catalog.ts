@@ -290,3 +290,54 @@ export async function getInventoryCounts(
 
   return counts;
 }
+
+// The one Square category that promo codes/discounts never apply to
+// (artist inventory — everyone's cut except WHOA's own WHOAdega/WHOA
+// items) — see checkoutAction. Cached per server instance, same posture
+// as getOnlineStoreChannelId above: categories essentially never change,
+// so a cold start just re-fetches once.
+const ARTIST_SALES_CATEGORY_NAME = "artist sales";
+let artistSalesCategoryId: string | null | undefined;
+
+async function getArtistSalesCategoryId(): Promise<string | null> {
+  if (artistSalesCategoryId !== undefined) return artistSalesCategoryId;
+
+  const square = getSquare();
+  const page = await square.catalog.list({ types: "CATEGORY" });
+
+  let found: string | null = null;
+  for await (const obj of page) {
+    if (obj.type === "CATEGORY" && obj.id && obj.categoryData?.name?.trim().toLowerCase() === ARTIST_SALES_CATEGORY_NAME) {
+      found = obj.id;
+      break;
+    }
+  }
+
+  artistSalesCategoryId = found;
+  return artistSalesCategoryId;
+}
+
+// Given a set of catalog item (product) IDs, returns the subset that
+// belong to the "Artist Sales" category — checked server-side at
+// checkout, never trusting whatever category info (if any) the client
+// sent, the same never-trust-the-client posture as stock/price checks
+// elsewhere in checkout.
+export async function getArtistSalesProductIds(productIds: string[]): Promise<Set<string>> {
+  const result = new Set<string>();
+  if (productIds.length === 0) return result;
+
+  const categoryId = await getArtistSalesCategoryId();
+  if (!categoryId) return result;
+
+  const square = getSquare();
+  for (const idBatch of chunk(productIds, BATCH_CHUNK_SIZE)) {
+    const response = await square.catalog.batchGet({ objectIds: idBatch });
+    for (const obj of response.objects ?? []) {
+      if (obj.type !== "ITEM" || !obj.id) continue;
+      const categories = obj.itemData?.categories ?? [];
+      if (categories.some((c) => c.id === categoryId)) result.add(obj.id);
+    }
+  }
+
+  return result;
+}

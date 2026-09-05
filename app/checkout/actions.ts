@@ -3,7 +3,7 @@
 import { randomUUID } from "crypto";
 import { cookies } from "next/headers";
 import { getSquare, getSquareLocationId } from "@/lib/square";
-import { getInventoryCounts } from "@/lib/catalog";
+import { getArtistSalesProductIds, getInventoryCounts } from "@/lib/catalog";
 import { getByCode, setSquareCustomerId } from "@/lib/store";
 import { resolveAccount } from "@/lib/accountAuth";
 import { findOrCreateSquareCustomerId } from "@/lib/squareCustomers";
@@ -134,6 +134,21 @@ export async function checkoutAction(input: {
     console.error("Stock check failed during checkout:", err);
   }
 
+  // Artist Sales items (everyone's cut except WHOA's own WHOAdega/WHOA
+  // products) never get a promo-code/ambassador discount — checked
+  // server-side against Square's real category data, never trusting
+  // whatever the client's cart line objects happen to carry. Only
+  // resolved when there's actually a discount that would otherwise apply.
+  const AMBASSADOR_DISCOUNT_UID = "ambassador-discount";
+  const excludedProductIds = ambassador
+    ? await getArtistSalesProductIds(input.lines.map((l) => l.productId)).catch((err) => {
+        console.error("Artist Sales category lookup failed during checkout:", err);
+        // Fail closed: if we can't tell what's excluded, exclude
+        // everything rather than risk discounting artist sales.
+        return new Set(input.lines.map((l) => l.productId));
+      })
+    : new Set<string>();
+
   let orderId: string;
   let totalMoney: Money;
 
@@ -146,14 +161,19 @@ export async function checkoutAction(input: {
         lineItems: input.lines.map((line) => ({
           catalogObjectId: line.variationId,
           quantity: String(line.quantity),
+          appliedDiscounts:
+            ambassador && !excludedProductIds.has(line.productId)
+              ? [{ discountUid: AMBASSADOR_DISCOUNT_UID }]
+              : undefined,
         })),
         discounts: ambassador
           ? [
               {
+                uid: AMBASSADOR_DISCOUNT_UID,
                 name: `WHOA Ambassador (${ambassador.code})`,
                 type: "FIXED_PERCENTAGE",
                 percentage: "15",
-                scope: "ORDER",
+                scope: "LINE_ITEM",
               },
             ]
           : undefined,

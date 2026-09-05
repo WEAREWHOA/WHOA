@@ -208,212 +208,214 @@ export default function EventCheckoutModal({
       <div aria-hidden className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
 
       <div
-        className="card-surface relative z-10 w-full max-w-md rounded-2xl border border-border-strong p-6 sm:p-8"
+        className="card-surface relative z-10 flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border-strong"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="absolute top-4 right-4 flex h-9 w-9 items-center justify-center rounded-full border border-border-strong text-lg text-muted hover:text-foreground"
+          className="absolute top-4 right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-border-strong bg-surface-raised text-lg text-muted hover:text-foreground"
         >
           ×
         </button>
 
-        {done ? (
-          <div className="flex flex-col items-center py-6 text-center">
-            <p className="text-flame-2 text-xs font-semibold tracking-[0.2em] uppercase">
-              {isPaid ? "Ticket confirmed" : "RSVP confirmed"}
-            </p>
-            <h3 className="font-display mt-3 text-3xl">You&apos;re in!</h3>
-            <p className="mt-3 text-sm text-muted">
-              {event.title} — {event.dateLabel}. A confirmation is on its way to {email}.
-            </p>
-
-            {qrDataUrl && (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={qrDataUrl}
-                  alt="Ticket QR code"
-                  className="mt-6 h-44 w-44 rounded-xl border border-border-strong bg-white p-2"
-                />
-                <p className="mt-3 text-xs text-muted">Present this at the door — it&apos;s also saved to your portal.</p>
-              </>
-            )}
-
-            <button type="button" onClick={onClose} className="btn-flame mt-6 rounded-full px-8 py-3 text-sm">
-              Done
-            </button>
-          </div>
-        ) : (
-          <>
-            <span className="text-xs font-semibold tracking-[0.2em] text-muted uppercase">
-              {isPaid ? "Buy ticket" : "Free RSVP"}
-            </span>
-            <h3 className="font-display mt-1 text-2xl">{event.title}</h3>
-            <p className="mt-1 text-sm text-muted">
-              {event.dateLabel} · {event.timeLabel}
-            </p>
-
-            <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
-              <div>
-                <label htmlFor="rsvp-name" className="text-sm font-medium">
-                  Name
-                </label>
-                <input
-                  id="rsvp-name"
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="rsvp-email" className="text-sm font-medium">
-                  Email
-                </label>
-                <input
-                  id="rsvp-email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="rsvp-phone" className="text-sm font-medium">
-                  Phone <span className="font-normal text-muted">(optional)</span>
-                </label>
-                <input
-                  id="rsvp-phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
-                />
-              </div>
-
-              {event.lineup && event.lineup.length > 0 && (
-                <div>
-                  <label htmlFor="rsvp-artist" className="text-sm font-medium">
-                    Pick an artist <span className="font-normal text-muted">(optional)</span>
-                  </label>
-                  <select
-                    id="rsvp-artist"
-                    value={selectedArtist}
-                    onChange={(e) => setSelectedArtist(e.target.value)}
-                    className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
-                  >
-                    <option value="">No preference</option>
-                    {event.lineup.map((artist) => (
-                      <option key={artist} value={artist}>
-                        {artist}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+        <div className="overflow-y-auto p-6 sm:p-8">
+          {done ? (
+            <div className="flex flex-col items-center py-6 text-center">
+              <p className="text-flame-2 text-xs font-semibold tracking-[0.2em] uppercase">
+                {isPaid ? "Ticket confirmed" : "RSVP confirmed"}
+              </p>
+              <h3 className="font-display mt-3 text-3xl">You&apos;re in!</h3>
+              <p className="mt-3 text-sm text-muted">
+                {event.title} — {event.dateLabel}. A confirmation is on its way to {email}.
+              </p>
+  
+              {qrDataUrl && (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={qrDataUrl}
+                    alt="Ticket QR code"
+                    className="mt-6 h-44 w-44 rounded-xl border border-border-strong bg-white p-2"
+                  />
+                  <p className="mt-3 text-xs text-muted">Present this at the door — it&apos;s also saved to your portal.</p>
+                </>
               )}
-
-              {account ? (
-                <div className="flex items-center justify-between rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm">
-                  <span className="text-muted">
-                    Signed in as <span className="text-foreground">{account.email}</span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleSignOut}
-                    disabled={signingOut}
-                    className="text-flame font-medium underline underline-offset-2 disabled:opacity-50"
-                  >
-                    Not you?
-                  </button>
-                </div>
-              ) : (
-                accountChecked && (
-                  <div>
-                    <label htmlFor="rsvp-password" className="text-sm font-medium">
-                      Password <span className="font-normal text-muted">(optional)</span>
-                    </label>
-                    <input
-                      id="rsvp-password"
-                      type="password"
-                      minLength={8}
-                      autoComplete="new-password"
-                      placeholder="Save your info & track this in your portal — or leave blank"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
-                    />
-                    <p className="mt-2 text-xs text-muted">
-                      Have an account already? Enter your password here to sign in.
-                    </p>
-                  </div>
-                )
-              )}
-
-              {isPaid && (
-                <div>
-                  <span className="text-sm font-medium">Card</span>
-                  {scriptFailed ? (
-                    <div className="mt-2 rounded-lg border border-flame-1/40 bg-flame-1/10 px-4 py-3 text-sm text-flame-3">
-                      Payment couldn&apos;t load — this can happen with an ad blocker or a flaky connection. Try
-                      disabling any ad/tracker blockers and{" "}
-                      <button
-                        type="button"
-                        onClick={() => window.location.reload()}
-                        className="underline underline-offset-2"
-                      >
-                        reload the page
-                      </button>
-                      .
-                    </div>
-                  ) : (
-                    <div
-                      id="event-card-container"
-                      className="mt-2 rounded-lg border border-border-strong bg-surface-raised px-4 py-3"
-                    />
-                  )}
-                </div>
-              )}
-
-              {!APPLICATION_ID || !LOCATION_ID
-                ? isPaid && (
-                    <p className="rounded-lg border border-flame-1/40 bg-flame-1/10 px-4 py-3 text-sm text-flame-3">
-                      Ticket purchases aren&apos;t configured yet — Square credentials are missing.
-                    </p>
-                  )
-                : null}
-
-              {error && (
-                <p className="rounded-lg border border-flame-1/40 bg-flame-1/10 px-4 py-3 text-sm text-flame-3">
-                  {error}
-                </p>
-              )}
-
-              <button
-                type="submit"
-                disabled={submitting || (isPaid && (!cardReady || !APPLICATION_ID || !LOCATION_ID))}
-                className="btn-flame mt-2 rounded-full px-8 py-4 text-base disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {submitting ? "Processing…" : isPaid ? `Pay ${formatCents(priceCents)}` : "Confirm RSVP"}
+  
+              <button type="button" onClick={onClose} className="btn-flame mt-6 rounded-full px-8 py-3 text-sm">
+                Done
               </button>
-            </form>
-
-            {isPaid && (
-              <Script
-                src={SQUARE_JS_SRC}
-                onLoad={() => setScriptReady(true)}
-                onError={() => setScriptFailed(true)}
-                strategy="afterInteractive"
-              />
-            )}
-          </>
-        )}
+            </div>
+          ) : (
+            <>
+              <span className="text-xs font-semibold tracking-[0.2em] text-muted uppercase">
+                {isPaid ? "Buy ticket" : "Free RSVP"}
+              </span>
+              <h3 className="font-display mt-1 text-2xl">{event.title}</h3>
+              <p className="mt-1 text-sm text-muted">
+                {event.dateLabel} · {event.timeLabel}
+              </p>
+  
+              <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+                <div>
+                  <label htmlFor="rsvp-name" className="text-sm font-medium">
+                    Name
+                  </label>
+                  <input
+                    id="rsvp-name"
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
+                  />
+                </div>
+  
+                <div>
+                  <label htmlFor="rsvp-email" className="text-sm font-medium">
+                    Email
+                  </label>
+                  <input
+                    id="rsvp-email"
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
+                  />
+                </div>
+  
+                <div>
+                  <label htmlFor="rsvp-phone" className="text-sm font-medium">
+                    Phone <span className="font-normal text-muted">(optional)</span>
+                  </label>
+                  <input
+                    id="rsvp-phone"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
+                  />
+                </div>
+  
+                {event.lineup && event.lineup.length > 0 && (
+                  <div>
+                    <label htmlFor="rsvp-artist" className="text-sm font-medium">
+                      Pick an artist <span className="font-normal text-muted">(optional)</span>
+                    </label>
+                    <select
+                      id="rsvp-artist"
+                      value={selectedArtist}
+                      onChange={(e) => setSelectedArtist(e.target.value)}
+                      className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
+                    >
+                      <option value="">No preference</option>
+                      {event.lineup.map((artist) => (
+                        <option key={artist} value={artist}>
+                          {artist}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+  
+                {account ? (
+                  <div className="flex items-center justify-between rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm">
+                    <span className="text-muted">
+                      Signed in as <span className="text-foreground">{account.email}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleSignOut}
+                      disabled={signingOut}
+                      className="text-flame font-medium underline underline-offset-2 disabled:opacity-50"
+                    >
+                      Not you?
+                    </button>
+                  </div>
+                ) : (
+                  accountChecked && (
+                    <div>
+                      <label htmlFor="rsvp-password" className="text-sm font-medium">
+                        Password <span className="font-normal text-muted">(optional)</span>
+                      </label>
+                      <input
+                        id="rsvp-password"
+                        type="password"
+                        minLength={8}
+                        autoComplete="new-password"
+                        placeholder="Save your info & track this in your portal — or leave blank"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
+                      />
+                      <p className="mt-2 text-xs text-muted">
+                        Have an account already? Enter your password here to sign in.
+                      </p>
+                    </div>
+                  )
+                )}
+  
+                {isPaid && (
+                  <div>
+                    <span className="text-sm font-medium">Card</span>
+                    {scriptFailed ? (
+                      <div className="mt-2 rounded-lg border border-flame-1/40 bg-flame-1/10 px-4 py-3 text-sm text-flame-3">
+                        Payment couldn&apos;t load — this can happen with an ad blocker or a flaky connection. Try
+                        disabling any ad/tracker blockers and{" "}
+                        <button
+                          type="button"
+                          onClick={() => window.location.reload()}
+                          className="underline underline-offset-2"
+                        >
+                          reload the page
+                        </button>
+                        .
+                      </div>
+                    ) : (
+                      <div
+                        id="event-card-container"
+                        className="mt-2 rounded-lg border border-border-strong bg-surface-raised px-4 py-3"
+                      />
+                    )}
+                  </div>
+                )}
+  
+                {!APPLICATION_ID || !LOCATION_ID
+                  ? isPaid && (
+                      <p className="rounded-lg border border-flame-1/40 bg-flame-1/10 px-4 py-3 text-sm text-flame-3">
+                        Ticket purchases aren&apos;t configured yet — Square credentials are missing.
+                      </p>
+                    )
+                  : null}
+  
+                {error && (
+                  <p className="rounded-lg border border-flame-1/40 bg-flame-1/10 px-4 py-3 text-sm text-flame-3">
+                    {error}
+                  </p>
+                )}
+  
+                <button
+                  type="submit"
+                  disabled={submitting || (isPaid && (!cardReady || !APPLICATION_ID || !LOCATION_ID))}
+                  className="btn-flame mt-2 rounded-full px-8 py-4 text-base disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {submitting ? "Processing…" : isPaid ? `Pay ${formatCents(priceCents)}` : "Confirm RSVP"}
+                </button>
+              </form>
+  
+              {isPaid && (
+                <Script
+                  src={SQUARE_JS_SRC}
+                  onLoad={() => setScriptReady(true)}
+                  onError={() => setScriptFailed(true)}
+                  strategy="afterInteractive"
+                />
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

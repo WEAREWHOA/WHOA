@@ -67,7 +67,7 @@ export default function BottomNav() {
       icon: <YouIcon />,
       active: pathname.startsWith("/portal") || pathname.startsWith("/login"),
     },
-    { href: "/about-us", label: "About Us", icon: <AboutIcon />, active: pathname.startsWith("/about") },
+    { href: "/about", label: "About", icon: <AboutIcon />, active: pathname.startsWith("/about") },
   ];
 
   return (

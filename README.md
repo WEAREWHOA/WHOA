@@ -21,7 +21,7 @@ Super Admin has granted them. See
 ## App layout & navigation
 
 An Etsy-app-inspired shell: a persistent 5-tab nav (Events / Join / Shop /
-You / About Us) rendered two ways depending on viewport, on every page
+You / About) rendered two ways depending on viewport, on every page
 except the immersive home hub and `/pos`.
 
 - `components/BottomNav.tsx` — a fixed bottom tab bar, mobile only
@@ -52,11 +52,13 @@ except the immersive home hub and `/pos`.
   linking to the real corresponding pages. "Pop Ups & Retail" links to
   `/events?category=whoadega`, pre-filtering to the real WHOADEGA
   category rather than needing content of its own.
-- `/about-us` — hub consolidating Our Story, Partnerships (the real
+- `/about` — hub consolidating Our Story, Partnerships (the real
   charitable donations), Contact, and links to FAQ/Shipping/Return/
-  Privacy/Terms. Doesn't replace `/about` (still the full brand-story
-  page, still linked from the footer) — this is the nav-level landing
-  spot for "everything About-ish."
+  Privacy/Terms — the nav-level landing spot for "everything About-ish."
+  The full brand-story page (formerly at `/about` itself) moved to
+  `/about/story` when this hub took over the shorter URL, so the
+  Navbar/BottomNav's "About" label and link stay in sync (previously
+  `/about-us`, "About Us").
 - `/events` and `/shop` both read an optional `?category=` param
   client-side via `useSearchParams()` inside a `<Suspense>` boundary
   (same reasoning as the You-tab cookie above — keeps both pages
@@ -72,7 +74,8 @@ except the immersive home hub and `/pos`.
 - `/cart` — cart (client-side, persisted to `localStorage`)
 - `/checkout` — name/email + a Square Web Payments SDK card form; the 15%
   ambassador discount and referral attribution apply automatically if the
-  visitor arrived via a `/r/[slug]` link
+  visitor arrived via a `/r/[slug]` link — except anything in Square's
+  "Artist Sales" category, which never discounts (see below)
 - `/order-confirmed` — confirmation after a successful payment
 - `/pos` — staff point-of-sale register: PIN-gated (showcase-grade, not real
   access control — see [Staff POS](#staff-pos) below), tap-to-add products,
@@ -84,8 +87,8 @@ except the immersive home hub and `/pos`.
 - `/` — marketing landing page: hero, how-it-works, tiers, portal preview, FAQ, apply CTA
 - `/join` — "Join the Community" hub tying together the ambassador
   program, events, the art/music collectives, and pop ups/retail
-- `/about-us` — "About Us" hub: story, mission, partnerships, contact,
-  and legal/info pages, all in one place
+- `/about` — hub: story, mission, partnerships, contact, and legal/info
+  pages, all in one place; `/about/story` is the full brand-story page
 - `/apply` — creates a password-protected account with Brand Ambassador
   access already granted (name, email, Instagram, password); approval is
   instant. The ambassador code is generated from the applicant's first and
@@ -108,6 +111,12 @@ except the immersive home hub and `/pos`.
   [Sell For Us & Event Sales](#sell-for-us--event-sales),
   [Music Collective](#music-collective), and
   [Art Collective](#art-collective)
+- `/site-concept` — a visual map of the site (`app/site-concept/page.tsx`):
+  every frontend and backend journey spiraling out from the home page in
+  an inline-SVG diagram, plus a linked index of each destination and a
+  plain-English "how it fits together" explainer (Square/Supabase/Resend,
+  and the one-account-model that ties every tab together). Linked from the
+  footer.
 - `/super-admin`, `/super-admin/[code]` — Super Admin only: search any
   account by name/email/code and edit its permissions
 - `/r/[slug]` — a trackable link. Logs a click on that specific link, sets a
@@ -614,8 +623,16 @@ here.
 - `app/checkout/actions.ts` — on checkout, creates a real Square `Order`
   (with a `FIXED_PERCENTAGE` 15% discount attached if a `whoa_ref` cookie
   is present), then a `Payment` against that order using the token from the
-  Web Payments SDK. If an ambassador referred the sale, a row is appended to
-  Supabase's `orders` table with the sale amount and 10% commission —
+  Web Payments SDK. The discount is `LINE_ITEM` scoped, not `ORDER` scoped —
+  it's applied per line item, explicitly skipping any product in Square's
+  "Artist Sales" category (`lib/catalog.ts`'s `getArtistSalesProductIds`,
+  resolved by category name, checked server-side against the real Square
+  catalog rather than trusting anything the client's cart sends). Artist
+  Sales is everyone's cut except WHOA's own WHOAdega/WHOA-branded products,
+  so no promo code or ambassador referral ever discounts an artist's sale
+  unless a future request says otherwise. If an ambassador referred the
+  sale, a row is appended to Supabase's `orders` table with the sale amount
+  and 10% commission —
   this is what powers the live stats on `/portal/[code]`.
   `checkoutAction`'s `shippingAddress` param is optional and shared with
   `/pos`'s in-person checkout — present (and validated) from the online
@@ -1064,7 +1081,13 @@ toggle:
   Payments SDK card field, exactly like `CheckoutForm.tsx`; a free RSVP
   never loads it at all. On success it shows a QR code (generated
   server-side by `eventRsvpAction`) linking to `/checkin/[rsvpId]` — a
-  public, read-only ticket page a guest can present at the door.
+  public, read-only ticket page a guest can present at the door. The modal
+  card is capped at `max-h-[85vh]` with the form itself in its own
+  `overflow-y-auto` region (same fix as `DamageWaiverModal` and
+  `NewsletterSignupModal`) — without it, a long form (lineup picker +
+  password field + card field) could run taller than the viewport with no
+  way to scroll down to the card field or Pay button, especially on
+  mobile. This affected every event's checkout, not any one event.
 - **Pick an artist** — when an event has a `lineup` (see `EventInfo.lineup`
   in `lib/events.ts`), the form shows an optional "Pick an artist" `<select>`
   populated straight from that lineup, defaulting to "No preference." The
