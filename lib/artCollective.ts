@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { getSupabase } from "./supabase";
 import { getSquare, getSquareLocationId } from "./square";
 import { getOnlineStoreChannelId, getOrCreateArtCollectiveCategoryId, getOrCreateArtistCategoryId } from "./catalog";
+import { matchesArtistName } from "./vendorMatch";
 
 export interface ArtLink {
   label: string;
@@ -87,25 +88,19 @@ export async function getAllArtProfileNames(): Promise<{ code: string; artistNam
   return (data ?? []).map((row) => ({ code: row.ambassador_code as string, artistName: row.artist_name as string }));
 }
 
-function normalize(text: string): string {
-  return text.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-}
-
-// Same convention as lib/vendorMatch.ts's matchVendorSlug (a Square
-// product's title ends with "- <Artist Name>"), applied to dynamic Art
-// Collective artists instead of the static curated list — every approved
-// product is named this way (see buildSquareItemName below), so a full
-// catalog resync (lib/squareSync.ts) can always re-derive ownership
-// instead of it being wiped back to null on the next
+// Same conventions as lib/vendorMatch.ts's matchVendorSlug (a Square
+// product's title either ends with "- <Artist Name>", which is how every
+// product this app creates itself is named — see buildSquareItemName
+// below — or starts with "<Artist Name> ARTIST <Item Name>", the
+// convention used for consignment items entered directly in Square by
+// hand), applied to dynamic Art Collective artists instead of the static
+// curated list — so a full catalog resync (lib/squareSync.ts) can always
+// re-derive ownership instead of it being wiped back to null on the next
 // catalog.version.updated webhook.
 export function matchArtCollectiveCode(productName: string, profiles: { code: string; artistName: string }[]): string | undefined {
-  const normalizedProduct = normalize(productName);
-  if (!normalizedProduct) return undefined;
-
   const sorted = [...profiles].sort((a, b) => b.artistName.length - a.artistName.length);
   for (const profile of sorted) {
-    const normalizedArtist = normalize(profile.artistName);
-    if (normalizedArtist && normalizedProduct.endsWith(normalizedArtist)) return profile.code;
+    if (matchesArtistName(productName, profile.artistName)) return profile.code;
   }
   return undefined;
 }
