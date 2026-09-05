@@ -667,7 +667,14 @@ here.
   appear on the current online-visible items into filter pills, plus a
   client-side name/description search and a price/name sort — all real,
   no placeholder options for categories or attributes that don't exist in
-  the catalog. `Product.imageUrls` carries every photo uploaded for an
+  the catalog. The pills split into two rows, "Shop by category" and "Shop
+  by artist" — an item's category counts as an artist if its name matches
+  the "Art Collective" category itself or a known artist name (the static
+  `ARTISTS` list plus every `art_profiles` name, computed server-side in
+  `app/shop/page.tsx` and passed down as `artistNames`, since `ShopGrid` is
+  a client component with no direct Supabase access), otherwise it's a
+  regular product-type category. `Product.imageUrls` carries every photo
+  uploaded for an
   item (not just the first), so `/shop/[itemId]`
   (`components/shop/ProductGallery.tsx`) shows a real thumbnail gallery
   instead of a single image when more than one exists. A category badge

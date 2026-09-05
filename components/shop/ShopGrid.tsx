@@ -7,6 +7,17 @@ import ProductCard from "./ProductCard";
 
 type SortOption = "featured" | "price-asc" | "price-desc" | "name";
 
+// Must match ART_COLLECTIVE_CATEGORY_DISPLAY_NAME in lib/catalog.ts — kept
+// as a plain string here rather than imported, since that module also
+// pulls in server-only Square SDK code this client component shouldn't
+// bundle.
+const ART_COLLECTIVE_CATEGORY_NAME = "art collective";
+
+interface CategoryPill {
+  id: string;
+  name: string;
+}
+
 const SORT_LABELS: Record<SortOption, string> = {
   featured: "Featured",
   "price-asc": "Price: Low to High",
@@ -23,7 +34,7 @@ function totalStock(product: Product): number {
   return product.variations.reduce((sum, v) => sum + (v.inStock ?? 1), 0);
 }
 
-export default function ShopGrid({ products }: { products: Product[] }) {
+export default function ShopGrid({ products, artistNames }: { products: Product[]; artistNames: string[] }) {
   // A category badge on a product detail page links to /shop?category=<id>
   // so it actually pre-filters the grid, rather than just dumping the
   // shopper back on an unfiltered shop.
@@ -33,13 +44,33 @@ export default function ShopGrid({ products }: { products: Product[] }) {
   const [sort, setSort] = useState<SortOption>("featured");
   const [hideSoldOut, setHideSoldOut] = useState(false);
 
-  const categories = useMemo(() => {
+  const artistNameSet = useMemo(() => new Set(artistNames.map((name) => name.toLowerCase())), [artistNames]);
+
+  // Every Art Collective product carries both the umbrella "Art Collective"
+  // category and its own artist's category directly (see
+  // getOrCreateArtistCategoryId in lib/catalog.ts) — split those out from
+  // regular product-type categories (Apparel, Hats, etc.) into their own
+  // row, since otherwise a dozen-plus artist names get mixed in with a
+  // handful of real categories in one long pill list.
+  const { productCategories, artistCategories } = useMemo(() => {
     const byId = new Map<string, string>();
     for (const product of products) {
       for (const category of product.categories) byId.set(category.id, category.name);
     }
-    return Array.from(byId, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
-  }, [products]);
+    const all = Array.from(byId, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+
+    const productCategories: CategoryPill[] = [];
+    const artistCategories: CategoryPill[] = [];
+    for (const category of all) {
+      const key = category.name.trim().toLowerCase();
+      if (key === ART_COLLECTIVE_CATEGORY_NAME || artistNameSet.has(key)) {
+        artistCategories.push(category);
+      } else {
+        productCategories.push(category);
+      }
+    }
+    return { productCategories, artistCategories };
+  }, [products, artistNameSet]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -104,8 +135,8 @@ export default function ShopGrid({ products }: { products: Product[] }) {
           </button>
         </div>
 
-        {categories.length > 0 && (
-          <div className="flex flex-wrap items-center justify-center gap-2">
+        {(productCategories.length > 0 || artistCategories.length > 0) && (
+          <div className="flex flex-col items-center gap-3">
             <button
               type="button"
               onClick={() => setCategoryId(null)}
@@ -117,23 +148,24 @@ export default function ShopGrid({ products }: { products: Product[] }) {
             >
               All
             </button>
-            {categories.map((category) => {
-              const active = categoryId === category.id;
-              return (
-                <button
-                  key={category.id}
-                  type="button"
-                  onClick={() => setCategoryId(active ? null : category.id)}
-                  className={`rounded-full border px-4 py-2 text-xs font-semibold tracking-wide uppercase transition-colors ${
-                    active
-                      ? "border-flame-2 bg-flame-2/15 text-flame-3"
-                      : "border-white/20 text-white/70 hover:border-flame-2/50 hover:text-white"
-                  }`}
-                >
-                  {category.name}
-                </button>
-              );
-            })}
+
+            {productCategories.length > 0 && (
+              <CategoryPillRow
+                label="Shop by category"
+                categories={productCategories}
+                activeId={categoryId}
+                onSelect={(id) => setCategoryId(categoryId === id ? null : id)}
+              />
+            )}
+
+            {artistCategories.length > 0 && (
+              <CategoryPillRow
+                label="Shop by artist"
+                categories={artistCategories}
+                activeId={categoryId}
+                onSelect={(id) => setCategoryId(categoryId === id ? null : id)}
+              />
+            )}
           </div>
         )}
       </div>
@@ -150,6 +182,43 @@ export default function ShopGrid({ products }: { products: Product[] }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function CategoryPillRow({
+  label,
+  categories,
+  activeId,
+  onSelect,
+}: {
+  label: string;
+  categories: CategoryPill[];
+  activeId: string | null;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <span className="text-[0.65rem] font-semibold tracking-[0.2em] text-white/50 uppercase">{label}</span>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        {categories.map((category) => {
+          const active = activeId === category.id;
+          return (
+            <button
+              key={category.id}
+              type="button"
+              onClick={() => onSelect(category.id)}
+              className={`rounded-full border px-4 py-2 text-xs font-semibold tracking-wide uppercase transition-colors ${
+                active
+                  ? "border-flame-2 bg-flame-2/15 text-flame-3"
+                  : "border-white/20 text-white/70 hover:border-flame-2/50 hover:text-white"
+              }`}
+            >
+              {category.name}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

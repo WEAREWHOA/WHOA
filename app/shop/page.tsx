@@ -3,6 +3,8 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 import { listProducts } from "@/lib/catalog";
+import { getAllArtProfileNames } from "@/lib/artCollective";
+import { ARTISTS } from "@/lib/artists";
 import ShopGrid from "@/components/shop/ShopGrid";
 
 export const revalidate = 60;
@@ -23,6 +25,18 @@ export default async function ShopPage() {
     // shoppers only ever see the friendly fallback message below.
     console.error("Failed to load products for /shop:", err);
     error = "The shop is temporarily unavailable. Check back soon.";
+  }
+
+  // Lets ShopGrid split its category filter pills into "shop by category"
+  // vs. "shop by artist" instead of one long mixed row — best-effort only,
+  // a Supabase hiccup here shouldn't take down the whole shop, just fall
+  // back to grouping by the static curated list alone.
+  let artistNames: string[] = ARTISTS.map((a) => a.name);
+  try {
+    const profiles = await getAllArtProfileNames();
+    artistNames = Array.from(new Set([...artistNames, ...profiles.map((p) => p.artistName)]));
+  } catch (err) {
+    console.error("Failed to load Art Collective profile names for /shop filter grouping:", err);
   }
 
   return (
@@ -59,7 +73,7 @@ export default async function ShopPage() {
 
       {!error && products.length > 0 && (
         <Suspense>
-          <ShopGrid products={products} />
+          <ShopGrid products={products} artistNames={artistNames} />
         </Suspense>
       )}
     </section>
