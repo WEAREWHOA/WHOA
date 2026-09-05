@@ -662,11 +662,21 @@ here.
   sold out" message rather than silently overselling. Shipping is free —
   the checkout summary states that explicitly as a line rather than
   leaving a silent $0 gap where a stated policy is expected.
-- `CheckoutForm.tsx` treats a Square Web Payments script that never calls
-  `onLoad` (ad blocker, flaky connection) as a real error after a 10s
-  timeout, replacing the empty card field with an explanation and a
-  reload action — previously the Pay button would just stay disabled
-  forever with zero explanation.
+- `CheckoutForm.tsx` (and `EventCheckoutModal.tsx`, same pattern) treats a
+  Square Web Payments script that never calls `onLoad` (ad blocker, flaky
+  connection) as a real error after a 10s timeout, replacing the empty
+  card field with an explanation and a reload action — previously the Pay
+  button would just stay disabled forever with zero explanation. `onLoad`
+  itself is unreliable across remounts of the same `<Script>` though: it
+  only reliably fires the *first* time that src is ever injected, so
+  navigating checkout → cart → checkout again (or reopening the event
+  ticket modal) mounts a fresh `<Script>` for a src the browser already
+  loaded, and `onLoad` can silently never fire for it even though
+  `window.Square` is sitting right there — which was wrongly surfacing the
+  ad-blocker message on a real connection. Both components now also poll
+  for `window.Square` directly as a fallback the moment they mount, so
+  `scriptReady` still flips true in that case instead of waiting out the
+  10s timeout for nothing.
 
 **Setup:**
 

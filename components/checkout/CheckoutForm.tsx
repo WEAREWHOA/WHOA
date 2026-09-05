@@ -60,6 +60,26 @@ export default function CheckoutForm({ ambassadorCode }: { ambassadorCode: strin
   const discountCents = ambassadorCode ? Math.round(totalCents * 0.15) : 0;
   const finalCents = totalCents - discountCents;
 
+  // The Square <Script> tag's onLoad callback only reliably fires the
+  // first time it's ever injected — navigating checkout -> cart -> checkout
+  // again mounts a fresh CheckoutForm (and a fresh <Script>) while the
+  // browser has already loaded that src, so onLoad can silently never fire
+  // for this mount even though window.Square is right there. Poll for it
+  // directly as a fallback so scriptReady still flips true, instead of the
+  // 10s timeout below wrongly reporting an ad blocker.
+  useEffect(() => {
+    if (scriptReady) return;
+    const check = () => {
+      if (window.Square) setScriptReady(true);
+    };
+    const immediate = setTimeout(check, 0);
+    const interval = setInterval(check, 200);
+    return () => {
+      clearTimeout(immediate);
+      clearInterval(interval);
+    };
+  }, [scriptReady]);
+
   useEffect(() => {
     if (!scriptReady || cardRef.current) return;
     if (!window.Square || !APPLICATION_ID || !LOCATION_ID) return;
