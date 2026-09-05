@@ -104,6 +104,16 @@ export function isTicketingOpen(event: EventInfo, referenceDate: Date = new Date
 // handful of actually-upcoming events under a growing pile of historical
 // flyers on /events — this is what /events' grid/calendar display order
 // should use instead of the array's raw order.
+// Whether an event needs the damage-responsibility waiver before checkout
+// — any event held at the WHOAdega or SH!FT Gallery, derived from the
+// venue text rather than a manually-set flag so a newly authored event
+// picks it up automatically as long as its venue says so. Only matters for
+// events with an in-app checkout — one with its own external href never
+// reaches this app's checkout at all, waiver or not.
+export function requiresDamageWaiver(event: EventInfo): boolean {
+  return /WHOAdega|SH!FT/i.test(event.venue);
+}
+
 export function sortEventsByProximity(events: EventInfo[], referenceDate: Date = new Date()): EventInfo[] {
   const todayKey = referenceDate.toISOString().slice(0, 10);
   const upcoming: EventInfo[] = [];

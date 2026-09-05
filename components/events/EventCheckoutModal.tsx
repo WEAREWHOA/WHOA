@@ -33,7 +33,18 @@ const SQUARE_JS_SRC =
     ? "https://web.squarecdn.com/v1/square.js"
     : "https://sandbox.web.squarecdn.com/v1/square.js";
 
-export default function EventCheckoutModal({ event, onClose }: { event: EventInfo; onClose: () => void }) {
+export default function EventCheckoutModal({
+  event,
+  waiverAgreed,
+  onClose,
+}: {
+  event: EventInfo;
+  // Whether the user already agreed to the damage-responsibility waiver in
+  // the modal shown before this one — see EventsGrid.tsx. Only relevant for
+  // events requiresDamageWaiver flags; ignored otherwise.
+  waiverAgreed?: boolean;
+  onClose: () => void;
+}) {
   const priceCents = getCurrentPriceCents(event);
   const isPaid = priceCents > 0;
 
@@ -177,6 +188,7 @@ export default function EventCheckoutModal({ event, onClose }: { event: EventInf
       selectedArtist: selectedArtist || undefined,
       password: account ? undefined : password || undefined,
       token,
+      waiverAgreed,
     });
 
     if (!outcome.ok) {

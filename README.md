@@ -163,7 +163,7 @@ revoked by deleting its row (which logout does).
 **Setup:**
 
 1. Create a Supabase project (or use an existing one).
-2. Run all twelve migrations against it, **in order** — paste each into the
+2. Run all thirteen migrations against it, **in order** — paste each into the
    Supabase SQL Editor, or apply them with the Supabase CLI if the project
    is linked (`supabase db push`):
    - `supabase/migrations/0001_init.sql` — creates `ambassadors` and
@@ -204,8 +204,11 @@ revoked by deleting its row (which logout does).
    - `supabase/migrations/0012_event_rsvp_artist.sql` — adds
      `selected_artist` to `event_rsvps`, the optional "pick an artist"
      answer on the RSVP/ticket form.
-   All twelve enable RLS with no public policies — only the `service_role`
-   key (which is what this app uses) can read or write.
+   - `supabase/migrations/0013_event_rsvp_waiver.sql` — adds
+     `waiver_agreed_at` to `event_rsvps`, timestamping agreement to the
+     damage-responsibility waiver for WHOAdega/SH!FT Gallery events.
+   All thirteen enable RLS with no public policies — only the
+   `service_role` key (which is what this app uses) can read or write.
 3. **Bootstrap the first Super Admin** — there's no self-serve way to grant
    `is_super_admin` (by design), so after signing up your own account at
    `/login?mode=signup`, set it directly in the Supabase Table Editor:
@@ -772,6 +775,25 @@ toggle:
   legible, falling back to the plain gradient card when unset. A calendar
   day with more than one event only shows the first event's photo as the
   cell background — every event that day still gets its own chip on top.
+- **Damage responsibility waiver** — any event whose venue mentions
+  "WHOAdega" or "SH!FT" (`lib/events.ts`'s `requiresDamageWaiver(event)`,
+  derived from `venue` text rather than a manually-set flag, so a newly
+  authored event at either venue picks it up automatically) shows
+  `DamageWaiverModal.tsx` — the gallery's real liability text, verbatim —
+  before the RSVP/Buy Ticket form, gated on clicking **Agree**.
+  `EventsGrid.tsx` is what enforces the ordering client-side (both
+  `EventCard` and `EventModal`'s checkout buttons route through
+  `handleCheckoutRequest`, which opens the waiver first and only opens
+  `EventCheckoutModal` once it resolves); `eventRsvpAction` re-checks the
+  same condition server-side and rejects the RSVP outright if
+  `waiverAgreed` wasn't sent, since a client-side gate alone is never
+  enforcement. A guest's agreement is timestamped on their RSVP row
+  (`event_rsvps.waiver_agreed_at`,
+  `supabase/migrations/0013_event_rsvp_waiver.sql`) so there's an actual
+  record of who agreed and when — the whole point of a liability waiver is
+  moot if acceptance isn't provable later. An event with its own external
+  `href` never shows this at all, since it never reaches this app's
+  checkout in the first place.
 - **`components/events/EventCheckoutModal.tsx`** is the actual flow,
   opened from either `EventCard` or `EventModal`'s button — name, email,
   optional phone, an optional "pick an artist" dropdown (see below), and
