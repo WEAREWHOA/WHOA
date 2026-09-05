@@ -45,7 +45,7 @@ export const ANNOUNCEMENTS: Announcement[] = [
     date: "Posted now",
     tag: "Update",
     body: "This is home base for everything you need to help build, sell, and run the WHOADEGA booth at Same Same But Different, September 25–27, 2026 at Lake Perris, CA. Check back here for the latest before and during the festival.",
-    href: "/ssbd-admin/welcome-guide",
+    href: "/event-sales/welcome-guide",
   },
   {
     id: "build-day",
@@ -60,7 +60,7 @@ export const ANNOUNCEMENTS: Announcement[] = [
     date: "TBD",
     tag: "Urgent",
     body: "Merch & POS Training, then a Merch Refresher + Load-In/Exodus Expectations session. Can't make it live? You must watch the recording and DM us to confirm you watched it — we will ask questions. Dates, topics, and the full policy are in the Training Calendar below.",
-    href: "/ssbd-admin#training-calendar",
+    href: "/event-sales/ssbd-2026#training-calendar",
   },
   {
     id: "runway-show",
