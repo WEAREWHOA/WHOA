@@ -123,7 +123,7 @@ export async function updatePayoutAction(formData: FormData) {
     redirect("/login");
   }
 
-  if (!code || !destination || !["paypal", "venmo", "bank"].includes(method)) {
+  if (!code || !destination || !["venmo", "zelle"].includes(method)) {
     redirect(`/portal/${code}?error=payout`);
   }
 

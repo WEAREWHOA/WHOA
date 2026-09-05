@@ -2,9 +2,8 @@ import { updatePayoutAction } from "@/lib/actions";
 import type { PayoutSettings as PayoutSettingsType } from "@/lib/types";
 
 const methods: { id: PayoutSettingsType["method"]; label: string }[] = [
-  { id: "paypal", label: "PayPal" },
   { id: "venmo", label: "Venmo" },
-  { id: "bank", label: "Bank transfer" },
+  { id: "zelle", label: "Zelle" },
 ];
 
 export default function PayoutSettings({
@@ -44,7 +43,7 @@ export default function PayoutSettings({
                   type="radio"
                   name="method"
                   value={method.id}
-                  defaultChecked={payout?.method === method.id || method.id === "paypal"}
+                  defaultChecked={payout?.method === method.id || method.id === "venmo"}
                   className="accent-[var(--flame-2)]"
                 />
                 {method.label}
@@ -55,15 +54,15 @@ export default function PayoutSettings({
 
         <div>
           <label htmlFor="destination" className="text-sm font-medium">
-            PayPal / Venmo handle or account details
+            Phone number attached to your account
           </label>
           <input
             id="destination"
             name="destination"
-            type="text"
+            type="tel"
             required
             defaultValue={payout?.destination ?? ""}
-            placeholder="you@example.com"
+            placeholder="(555) 123-4567"
             className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
           />
         </div>

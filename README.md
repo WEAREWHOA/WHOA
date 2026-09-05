@@ -170,7 +170,7 @@ revoked by deleting its row (which logout does).
 **Setup:**
 
 1. Create a Supabase project (or use an existing one).
-2. Run all fourteen migrations against it, **in order** — paste each into the
+2. Run all fifteen migrations against it, **in order** — paste each into the
    Supabase SQL Editor, or apply them with the Supabase CLI if the project
    is linked (`supabase db push`):
    - `supabase/migrations/0001_init.sql` — creates `ambassadors` and
@@ -217,7 +217,11 @@ revoked by deleting its row (which logout does).
    - `supabase/migrations/0014_account_soft_delete.sql` — adds
      `deleted_at` to `ambassadors`, backing the Settings tab's "delete
      account" action (deactivates the login, keeps the account's history).
-   All fourteen enable RLS with no public policies — only the
+   - `supabase/migrations/0015_payout_venmo_zelle.sql` — narrows
+     `ambassadors.payout_method`'s check constraint to `venmo`/`zelle` only
+     (dropping PayPal/bank transfer), migrating any existing PayPal/bank
+     rows to Venmo.
+   All fifteen enable RLS with no public policies — only the
    `service_role` key (which is what this app uses) can read or write.
 3. **Bootstrap the first Super Admin** — there's no self-serve way to grant
    `is_super_admin` (by design), so after signing up your own account at

@@ -9,7 +9,10 @@ export interface Order {
 }
 
 export interface PayoutSettings {
-  method: "paypal" | "venmo" | "bank";
+  method: "venmo" | "zelle";
+  // The phone number attached to the ambassador's Venmo or Zelle account —
+  // both services identify an account by phone number, so one field covers
+  // either method.
   destination: string;
 }
 
