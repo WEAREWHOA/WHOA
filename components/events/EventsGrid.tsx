@@ -6,7 +6,7 @@ import EventCard from "@/components/events/EventCard";
 import EventModal from "@/components/events/EventModal";
 import EventCheckoutModal from "@/components/events/EventCheckoutModal";
 import EventsCalendar from "@/components/events/EventsCalendar";
-import { EVENT_CATEGORIES, type EventCategory, type EventInfo } from "@/lib/events";
+import { EVENT_CATEGORIES, sortEventsByProximity, type EventCategory, type EventInfo } from "@/lib/events";
 
 const CLOSE_DURATION = 520;
 
@@ -28,7 +28,7 @@ export default function EventsGrid({ events }: { events: EventInfo[] }) {
   const [closing, setClosing] = useState(false);
   const [checkoutEvent, setCheckoutEvent] = useState<EventInfo | null>(null);
 
-  const filtered = filter === "all" ? events : events.filter((event) => event.category === filter);
+  const filtered = sortEventsByProximity(filter === "all" ? events : events.filter((event) => event.category === filter));
 
   function handleOpen(event: EventInfo, rect: DOMRect) {
     setOpenEvent(event);

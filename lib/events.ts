@@ -93,6 +93,30 @@ export function isTicketingOpen(event: EventInfo, referenceDate: Date = new Date
   return referenceDate < getTicketingCloseDate(event);
 }
 
+// Soonest-upcoming-first, then most-recent-past-first — same split/sort
+// convention as lib/eventRsvps.ts's getEventHistoryForAccount and
+// lib/eventsAdmin.ts's getEventsAdminOverview. EVENTS itself is authored in
+// plain chronological order (oldest first), which would otherwise bury the
+// handful of actually-upcoming events under a growing pile of historical
+// flyers on /events — this is what /events' grid/calendar display order
+// should use instead of the array's raw order.
+export function sortEventsByProximity(events: EventInfo[], referenceDate: Date = new Date()): EventInfo[] {
+  const todayKey = referenceDate.toISOString().slice(0, 10);
+  const upcoming: EventInfo[] = [];
+  const past: EventInfo[] = [];
+
+  for (const event of events) {
+    const endDate = event.endDate ?? event.startDate;
+    if (endDate >= todayKey) upcoming.push(event);
+    else past.push(event);
+  }
+
+  upcoming.sort((a, b) => a.startDate.localeCompare(b.startDate));
+  past.sort((a, b) => b.startDate.localeCompare(a.startDate));
+
+  return [...upcoming, ...past];
+}
+
 export const EVENTS: EventInfo[] = [
   {
     id: "auf-eddym-jan24",
