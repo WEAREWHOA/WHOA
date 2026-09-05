@@ -75,7 +75,7 @@ except the immersive home hub and `/pos`.
 - `/checkout` — name/email + a Square Web Payments SDK card form; the 15%
   ambassador discount and referral attribution apply automatically if the
   visitor arrived via a `/r/[slug]` link — except anything in Square's
-  "Artist Sales" category, which never discounts (see below)
+  "Art Collective" category, which never discounts (see below)
 - `/order-confirmed` — confirmation after a successful payment
 - `/pos` — staff point-of-sale register: PIN-gated (showcase-grade, not real
   access control — see [Staff POS](#staff-pos) below), tap-to-add products,
@@ -543,25 +543,39 @@ system, which stays as-is for already-curated artists.
   [Environment variables](#environment-variables)'s
   `SQUARE_ONLINE_CHANNEL_NAME`) so it shows on `/shop` right away — no
   waiting on the webhook sync.
-- **Every artist also gets their own Square category**, not just the
-  umbrella "Artist Sales" one: `pushArtProductToSquare`
-  (`lib/artCollective.ts`) assigns each approved item to both
-  `ARTIST_SALES_CATEGORY_DISPLAY_NAME` (checkout's discount exclusion still
-  keys off this — see `getArtistSalesProductIds` below) and a category
-  named after the artist, creating either one in Square on first use via
-  `getOrCreateCategoryId` (`lib/catalog.ts`) — no Square plan upgrade
-  needed, categories are free and unlimited. The per-artist category is
+- **Every artist also gets their own Square subcategory**, nested under
+  the umbrella "Art Collective" category (renamed from "Artist Sales" —
+  see below) rather than everyone sitting in one flat, undifferentiated
+  bucket: `pushArtProductToSquare` (`lib/artCollective.ts`) assigns each
+  approved item to both `ART_COLLECTIVE_CATEGORY_DISPLAY_NAME` (checkout's
+  discount exclusion still keys off this — see `getArtCollectiveProductIds`
+  below) and a category named after the artist with
+  `categoryData.parentCategory` pointing at the Art Collective category's
+  id, creating either one in Square on first use via
+  `getOrCreateArtCollectiveCategoryId`/`getOrCreateArtistCategoryId`
+  (`lib/catalog.ts`) — no Square plan upgrade needed, categories (and
+  category hierarchy) are free and unlimited. The per-artist subcategory is
   also set as the item's `reportingCategory`, so Square's own Sales reports
-  break sales out per artist instead of lumping everyone under one
-  category. `/admin/square-sync`'s "Organize artist products by category"
-  button (`backfillArtistCategories`, `lib/squareSync.ts`) does the same
-  for every artist/vendor product already in the catalog — including
-  consignment items entered directly in Square for the static `ARTISTS`
-  list — by re-deriving the artist name from each item's `"- <Artist
-  Name>"` suffix (same convention as `matchArtCollectiveCode`/
-  `matchVendorSlug`) and re-upserting just the category fields, preserving
-  everything else about the item. Safe to re-run; already-correct items
-  are skipped.
+  show "Art Collective > Artist" and break sales out per artist. The item
+  itself carries *both* categories directly (not just the child) — Square's
+  hierarchy is for browsing/reporting structure, not membership, so
+  checkout's exclusion check (a flat "is this item in the Art Collective
+  category" lookup) doesn't need to walk the category tree.
+  `/admin/square-sync`'s "Organize artist products by category" button
+  (`backfillArtistCategories`, `lib/squareSync.ts`) does the same for every
+  artist/vendor product already in the catalog — including consignment
+  items entered directly in Square for the static `ARTISTS` list — by
+  re-deriving the artist name from each item's `"- <Artist Name>"` suffix
+  (same convention as `matchArtCollectiveCode`/`matchVendorSlug`) and
+  re-upserting just the category fields, preserving everything else about
+  the item. Safe to re-run; already-correct items are skipped. Only items
+  whose Square name actually ends in that suffix can be matched at all —
+  the result's `unmatchedSample` lists item names that couldn't be, so
+  what's really left uncategorized is visible rather than guessed at (a
+  first real run against WHOA's live catalog matched only 1 of 508 items —
+  most existing inventory was entered directly in Square without that
+  naming convention, so there's no name-based signal to attribute it by;
+  it's left exactly where it was rather than mis-assigned).
 - **Why the item is named `"<Product Name> - <Artist Name>"`**: the
   existing Square→Supabase sync (`lib/squareSync.ts`'s `syncFullCatalog`)
   re-derives every product's `owner_code` from scratch on *every* full
@@ -660,12 +674,12 @@ here.
   is present), then a `Payment` against that order using the token from the
   Web Payments SDK. The discount is `LINE_ITEM` scoped, not `ORDER` scoped —
   it's applied per line item, explicitly skipping any product in Square's
-  "Artist Sales" category (`lib/catalog.ts`'s `getArtistSalesProductIds`,
+  "Art Collective" category (`lib/catalog.ts`'s `getArtCollectiveProductIds`,
   resolved by category name, checked server-side against the real Square
-  catalog rather than trusting anything the client's cart sends). Artist
-  Sales is everyone's cut except WHOA's own WHOAdega/WHOA-branded products,
-  so no promo code or ambassador referral ever discounts an artist's sale
-  unless a future request says otherwise. If an ambassador referred the
+  catalog rather than trusting anything the client's cart sends). Art
+  Collective is everyone's cut except WHOA's own WHOAdega/WHOA-branded
+  products, so no promo code or ambassador referral ever discounts an
+  artist's sale unless a future request says otherwise. If an ambassador referred the
   sale, a row is appended to Supabase's `orders` table with the sale amount
   and 10% commission —
   this is what powers the live stats on `/portal/[code]`.
@@ -796,10 +810,10 @@ Square's rate limits.
   sync step is an upsert.
 - `app/api/admin/square/categorize-artists/route.ts` — not part of initial
   setup; an on-demand catch-up (`backfillArtistCategories`,
-  `lib/squareSync.ts`) that gives every artist/vendor product in the
-  catalog its own Square category alongside "Artist Sales" — see
-  [Art Collective](#art-collective) above. Same `SQUARE_ADMIN_SECRET` gate,
-  safe to re-run any time.
+  `lib/squareSync.ts`) that renames "Artist Sales" to "Art Collective" and
+  gives every artist/vendor product in the catalog its own Square
+  subcategory nested underneath it — see [Art Collective](#art-collective)
+  above. Same `SQUARE_ADMIN_SECRET` gate, safe to re-run any time.
 
 **Setup (after the env vars above are already in place):**
 
@@ -820,11 +834,14 @@ Square's rate limits.
      order history in. Can take a while on a large history; safe to click
      again if it times out, since every step upserts.
    - **Organize artist products by category** — not part of this initial
-     setup sequence; a separate, click-anytime catch-up that gives every
-     artist/vendor product its own Square category (in addition to
-     "Artist Sales") and sets it as the reporting category. Worth running
-     once after the steps above, and again any time a consignment item is
-     added directly in Square. See [Art Collective](#art-collective).
+     setup sequence; a separate, click-anytime catch-up that renames
+     "Artist Sales" to "Art Collective" and gives every artist/vendor
+     product its own subcategory nested underneath it, set as the
+     reporting category. Worth running once after the steps above, and
+     again any time a consignment item is added directly in Square — only
+     items whose Square name ends in "- Artist Name" can be matched, so
+     check the result's `unmatchedSample` to see what's still uncategorized.
+     See [Art Collective](#art-collective).
 
    (Equivalent `curl` commands, if you'd rather script it: the same
    `-H "Authorization: Bearer $SQUARE_ADMIN_SECRET"` POST against
