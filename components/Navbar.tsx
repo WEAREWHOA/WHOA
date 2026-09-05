@@ -11,7 +11,7 @@ const links = [
   { href: "/events", label: "Events" },
   { href: "/join", label: "Join" },
   { href: "/shop", label: "Shop" },
-  { href: "/about-us", label: "About Us" },
+  { href: "/about", label: "About" },
 ];
 
 export default function Navbar() {
