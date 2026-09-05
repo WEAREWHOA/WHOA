@@ -21,7 +21,7 @@ const PERMISSION_ROWS = [
     field: "perm_music",
     permission: "music",
     label: "Music",
-    hint: "Music tab (coming soon — no sales data wired up yet).",
+    hint: "MUSIC tab — self-editable artist bio, genre, and links. Approves a Music Collective application.",
   },
   {
     field: "perm_ssbd",
@@ -34,6 +34,12 @@ const PERMISSION_ROWS = [
     permission: "eventsAdmin",
     label: "Events Admin",
     hint: "EVENTS ADMIN tab — KPIs and guest lists for every event. Super Admins already have this.",
+  },
+  {
+    field: "perm_event_sales",
+    permission: "eventSales",
+    label: "Event Sales",
+    hint: "EVENT SALES tab — sign up to work events. Approves a Sell For Us application.",
   },
 ] as const;
 

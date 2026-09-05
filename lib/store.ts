@@ -22,6 +22,7 @@ interface AmbassadorRow {
   perm_music: boolean;
   perm_ssbd: boolean;
   perm_events_admin: boolean;
+  perm_event_sales: boolean;
   is_super_admin: boolean;
   square_customer_id: string | null;
   orders?: OrderRow[];
@@ -49,7 +50,8 @@ interface LinkRow {
 // ever fetched separately, by the two getCredentials* functions below.
 const AMBASSADOR_PUBLIC_SELECT =
   "code, name, email, instagram, created_at, payout_method, payout_destination, vendor_slug, " +
-  "perm_ambassador, perm_vendor, perm_music, perm_ssbd, perm_events_admin, is_super_admin, square_customer_id, orders(*), links(*)";
+  "perm_ambassador, perm_vendor, perm_music, perm_ssbd, perm_events_admin, perm_event_sales, " +
+  "is_super_admin, square_customer_id, orders(*), links(*)";
 
 function mapOrder(row: OrderRow): Order {
   return {
@@ -91,6 +93,7 @@ function mapAmbassador(row: AmbassadorRow): Ambassador {
       music: row.perm_music,
       ssbd: row.perm_ssbd,
       eventsAdmin: row.perm_events_admin,
+      eventSales: row.perm_event_sales,
     },
     isSuperAdmin: row.is_super_admin,
     squareCustomerId: row.square_customer_id ?? undefined,
@@ -177,6 +180,7 @@ export async function createAmbassador(input: {
     perm_music: input.permissions?.music ?? false,
     perm_ssbd: input.permissions?.ssbd ?? false,
     perm_events_admin: input.permissions?.eventsAdmin ?? false,
+    perm_event_sales: input.permissions?.eventSales ?? false,
   });
 
   if (ambassadorError) {
@@ -302,6 +306,7 @@ export async function updatePermissions(
   if (updates.permissions?.music !== undefined) patch.perm_music = updates.permissions.music;
   if (updates.permissions?.ssbd !== undefined) patch.perm_ssbd = updates.permissions.ssbd;
   if (updates.permissions?.eventsAdmin !== undefined) patch.perm_events_admin = updates.permissions.eventsAdmin;
+  if (updates.permissions?.eventSales !== undefined) patch.perm_event_sales = updates.permissions.eventSales;
   if (updates.isSuperAdmin !== undefined) patch.is_super_admin = updates.isSuperAdmin;
   if (updates.vendorSlug !== undefined) patch.vendor_slug = updates.vendorSlug || null;
 

@@ -17,6 +17,7 @@ export async function updateAccountPermissionsAction(formData: FormData) {
       music: formData.get("perm_music") === "on",
       ssbd: formData.get("perm_ssbd") === "on",
       eventsAdmin: formData.get("perm_events_admin") === "on",
+      eventSales: formData.get("perm_event_sales") === "on",
     },
     isSuperAdmin: formData.get("is_super_admin") === "on",
     vendorSlug: String(formData.get("vendor_slug") || "").trim(),

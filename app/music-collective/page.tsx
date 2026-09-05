@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 import MusicianCard from "@/components/musiccollective/MusicianCard";
@@ -23,6 +24,12 @@ export default function MusicCollectivePage() {
         <p className="mt-3 max-w-md text-sm text-white/60">
           Click an artist to hear their sound.
         </p>
+        <Link
+          href="/music-collective/apply"
+          className="btn-flame mt-6 inline-flex rounded-full px-6 py-3 text-sm"
+        >
+          Apply to join
+        </Link>
       </div>
 
       <div className="relative z-10 mt-14 flex w-full max-w-6xl flex-wrap items-start justify-center gap-x-8 gap-y-14">

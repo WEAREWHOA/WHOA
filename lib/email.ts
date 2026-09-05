@@ -273,3 +273,71 @@ export async function sendCustomDesignNotification(input: {
     replyTo: input.email,
   });
 }
+
+export async function sendEventSalesApplicationNotification(input: {
+  name: string;
+  email: string;
+  phone: string;
+  instagram?: string;
+  message?: string;
+  code: string;
+}): Promise<void> {
+  await sendAdminNotification({
+    subject: `New Sell For Us application: ${input.name}`,
+    heading: "New Sell For Us application",
+    rows: [
+      { label: "Name", value: input.name },
+      { label: "Email", value: input.email },
+      { label: "Phone", value: input.phone },
+      { label: "Instagram", value: input.instagram || "—" },
+      { label: "Message", value: input.message || "—" },
+      { label: "Account", value: input.code },
+      { label: "To approve", value: "Grant Event Sales from Super Admin for this account." },
+    ],
+    replyTo: input.email,
+  });
+}
+
+export async function sendEventWorkSignupNotification(input: {
+  name: string;
+  email: string;
+  eventTitle: string;
+  eventDateLabel: string;
+}): Promise<void> {
+  await sendAdminNotification({
+    subject: `${input.name} wants to work ${input.eventTitle}`,
+    heading: "New event work signup",
+    rows: [
+      { label: "Name", value: input.name },
+      { label: "Email", value: input.email },
+      { label: "Event", value: input.eventTitle },
+      { label: "Date", value: input.eventDateLabel },
+      { label: "To approve", value: "Review it from the Events Admin tab in the portal." },
+    ],
+    replyTo: input.email,
+  });
+}
+
+export async function sendMusicApplicationNotification(input: {
+  name: string;
+  email: string;
+  artistName: string;
+  subgenre?: string;
+  bio?: string;
+  code: string;
+}): Promise<void> {
+  await sendAdminNotification({
+    subject: `New Music Collective application: ${input.artistName}`,
+    heading: "New Music Collective application",
+    rows: [
+      { label: "Contact name", value: input.name },
+      { label: "Email", value: input.email },
+      { label: "Artist name", value: input.artistName },
+      { label: "Genre", value: input.subgenre || "—" },
+      { label: "Bio", value: input.bio || "—" },
+      { label: "Account", value: input.code },
+      { label: "To approve", value: "Grant Music from Super Admin for this account." },
+    ],
+    replyTo: input.email,
+  });
+}

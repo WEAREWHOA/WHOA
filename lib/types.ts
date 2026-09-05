@@ -33,6 +33,9 @@ export interface AccountPermissions {
   music: boolean;
   ssbd: boolean;
   eventsAdmin: boolean;
+  // "SELL FOR US" — event/festival sales crew. Separate from `ambassador`:
+  // signs up to work specific events rather than referring sales online.
+  eventSales: boolean;
 }
 
 // Despite the name, this now represents any backend-portal account, not

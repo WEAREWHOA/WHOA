@@ -10,6 +10,7 @@ const ALL_TABS = [
   { id: "music", label: "MUSIC" },
   { id: "ssbd", label: "SSBD" },
   { id: "eventsAdmin", label: "EVENTS ADMIN" },
+  { id: "eventSales", label: "EVENT SALES" },
   { id: "settings", label: "SETTINGS" },
 ] as const;
 
@@ -25,6 +26,7 @@ export default function DashboardTabs({
   music,
   ssbd,
   eventsAdmin,
+  eventSales,
   settings,
   visible,
 }: {
@@ -35,11 +37,19 @@ export default function DashboardTabs({
   music: ReactNode;
   ssbd: ReactNode;
   eventsAdmin: ReactNode;
+  eventSales: ReactNode;
   settings: ReactNode;
   // Customer, Events, and Settings are always visible — everyone with an
   // account is a customer, can RSVP/buy tickets, and manages their own
   // profile. The rest are unlocked per-account by a Super Admin.
-  visible: { ambassador: boolean; vendor: boolean; music: boolean; ssbd: boolean; eventsAdmin: boolean };
+  visible: {
+    ambassador: boolean;
+    vendor: boolean;
+    music: boolean;
+    ssbd: boolean;
+    eventsAdmin: boolean;
+    eventSales: boolean;
+  };
 }) {
   const content: Record<TabId, ReactNode> = {
     customer,
@@ -49,6 +59,7 @@ export default function DashboardTabs({
     music,
     ssbd,
     eventsAdmin,
+    eventSales,
     settings,
   };
   const tabs = ALL_TABS.filter(

@@ -1,5 +1,43 @@
 import { formatCents } from "@/lib/money";
 import type { EventAdminSummary, EventsAdminOverview } from "@/lib/eventsAdmin";
+import { reviewWorkSignupAction } from "@/app/events-admin/actions";
+
+function WorkSignupRow({ pending }: { pending: EventsAdminOverview["pendingWorkSignups"][number] }) {
+  const { signup, event, accountName, accountEmail } = pending;
+  return (
+    <div className="card-surface flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border p-4">
+      <div>
+        <p className="text-sm font-semibold">{accountName}</p>
+        <p className="text-xs text-muted">{accountEmail}</p>
+        <p className="mt-1 text-sm">
+          wants to work <span className="font-semibold">{event.title}</span> · {event.dateLabel}
+        </p>
+      </div>
+      <div className="flex shrink-0 gap-2">
+        <form action={reviewWorkSignupAction}>
+          <input type="hidden" name="signupId" value={signup.id} />
+          <input type="hidden" name="decision" value="approved" />
+          <button
+            type="submit"
+            className="rounded-full bg-tier-icon px-4 py-2 text-xs font-semibold tracking-wide text-background uppercase"
+          >
+            Approve
+          </button>
+        </form>
+        <form action={reviewWorkSignupAction}>
+          <input type="hidden" name="signupId" value={signup.id} />
+          <input type="hidden" name="decision" value="declined" />
+          <button
+            type="submit"
+            className="rounded-full border border-border-strong px-4 py-2 text-xs font-semibold tracking-wide text-muted uppercase hover:text-foreground"
+          >
+            Decline
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 function GuestRow({ guest }: { guest: EventAdminSummary["guests"][number] }) {
   const isTicket = guest.priceCents > 0;
@@ -79,7 +117,7 @@ function EventDetails({ summary }: { summary: EventAdminSummary }) {
 }
 
 export default function EventsAdminTab({ data }: { data: EventsAdminOverview }) {
-  const { upcoming, past, totals } = data;
+  const { upcoming, past, totals, pendingWorkSignups } = data;
 
   return (
     <div>
@@ -100,6 +138,19 @@ export default function EventsAdminTab({ data }: { data: EventsAdminOverview }) 
           <p className="font-display mt-1 text-3xl">{totals.eventsWithGuests}</p>
         </div>
       </div>
+
+      <h4 className="font-display mt-10 text-xl">Work signup requests</h4>
+      {pendingWorkSignups.length === 0 ? (
+        <p className="mt-4 rounded-xl border border-border px-5 py-4 text-sm text-muted">
+          No pending requests to work an event.
+        </p>
+      ) : (
+        <div className="mt-4 flex flex-col gap-3">
+          {pendingWorkSignups.map((pending) => (
+            <WorkSignupRow key={pending.signup.id} pending={pending} />
+          ))}
+        </div>
+      )}
 
       {totals.topArtists.length > 0 && (
         <div className="mt-6">
