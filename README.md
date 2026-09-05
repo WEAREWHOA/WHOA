@@ -764,6 +764,14 @@ toggle:
   is what closes their CTA, not a filter that hides them), transcribed
   from the original flyer image for title, date, time, venue, lineup, and
   any stated price/ticket link.
+- **Real flyer photos** — `EventInfo.imageUrl` (optional, under
+  `public/events/`) shows the actual flyer as the card/calendar cover in
+  place of the CSS gradient. `EventCard`, `EventModal` (both faces), and
+  `EventsCalendar`'s day cells all check it the same way: photo + a dark
+  gradient/solid scrim behind the existing text so venue/date/lineup stay
+  legible, falling back to the plain gradient card when unset. A calendar
+  day with more than one event only shows the first event's photo as the
+  cell background — every event that day still gets its own chip on top.
 - **`components/events/EventCheckoutModal.tsx`** is the actual flow,
   opened from either `EventCard` or `EventModal`'s button — name, email,
   optional phone, an optional "pick an artist" dropdown (see below), and
