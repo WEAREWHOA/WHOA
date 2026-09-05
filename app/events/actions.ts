@@ -200,17 +200,23 @@ export async function eventRsvpAction(input: {
 // Powers the /events page's newsletter banner. Public-facing, so this
 // fails soft (returns an error string) rather than throwing — same
 // posture as lib/contact.ts's submitContactMessage.
-export async function subscribeEventsNewsletterAction(input: { email: string }): Promise<{
-  ok: boolean;
-  error?: string;
-}> {
+export async function subscribeEventsNewsletterAction(input: {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const firstName = input.firstName.trim().slice(0, 100);
+  const lastName = input.lastName.trim().slice(0, 100);
   const email = input.email.trim().slice(0, 200);
-  if (!EMAIL_PATTERN.test(email)) {
-    return { ok: false, error: "Enter a valid email." };
-  }
+  const phone = input.phone?.trim().slice(0, 30) || undefined;
+
+  if (!firstName) return { ok: false, error: "First name is required." };
+  if (!lastName) return { ok: false, error: "Last name is required." };
+  if (!EMAIL_PATTERN.test(email)) return { ok: false, error: "Enter a valid email." };
 
   try {
-    return await subscribeToNewsletter(email, ["event"]);
+    return await subscribeToNewsletter({ email, firstName, lastName, phone, tags: ["event"] });
   } catch (err) {
     console.error("subscribeEventsNewsletterAction failed:", err);
     return { ok: false, error: "Newsletter signup isn't set up yet — try again later." };
