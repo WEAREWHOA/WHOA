@@ -129,7 +129,7 @@ export async function createLinkAction(formData: FormData) {
 export async function updatePayoutAction(formData: FormData) {
   const code = String(formData.get("code") || "").trim();
   const method = String(formData.get("method") || "").trim() as PayoutSettings["method"];
-  const destination = String(formData.get("destination") || "").trim();
+  let destination = String(formData.get("destination") || "").trim();
 
   const sessionCode = await getSessionAmbassadorCode();
   if (!sessionCode || sessionCode !== code) {
@@ -138,6 +138,13 @@ export async function updatePayoutAction(formData: FormData) {
 
   if (!code || !destination || !["venmo", "zelle"].includes(method)) {
     redirect(`/portal/${code}?error=payout`);
+  }
+
+  // A Venmo destination is a @handle, not a phone/email like Zelle's — if
+  // someone forgets the leading @ (easy to do, unlike Zelle's field), fix
+  // it up rather than sending a payment to a malformed handle.
+  if (method === "venmo" && !destination.startsWith("@")) {
+    destination = `@${destination}`;
   }
 
   await setPayout(code, { method, destination });

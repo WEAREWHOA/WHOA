@@ -235,7 +235,12 @@ revoked by deleting its row (which logout does).
    - `supabase/migrations/0015_payout_venmo_zelle.sql` — narrows
      `ambassadors.payout_method`'s check constraint to `venmo`/`zelle` only
      (dropping PayPal/bank transfer), migrating any existing PayPal/bank
-     rows to Venmo.
+     rows to Venmo. `payout_destination` is a plain string either way, but
+     the two methods take different input: `PayoutSettings.tsx` swaps the
+     destination field's label/placeholder/help text based on which method
+     is selected — a Venmo `@handle` vs. a Zelle email-or-phone — and
+     `updatePayoutAction` (`lib/actions.ts`) auto-prepends a missing `@` to
+     a Venmo destination before saving it.
    - `supabase/migrations/0016_event_sales.sql` — adds `perm_event_sales`
      to `ambassadors`, plus `event_sales_applications` (every "Sell For Us"
      submission) and `event_sales_signups` (one row per account/event
