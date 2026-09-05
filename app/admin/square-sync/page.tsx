@@ -48,6 +48,7 @@ export default function SquareSyncAdminPage() {
   const [ambassadorCode, setAmbassadorCode] = useState("");
   const [vendorSlug, setVendorSlug] = useState("");
   const [catalogDebugState, setCatalogDebugState] = useState<StepState>(IDLE);
+  const [categorizeState, setCategorizeState] = useState<StepState>(IDLE);
 
   async function handleListLocations() {
     setLocationsState({ loading: true, result: null, error: null });
@@ -86,6 +87,16 @@ export default function SquareSyncAdminPage() {
       setCatalogDebugState({ loading: false, result, error: null });
     } catch (err) {
       setCatalogDebugState({ loading: false, result: null, error: (err as Error).message });
+    }
+  }
+
+  async function handleCategorize() {
+    setCategorizeState({ loading: true, result: null, error: null });
+    try {
+      const result = await callAdminRoute("/api/admin/square/categorize-artists", secret);
+      setCategorizeState({ loading: false, result, error: null });
+    } catch (err) {
+      setCategorizeState({ loading: false, result: null, error: (err as Error).message });
     }
   }
 
@@ -250,6 +261,38 @@ export default function SquareSyncAdminPage() {
         {backfillState.result && (
           <pre className="mt-4 overflow-x-auto rounded-lg border border-border-strong bg-surface-raised p-4 text-xs">
             {backfillState.result}
+          </pre>
+        )}
+      </div>
+
+      <div className="card-surface mt-6 rounded-2xl p-6">
+        <h2 className="font-display text-2xl">Organize artist products by category</h2>
+        <p className="mt-2 text-sm text-muted">
+          Instead of every artist&apos;s inventory sitting in one massive &ldquo;Artist Sales&rdquo;
+          category, this gives each artist their own category too (created automatically the first
+          time it&apos;s needed — no Square plan upgrade required) and sets it as that item&apos;s
+          reporting category, so Square&apos;s own Items list and Sales reports can filter and break
+          out sales per artist. New Art Collective approvals do this automatically going forward —
+          this catches up everything already in the catalog (including consignment items entered by
+          hand). Safe to run again any time; already-correct items are skipped.
+        </p>
+        <button
+          type="button"
+          disabled={!canRun || categorizeState.loading}
+          onClick={handleCategorize}
+          className="btn-flame mt-4 rounded-full px-6 py-3 text-sm font-semibold tracking-wide uppercase disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {categorizeState.loading ? "Categorizing…" : "Categorize artist products"}
+        </button>
+
+        {categorizeState.error && (
+          <p className="mt-4 rounded-lg border border-flame-1/40 bg-flame-1/10 px-4 py-3 text-sm text-flame-3">
+            {categorizeState.error}
+          </p>
+        )}
+        {categorizeState.result && (
+          <pre className="mt-4 overflow-x-auto rounded-lg border border-border-strong bg-surface-raised p-4 text-xs">
+            {categorizeState.result}
           </pre>
         )}
       </div>
