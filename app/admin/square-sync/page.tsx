@@ -279,8 +279,10 @@ export default function SquareSyncAdminPage() {
           run again any time; already-correct items are skipped.
         </p>
         <p className="mt-3 text-sm text-muted">
-          Only items whose Square name ends in &ldquo;- Artist Name&rdquo; can be matched at all —
-          the result includes <code className="font-mono-code">unmatchedSample</code>, a preview of
+          Only items matching one of two naming conventions can be matched at all: ending in
+          &ldquo;- Artist Name&rdquo;, or starting with &ldquo;Artist Name ARTIST Item
+          Name&rdquo; (the convention already used for most existing consignment items). The
+          result includes <code className="font-mono-code">unmatchedSample</code>, a preview of
           item names that couldn&apos;t be matched to any known artist and are left exactly where
           they were, so you can see what&apos;s actually still sitting uncategorized rather than
           guess.

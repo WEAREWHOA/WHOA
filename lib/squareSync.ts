@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import type { Square } from "square";
 import { getSquare } from "./square";
 import { getSupabase } from "./supabase";
-import { matchVendorSlug } from "./vendorMatch";
+import { matchVendorSlug, matchesArtistName } from "./vendorMatch";
 import { getAllArtProfileNames, matchArtCollectiveCode } from "./artCollective";
 import { getOrCreateArtCollectiveCategoryId, getOrCreateArtistCategoryId } from "./catalog";
 import { ARTISTS } from "./artists";
@@ -235,23 +235,16 @@ export async function backfillOrders(): Promise<number> {
   return count;
 }
 
-function normalizeName(text: string): string {
-  return text.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-}
-
-// Same longest-suffix-match convention as matchVendorSlug/
-// matchArtCollectiveCode (a Square product's title ends with
-// "- <Artist Name>"), but returning the artist's real display name
-// directly instead of a slug/ambassador code — that's what's needed to
-// get-or-create the artist's own Square category.
+// Same matching conventions as matchVendorSlug/matchArtCollectiveCode
+// (lib/vendorMatch.ts's matchesArtistName — either "<Product Name> -
+// <Artist Name>" or "<Artist Name> ARTIST <Item Name>"), but returning
+// the artist's real display name directly instead of a slug/ambassador
+// code — that's what's needed to get-or-create the artist's own Square
+// category.
 function resolveArtistName(productName: string, names: string[]): string | undefined {
-  const normalizedProduct = normalizeName(productName);
-  if (!normalizedProduct) return undefined;
-
   const sorted = [...names].sort((a, b) => b.length - a.length);
   for (const name of sorted) {
-    const normalized = normalizeName(name);
-    if (normalized && normalizedProduct.endsWith(normalized)) return name;
+    if (matchesArtistName(productName, name)) return name;
   }
   return undefined;
 }

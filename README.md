@@ -565,27 +565,34 @@ system, which stays as-is for already-curated artists.
   (`backfillArtistCategories`, `lib/squareSync.ts`) does the same for every
   artist/vendor product already in the catalog — including consignment
   items entered directly in Square for the static `ARTISTS` list — by
-  re-deriving the artist name from each item's `"- <Artist Name>"` suffix
-  (same convention as `matchArtCollectiveCode`/`matchVendorSlug`) and
-  re-upserting just the category fields, preserving everything else about
-  the item. Safe to re-run; already-correct items are skipped. Only items
-  whose Square name actually ends in that suffix can be matched at all —
-  the result's `unmatchedSample` lists item names that couldn't be, so
-  what's really left uncategorized is visible rather than guessed at (a
-  first real run against WHOA's live catalog matched only 1 of 508 items —
-  most existing inventory was entered directly in Square without that
-  naming convention, so there's no name-based signal to attribute it by;
-  it's left exactly where it was rather than mis-assigned).
-- **Why the item is named `"<Product Name> - <Artist Name>"`**: the
-  existing Square→Supabase sync (`lib/squareSync.ts`'s `syncFullCatalog`)
-  re-derives every product's `owner_code` from scratch on *every* full
-  resync — matching a name suffix against the curated `ARTISTS` list
-  (`lib/vendorMatch.ts`). Art Collective artists are matched the exact
-  same way, just against `art_profiles` instead
-  (`matchArtCollectiveCode`, checked first) — so an approved product's
-  attribution survives every future resync instead of being silently
-  wiped back to `null` the next time *any* item anywhere in the catalog
-  changes.
+  re-deriving the artist name from each item's name (see the two
+  conventions below) and re-upserting just the category fields, preserving
+  everything else about the item. Safe to re-run; already-correct items
+  are skipped. Only items matching one of those two conventions can be
+  attributed at all — the result's `unmatchedSample` lists item names that
+  couldn't be, so what's really left uncategorized is visible rather than
+  guessed at.
+- **Two naming conventions attribute a product to an artist** — there's no
+  dedicated field for it, so `matchesArtistName` (`lib/vendorMatch.ts`)
+  checks a Square item's name against both, used everywhere an
+  artist/vendor needs to be re-derived from a product name alone
+  (`matchVendorSlug`, `matchArtCollectiveCode`, and
+  `backfillArtistCategories`'s `resolveArtistName`):
+  - **Suffix** — `"<Product Name> - <Artist Name>"`. What every product
+    this app creates itself is named (`buildSquareItemName`,
+    `lib/artCollective.ts`), so an approved Art Collective product's
+    attribution survives every future full catalog resync
+    (`lib/squareSync.ts`'s `syncFullCatalog`, which re-derives every
+    product's `owner_code` from scratch on *every* run) instead of being
+    silently wiped back to `null` the next time *any* item anywhere in the
+    catalog changes.
+  - **Prefix + "ARTIST" marker** — `"<Artist Name> ARTIST <Item Name>"`
+    (e.g. "Alex Wilson ARTIST Tie Dye Hoodie"), the convention already in
+    use for most existing consignment items entered directly in Square by
+    hand. Matched as a whole word after normalizing (so
+    casing/underscores/punctuation around "ARTIST" don't matter), and the
+    text before it must match a known artist name exactly, not just start
+    with it.
 
 ## Square Customers matching
 
@@ -839,8 +846,9 @@ Square's rate limits.
      product its own subcategory nested underneath it, set as the
      reporting category. Worth running once after the steps above, and
      again any time a consignment item is added directly in Square — only
-     items whose Square name ends in "- Artist Name" can be matched, so
-     check the result's `unmatchedSample` to see what's still uncategorized.
+     items matching one of the two naming conventions (see
+     [Art Collective](#art-collective)) can be attributed, so check the
+     result's `unmatchedSample` to see what's still uncategorized.
      See [Art Collective](#art-collective).
 
    (Equivalent `curl` commands, if you'd rather script it: the same
