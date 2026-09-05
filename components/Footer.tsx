@@ -39,9 +39,6 @@ export default function Footer() {
           <Link href="/login" className="transition-colors hover:text-foreground">
             Ambassador login
           </Link>
-          <Link href="/ssbd-admin" className="transition-colors hover:text-foreground">
-            SSBD Admin
-          </Link>
         </nav>
       </div>
       <div className="border-t border-border py-4 text-center text-xs text-muted">

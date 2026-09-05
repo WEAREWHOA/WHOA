@@ -401,14 +401,25 @@ is about online referrals, not working events in person). Modeled on
   `getScheduleForAccount` (`lib/eventSales.ts`) is every event this account
   is approved to work, soonest first, shown at the top of their EVENT SALES
   tab.
-- `/event-sales/welcome-guide` — a Welcome Guide for the whole crew, close
-  in spirit and copy to the existing SSBD Welcome Guide
-  (`components/ssbd/WelcomeGuide.tsx`) but generalized for any WHOA event
-  or festival rather than just Same Same But Different
-  (`components/eventSales/WelcomeGuide.tsx`). Gated server-side on the
-  `eventSales` permission (real session auth, unlike the SSBD guide's
-  shared-password gate) rather than a manually shared password, since this
-  is tied to a real per-account permission.
+- `/event-sales/welcome-guide` — a Welcome Guide for the whole crew
+  (`components/eventSales/WelcomeGuide.tsx`), generalized for any WHOA
+  event or festival rather than just one. Gated server-side on the
+  `eventSales` permission (real session auth) rather than a manually
+  shared password, since this is tied to a real per-account permission.
+- `/event-sales/ssbd-2026` — the first **Event Details** page: the real
+  crew hub for Same Same But Different (announcements, training calendar,
+  documents, activations, shift schedule, team contacts —
+  `components/eventSales/ssbd2026/EventDetails.tsx`, data in `lib/ssbd.ts`).
+  Used to live at `/ssbd-admin` behind a shared crew password
+  (`components/ssbd/PasswordGate.tsx`, since removed); it's now gated by
+  real session auth instead — Super Admin, `perm_events_admin`, or an
+  *approved* `event_sales_signups` row for `ssbd-2026` specifically
+  (`app/event-sales/ssbd-2026/page.tsx`). An approved crew member sees an
+  "Event details →" link on that event's row in their EVENT SALES tab
+  (`EVENT_DETAILS_HREF` in `EventSalesTab.tsx`). This is the template every
+  future event's own details page should follow: real info, gated by that
+  specific account's approval to work that specific event, not a shared
+  password. Disallowed in `robots.ts` since it lists crew phone numbers.
 
 ## Music Collective
 
@@ -688,9 +699,9 @@ standalone app screen — `SiteChrome.tsx` skips the site nav/footer for it,
 same as the home page.
 
 - `components/pos/PosPinGate.tsx` / `usePosAuth.ts` — a 4-digit PIN gate
-  (`2222`), same soft-gate posture as `/ssbd-admin`'s crew password: fine
-  for keeping a register off the open web, not real access control. No
-  per-staff accounts yet — "for now, one shared PIN."
+  (`2222`), a soft gate: fine for keeping a register off the open web, not
+  real access control. No per-staff accounts yet — "for now, one shared
+  PIN."
 - `components/pos/PosApp.tsx` / `PosTabBar.tsx` — the five-tab shell:
   - **Checkout** (`tabs/CheckoutTab.tsx`) — product search/grid (tap a
     single-variation product to add it directly; multi-variation products
@@ -877,7 +888,7 @@ homepage orbit (`components/home/OrbitField.tsx`, the "WHOA GAMES" stop).
   (WHOADEGA, Art Collective, Music Collective, Brand Ambassadors, SSBD,
   Backend Portal), not arbitrary categories. `/games/hunt/[branch]` marks
   that branch found in localStorage (`useHuntProgress.ts`, same
-  `useSyncExternalStore` pattern as `usePosAuth.ts`/`useSsbdAuth.ts` — note
+  `useSyncExternalStore` pattern as `usePosAuth.ts` — note
   its `getServerSnapshot` must return the same cached empty-array
   reference every call, not a fresh `[]` literal, or React logs an
   infinite-loop warning); `/games/hunt` shows progress and reveals a prize

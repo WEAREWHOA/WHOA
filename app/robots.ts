@@ -9,8 +9,8 @@ export default function robots(): MetadataRoute.Robots {
       disallow: [
         "/pos",
         "/pos/",
-        "/ssbd-admin",
-        "/ssbd-admin/",
+        "/event-sales/ssbd-2026",
+        "/event-sales/ssbd-2026/",
         "/super-admin",
         "/super-admin/",
         "/portal",

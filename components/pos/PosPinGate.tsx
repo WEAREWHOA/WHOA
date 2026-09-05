@@ -4,9 +4,8 @@ import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { unlockPos, usePosUnlocked } from "@/components/pos/usePosAuth";
 
-// Showcase-grade PIN, not real security — same soft-gate posture as the
-// SSBD crew password. Good enough to keep the register off the open web
-// without needing full staff-account infrastructure yet.
+// Showcase-grade PIN, not real security — good enough to keep the register
+// off the open web without needing full staff-account infrastructure yet.
 const POS_PIN = "2222";
 const PIN_LENGTH = 4;
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "clear", "0", "back"];

@@ -9,6 +9,13 @@ const STATUS_LABEL: Record<EventSalesSignup["status"], string> = {
   declined: "Not approved for this one",
 };
 
+// Per-event "Event Details" pages, keyed by event id — only events with a
+// real details page built get a link here. See
+// components/eventSales/ssbd2026/EventDetails.tsx for the first example.
+const EVENT_DETAILS_HREF: Record<string, string> = {
+  "ssbd-2026": "/event-sales/ssbd-2026",
+};
+
 function EventSignupRow({
   code,
   event,
@@ -29,17 +36,27 @@ function EventSignupRow({
       </div>
 
       {signup ? (
-        <span
-          className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold tracking-wide uppercase ${
-            signup.status === "approved"
-              ? "bg-tier-icon text-background"
-              : signup.status === "declined"
-                ? "border border-border-strong text-muted"
-                : "bg-flame-2/15 text-flame-3"
-          }`}
-        >
-          {STATUS_LABEL[signup.status]}
-        </span>
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <span
+            className={`rounded-full px-4 py-2 text-xs font-semibold tracking-wide uppercase ${
+              signup.status === "approved"
+                ? "bg-tier-icon text-background"
+                : signup.status === "declined"
+                  ? "border border-border-strong text-muted"
+                  : "bg-flame-2/15 text-flame-3"
+            }`}
+          >
+            {STATUS_LABEL[signup.status]}
+          </span>
+          {signup.status === "approved" && EVENT_DETAILS_HREF[event.id] && (
+            <Link
+              href={EVENT_DETAILS_HREF[event.id]}
+              className="text-flame text-xs font-semibold tracking-wide uppercase hover:underline"
+            >
+              Event details →
+            </Link>
+          )}
+        </div>
       ) : (
         <form action={signupToWorkEventAction}>
           <input type="hidden" name="code" value={code} />

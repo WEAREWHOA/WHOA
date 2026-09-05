@@ -9,13 +9,23 @@ import {
   TRAINING_SESSIONS,
 } from "@/lib/ssbd";
 
-export default function SsbdDashboard() {
+// The concrete example of what an "Event Details" page looks like once an
+// account is approved to work an event — see EventSalesTab.tsx, which links
+// here for anyone approved on "ssbd-2026". Every other event details page
+// this platform grows should follow this same shape: real crew info, gated
+// by the account's own approved event_sales_signups row rather than a
+// shared password.
+export default function EventDetails({ code }: { code: string }) {
   return (
     <div className="text-left">
-      <header>
-        <span className="text-xs font-semibold tracking-[0.3em] text-muted uppercase">Crew Hub</span>
+      <Link href={`/portal/${code}`} className="text-sm text-muted hover:text-foreground">
+        ← Back to your dashboard
+      </Link>
+
+      <header className="mt-6">
+        <span className="text-xs font-semibold tracking-[0.3em] text-muted uppercase">Event Details</span>
         <h1 className="text-psychedelic font-display mt-2 text-4xl tracking-wide sm:text-5xl">
-          SSBD Admin
+          Same Same But Different
         </h1>
         <p className="mt-3 max-w-2xl text-sm text-muted">
           Everything the WHOADEGA crew needs to build, sell, and work the booth at Same Same But
