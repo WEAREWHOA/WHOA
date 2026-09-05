@@ -17,6 +17,7 @@ import VendorTab from "@/components/dashboard/tabs/VendorTab";
 import MusicTab from "@/components/dashboard/tabs/MusicTab";
 import SsbdTab from "@/components/dashboard/tabs/SsbdTab";
 import EventsAdminTab from "@/components/dashboard/tabs/EventsAdminTab";
+import SettingsTab from "@/components/dashboard/tabs/SettingsTab";
 import { getTier } from "@/lib/tiers";
 
 export default async function PortalDashboardPage(props: PageProps<"/portal/[code]">) {
@@ -56,6 +57,10 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
   const isNew = searchParams?.new === "1";
   const payoutSaved = searchParams?.saved === "1";
   const linkAdded = searchParams?.linkAdded === "1";
+  const settingsSaved = searchParams?.settingsSaved === "1";
+  const passwordChanged = searchParams?.passwordChanged === "1";
+  const settingsError =
+    typeof searchParams?.settingsError === "string" ? searchParams.settingsError : undefined;
 
   return (
     <section className="mx-auto w-full max-w-5xl px-6 py-16">
@@ -116,6 +121,14 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
         music={<MusicTab />}
         ssbd={<SsbdTab />}
         eventsAdmin={eventsAdminOverview ? <EventsAdminTab data={eventsAdminOverview} /> : null}
+        settings={
+          <SettingsTab
+            account={account}
+            settingsSaved={settingsSaved}
+            passwordChanged={passwordChanged}
+            settingsError={settingsError}
+          />
+        }
         visible={{
           ambassador: account.permissions.ambassador,
           vendor: showVendor,

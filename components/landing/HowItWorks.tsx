@@ -17,7 +17,7 @@ const steps = [
   {
     number: "04",
     title: "Get paid",
-    body: "You earn a flat 10% commission on every sale, at every tier. Payouts go straight to PayPal, Venmo, or your bank.",
+    body: "You earn a flat 10% commission on every sale, at every tier. Payouts go straight to your Venmo or Zelle.",
   },
 ];
 

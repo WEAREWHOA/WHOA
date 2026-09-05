@@ -69,69 +69,74 @@ export default function EventCard({
       }
       className="event-card event-float group relative w-full max-w-sm shrink-0 cursor-pointer overflow-hidden rounded-2xl border border-white/15 text-left shadow-[0_20px_50px_-20px_rgba(0,0,0,0.8)] transition-shadow duration-300 hover:shadow-[0_25px_65px_-15px_var(--accent)]"
     >
-      <div
-        aria-hidden
-        className="absolute inset-0"
-        style={{ background: `linear-gradient(160deg, ${c1} 0%, ${c2} 55%, ${c3} 100%)` }}
-      />
-      {event.imageUrl && (
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={event.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
-          <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-black/40" />
-        </>
-      )}
-      <div aria-hidden className="event-card-noise absolute inset-0" />
-
-      <div className="relative z-10 flex h-full flex-col p-5">
-        <span className="text-psychedelic font-display text-2xl tracking-wide">WHOA</span>
-
-        <h3 className="font-display mt-2 text-2xl leading-none text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] sm:text-3xl">
-          {event.title}
-        </h3>
-
-        <div className="mt-3 flex flex-wrap items-baseline gap-x-2 text-sm font-semibold text-white">
-          <span>{event.dateLabel}</span>
-          <span className="text-white/70">·</span>
-          <span>{event.timeLabel}</span>
-        </div>
-
-        {event.lineup && (
-          <ul className="mt-3 space-y-0.5">
-            {event.lineup.map((act) => (
-              <li key={act} className="font-display text-lg leading-tight text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]">
-                {act}
-              </li>
-            ))}
-          </ul>
+      {/* Fixed to standard 8.5x11 flyer proportions (not content-driven
+          height) so the real flyer photos crop consistently and the whole
+          grid reads like a wall of posters rather than mismatched cards. */}
+      <div className="relative aspect-[8.5/11] w-full overflow-hidden">
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{ background: `linear-gradient(160deg, ${c1} 0%, ${c2} 55%, ${c3} 100%)` }}
+        />
+        {event.imageUrl && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={event.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/25 to-black/40" />
+          </>
         )}
+        <div aria-hidden className="event-card-noise absolute inset-0" />
 
-        {event.details && (
-          <ul className="mt-3 space-y-1">
-            {event.details.map((line) => (
-              <li key={line} className="text-xs leading-snug text-white/85">
-                {line}
-              </li>
-            ))}
-          </ul>
-        )}
+        <div className="relative z-10 flex h-full flex-col p-5">
+          <span className="text-psychedelic font-display text-2xl tracking-wide">WHOA</span>
 
-        <div className="mt-auto pt-4">
-          <p className="text-xs font-semibold text-white/90">{event.venue}</p>
-          <p className="text-xs text-white/70">{event.location}</p>
+          <h3 className="font-display mt-2 text-2xl leading-none text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)] sm:text-3xl">
+            {event.title}
+          </h3>
 
-          {event.tags && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {event.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-full border border-white/40 px-2 py-0.5 text-[0.6rem] font-semibold tracking-wide text-white uppercase"
-                >
-                  {tag}
-                </span>
+          <div className="mt-3 flex flex-wrap items-baseline gap-x-2 text-sm font-semibold text-white">
+            <span>{event.dateLabel}</span>
+            <span className="text-white/70">·</span>
+            <span>{event.timeLabel}</span>
+          </div>
+
+          {event.lineup && (
+            <ul className="mt-3 space-y-0.5">
+              {event.lineup.map((act) => (
+                <li key={act} className="font-display text-lg leading-tight text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]">
+                  {act}
+                </li>
               ))}
-            </div>
+            </ul>
           )}
+
+          {event.details && (
+            <ul className="mt-3 space-y-1">
+              {event.details.map((line) => (
+                <li key={line} className="text-xs leading-snug text-white/85">
+                  {line}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="mt-auto pt-4">
+            <p className="text-xs font-semibold text-white/90">{event.venue}</p>
+            <p className="text-xs text-white/70">{event.location}</p>
+
+            {event.tags && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {event.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full border border-white/40 px-2 py-0.5 text-[0.6rem] font-semibold tracking-wide text-white uppercase"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

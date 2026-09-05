@@ -13,7 +13,7 @@ const faqs = [
   },
   {
     q: "How do I get paid?",
-    a: "Set your payout method — PayPal, Venmo, or bank — from your portal. Commission is tracked per order as it comes in.",
+    a: "Set your payout method — Venmo or Zelle, using the phone number on that account — from your portal. Commission is tracked per order as it comes in.",
   },
   {
     q: "How do tiers work?",

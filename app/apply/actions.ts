@@ -3,6 +3,7 @@
 import { redirect, unstable_rethrow } from "next/navigation";
 import { createAmbassador, getByEmail } from "@/lib/store";
 import { createSession, hashPassword } from "@/lib/auth";
+import { sendAmbassadorApplicationNotification } from "@/lib/email";
 
 export async function applyAction(formData: FormData) {
   const name = String(formData.get("name") || "").trim();
@@ -41,6 +42,19 @@ export async function applyAction(formData: FormData) {
 
     await createSession(ambassador.code);
     target = `/portal/${ambassador.code}?new=1`;
+
+    // Best-effort — staff should hear about every application, but a
+    // Resend hiccup must never block the signup that already succeeded.
+    try {
+      await sendAmbassadorApplicationNotification({
+        name,
+        email,
+        instagram,
+        code: ambassador.code,
+      });
+    } catch (emailErr) {
+      console.error("sendAmbassadorApplicationNotification failed:", emailErr);
+    }
   } catch (err) {
     // redirect()/notFound() work by throwing — let those pass through
     // untouched and only treat genuine failures as errors.
