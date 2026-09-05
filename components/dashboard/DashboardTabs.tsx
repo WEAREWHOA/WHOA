@@ -10,7 +10,10 @@ const ALL_TABS = [
   { id: "music", label: "MUSIC" },
   { id: "ssbd", label: "SSBD" },
   { id: "eventsAdmin", label: "EVENTS ADMIN" },
+  { id: "settings", label: "SETTINGS" },
 ] as const;
+
+const ALWAYS_VISIBLE: TabId[] = ["customer", "events", "settings"];
 
 type TabId = (typeof ALL_TABS)[number]["id"];
 
@@ -22,6 +25,7 @@ export default function DashboardTabs({
   music,
   ssbd,
   eventsAdmin,
+  settings,
   visible,
 }: {
   customer: ReactNode;
@@ -31,14 +35,24 @@ export default function DashboardTabs({
   music: ReactNode;
   ssbd: ReactNode;
   eventsAdmin: ReactNode;
-  // Customer and Events are always visible — everyone with an account is a
-  // customer and can RSVP/buy tickets. The rest are unlocked per-account by
-  // a Super Admin.
+  settings: ReactNode;
+  // Customer, Events, and Settings are always visible — everyone with an
+  // account is a customer, can RSVP/buy tickets, and manages their own
+  // profile. The rest are unlocked per-account by a Super Admin.
   visible: { ambassador: boolean; vendor: boolean; music: boolean; ssbd: boolean; eventsAdmin: boolean };
 }) {
-  const content: Record<TabId, ReactNode> = { customer, events, ambassador, vendor, music, ssbd, eventsAdmin };
+  const content: Record<TabId, ReactNode> = {
+    customer,
+    events,
+    ambassador,
+    vendor,
+    music,
+    ssbd,
+    eventsAdmin,
+    settings,
+  };
   const tabs = ALL_TABS.filter(
-    (tab) => tab.id === "customer" || tab.id === "events" || visible[tab.id as keyof typeof visible],
+    (tab) => ALWAYS_VISIBLE.includes(tab.id) || visible[tab.id as keyof typeof visible],
   );
 
   const [active, setActive] = useState<TabId>("customer");

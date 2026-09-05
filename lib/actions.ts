@@ -4,10 +4,13 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import {
   createAmbassador,
   createLink,
+  deactivateAccount,
   getByEmail,
   getCredentialsByCode,
   getCredentialsByEmail,
   setPayout,
+  updateAccountInfo,
+  updatePasswordHash,
 } from "./store";
 import { createSession, destroySession, getSessionAmbassadorCode, hashPassword, verifyPassword } from "./auth";
 import type { PayoutSettings } from "./types";
@@ -126,4 +129,101 @@ export async function updatePayoutAction(formData: FormData) {
 
   await setPayout(code, { method, destination });
   redirect(`/portal/${code}?saved=1`);
+}
+
+export async function updateAccountInfoAction(formData: FormData) {
+  const code = String(formData.get("code") || "").trim();
+  const sessionCode = await getSessionAmbassadorCode();
+  if (!sessionCode || sessionCode.toUpperCase() !== code.toUpperCase()) {
+    redirect("/login");
+  }
+
+  const name = String(formData.get("name") || "").trim();
+  const email = String(formData.get("email") || "")
+    .trim()
+    .toLowerCase();
+  const instagram = String(formData.get("instagram") || "").trim();
+
+  if (!name) redirect(`/portal/${code}?settingsError=missing`);
+  if (!email || !email.includes("@")) redirect(`/portal/${code}?settingsError=email`);
+
+  try {
+    // Same "is this email already someone else's" check as registerAction —
+    // just allow it when it's already this account's own email.
+    const existing = await getByEmail(email);
+    if (existing && existing.code.toUpperCase() !== code.toUpperCase()) {
+      redirect(`/portal/${code}?settingsError=email-taken`);
+    }
+    await updateAccountInfo(code, { name, email, instagram: instagram || null });
+  } catch (err) {
+    unstable_rethrow(err);
+    console.error("updateAccountInfoAction failed:", err);
+    redirect(`/portal/${code}?settingsError=server`);
+  }
+
+  redirect(`/portal/${code}?settingsSaved=1`);
+}
+
+export async function changePasswordAction(formData: FormData) {
+  const code = String(formData.get("code") || "").trim();
+  const sessionCode = await getSessionAmbassadorCode();
+  if (!sessionCode || sessionCode.toUpperCase() !== code.toUpperCase()) {
+    redirect("/login");
+  }
+
+  const currentPassword = String(formData.get("currentPassword") || "");
+  const newPassword = String(formData.get("newPassword") || "");
+  const confirmPassword = String(formData.get("confirmPassword") || "");
+
+  if (newPassword.length < 8) redirect(`/portal/${code}?settingsError=weak-password`);
+  if (newPassword !== confirmPassword) redirect(`/portal/${code}?settingsError=password-mismatch`);
+
+  try {
+    const credentials = await getCredentialsByCode(code);
+    if (!credentials) redirect(`/portal/${code}?settingsError=server`);
+
+    const valid = await verifyPassword(currentPassword, credentials.passwordHash);
+    if (!valid) redirect(`/portal/${code}?settingsError=wrong-password`);
+
+    const passwordHash = await hashPassword(newPassword);
+    await updatePasswordHash(code, passwordHash);
+  } catch (err) {
+    unstable_rethrow(err);
+    console.error("changePasswordAction failed:", err);
+    redirect(`/portal/${code}?settingsError=server`);
+  }
+
+  redirect(`/portal/${code}?passwordChanged=1`);
+}
+
+// Deactivates the login (see lib/store.ts's deactivateAccount) — never a
+// real row delete, so orders/links/commissions/RSVPs tied to this account
+// stay intact. Requires re-entering the current password first, same
+// re-authenticate-before-anything-destructive posture most account
+// settings pages use.
+export async function deleteAccountAction(formData: FormData) {
+  const code = String(formData.get("code") || "").trim();
+  const sessionCode = await getSessionAmbassadorCode();
+  if (!sessionCode || sessionCode.toUpperCase() !== code.toUpperCase()) {
+    redirect("/login");
+  }
+
+  const password = String(formData.get("password") || "");
+
+  try {
+    const credentials = await getCredentialsByCode(code);
+    if (!credentials) redirect(`/portal/${code}?settingsError=server`);
+
+    const valid = await verifyPassword(password, credentials.passwordHash);
+    if (!valid) redirect(`/portal/${code}?settingsError=wrong-password`);
+
+    await deactivateAccount(code);
+  } catch (err) {
+    unstable_rethrow(err);
+    console.error("deleteAccountAction failed:", err);
+    redirect(`/portal/${code}?settingsError=server`);
+  }
+
+  await destroySession();
+  redirect("/login?accountDeleted=1");
 }

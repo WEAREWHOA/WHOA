@@ -228,6 +228,9 @@ export async function getByEmail(email: string): Promise<Ambassador | undefined>
 
 // Credentials are fetched only here, never as part of the public Ambassador
 // shape, so a password hash can't accidentally end up rendered or logged.
+// Excludes a deleted account (see deactivateAccount) — this is what
+// actually blocks it from signing back in, since a deleted row otherwise
+// stays fully intact for its historical orders/links/commissions.
 export async function getCredentialsByCode(
   code: string,
 ): Promise<{ code: string; passwordHash: string } | undefined> {
@@ -235,6 +238,7 @@ export async function getCredentialsByCode(
     .from("ambassadors")
     .select("code, password_hash")
     .eq("code", code.trim().toUpperCase())
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (error) throw new Error(`Failed to look up credentials by code: ${error.message}`);
@@ -249,6 +253,7 @@ export async function getCredentialsByEmail(
     .from("ambassadors")
     .select("code, password_hash")
     .eq("email", email.trim().toLowerCase())
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (error) throw new Error(`Failed to look up credentials by email: ${error.message}`);
@@ -352,6 +357,48 @@ export async function setPayout(code: string, payout: PayoutSettings): Promise<b
     .eq("code", code);
 
   return !error;
+}
+
+// Backs the Settings tab's profile form. `email` is optional to change —
+// when provided it's the caller's job (updateAccountInfoAction) to have
+// already checked it isn't taken by a different account, same as signup.
+export async function updateAccountInfo(
+  code: string,
+  updates: { name: string; email: string; instagram?: string | null },
+): Promise<void> {
+  const { error } = await getSupabase()
+    .from("ambassadors")
+    .update({
+      name: updates.name,
+      email: updates.email.trim().toLowerCase(),
+      instagram: updates.instagram?.trim() || null,
+    })
+    .eq("code", code.trim().toUpperCase());
+
+  if (error) throw new Error(`Failed to update account info: ${error.message}`);
+}
+
+export async function updatePasswordHash(code: string, passwordHash: string): Promise<void> {
+  const { error } = await getSupabase()
+    .from("ambassadors")
+    .update({ password_hash: passwordHash })
+    .eq("code", code.trim().toUpperCase());
+
+  if (error) throw new Error(`Failed to update password: ${error.message}`);
+}
+
+// The Settings tab's "delete account" action — deactivates the login
+// without touching historical data. Orders, links, click stats, and RSVPs
+// tied to this code all stay exactly as they are; only deleted_at getting
+// set (checked by getCredentialsByCode/getCredentialsByEmail) is what
+// actually blocks this account from signing back in.
+export async function deactivateAccount(code: string): Promise<void> {
+  const { error } = await getSupabase()
+    .from("ambassadors")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("code", code.trim().toUpperCase());
+
+  if (error) throw new Error(`Failed to delete account: ${error.message}`);
 }
 
 // Links an ambassador account to a vendor/artist slug (see

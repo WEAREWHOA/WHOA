@@ -163,7 +163,7 @@ revoked by deleting its row (which logout does).
 **Setup:**
 
 1. Create a Supabase project (or use an existing one).
-2. Run all thirteen migrations against it, **in order** — paste each into the
+2. Run all fourteen migrations against it, **in order** — paste each into the
    Supabase SQL Editor, or apply them with the Supabase CLI if the project
    is linked (`supabase db push`):
    - `supabase/migrations/0001_init.sql` — creates `ambassadors` and
@@ -207,7 +207,10 @@ revoked by deleting its row (which logout does).
    - `supabase/migrations/0013_event_rsvp_waiver.sql` — adds
      `waiver_agreed_at` to `event_rsvps`, timestamping agreement to the
      damage-responsibility waiver for WHOAdega/SH!FT Gallery events.
-   All thirteen enable RLS with no public policies — only the
+   - `supabase/migrations/0014_account_soft_delete.sql` — adds
+     `deleted_at` to `ambassadors`, backing the Settings tab's "delete
+     account" action (deactivates the login, keeps the account's history).
+   All fourteen enable RLS with no public policies — only the
    `service_role` key (which is what this app uses) can read or write.
 3. **Bootstrap the first Super Admin** — there's no self-serve way to grant
    `is_super_admin` (by design), so after signing up your own account at
@@ -275,6 +278,26 @@ server-side regardless of what the UI shows — the same guard used by both
 Super Admin pages (`lib/superAdmin.ts`). There's deliberately no self-serve
 way to become the first Super Admin — see step 3 in
 [Data layer & auth](#data-layer--auth) above.
+
+**Settings** — always visible like Customer/Events, since every account
+manages its own profile regardless of what else is unlocked. Three
+`lib/actions.ts` server actions, each re-verifying the session owns the
+account before doing anything:
+
+- `updateAccountInfoAction` — name/email/Instagram. Rejects an email
+  already in use by a *different* account the same way `registerAction`
+  does, but allows saving the account's own unchanged email.
+- `changePasswordAction` — requires the current password (verified with
+  `verifyPassword` against the stored hash) before accepting a new one.
+- `deleteAccountAction` — also requires the current password first, then
+  calls `lib/store.ts`'s `deactivateAccount`, which sets `deleted_at`
+  (`supabase/migrations/0014_account_soft_delete.sql`) rather than
+  deleting the row. That's a deliberate choice: `getCredentialsByCode`/
+  `getCredentialsByEmail` both filter out a deleted account, which is what
+  actually blocks it from signing back in, but every order, referral link,
+  click stat, and event RSVP tied to that account stays exactly as it was
+  — "delete my account" means "delete my login," not "erase my history."
+  The session is destroyed immediately after, same as a normal logout.
 
 ## Square Customers matching
 
