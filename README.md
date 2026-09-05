@@ -820,23 +820,28 @@ The only WHOA-run event with a price set today is "WHOA Wednesday — Spooky
 Secret Lineup" ($10 early bird, $15 general admission at the door) — every
 other current event shows Free RSVP until a real price is set on it.
 
-- **Newsletter signup** (`components/events/EventsNewsletterBanner.tsx`,
-  shown at the top of `/events`) — an email field that subscribes into a
-  Mailchimp audience tagged `event`, so the WHOAdega/SH!FT/events crowd
-  can be emailed separately from anyone who only ever bought from
-  `/shop`. `lib/mailchimp.ts`'s `subscribeToNewsletter(email, tags)` calls
+- **Newsletter signup** — a banner at the top of `/events`
+  (`EventsNewsletterBanner.tsx`) with a single "Sign Up" button that opens
+  `NewsletterSignupModal.tsx` (first name, last name, phone (optional),
+  email), so the WHOAdega/SH!FT/events crowd can be emailed separately from
+  anyone who only ever bought from `/shop`. `lib/mailchimp.ts`'s
+  `subscribeToNewsletter({email, firstName, lastName, phone, tags})` calls
   Mailchimp's Marketing API directly (no SDK dependency): it tries to
-  create the member with the tag already attached, and if they're already
-  on the list (Mailchimp's `Member Exists` response), it falls back to
-  just adding the tag via a separate call — deliberately never resending a
-  `status` on that fallback path, so this can't accidentally force-resubscribe
-  someone who previously opted out. `app/events/actions.ts`'s
+  create the member with the tag and name/phone merge fields already
+  attached, and if they're already on the list (Mailchimp's `Member Exists`
+  response), it falls back to a `PATCH` that updates just their merge
+  fields plus a separate call that adds the tag — deliberately never
+  resending a `status` on that fallback path, so this can't accidentally
+  force-resubscribe someone who previously opted out. `app/events/actions.ts`'s
   `subscribeEventsNewsletterAction` is the public-facing server action;
   like `lib/contact.ts`'s `submitContactMessage`, it fails soft (returns an
   error string) rather than throwing. Requires `MAILCHIMP_API_KEY` and
   `MAILCHIMP_AUDIENCE_ID` (see [Environment variables](#environment-variables))
   — without them, signup attempts return a "not set up yet" error rather
-  than crashing the page.
+  than crashing the page. **The Mailchimp audience needs a "Phone Number"
+  merge field with tag `PHONE`** (Audience → Settings → Audience fields) —
+  `FNAME`/`LNAME` are Mailchimp defaults, but `PHONE` isn't, and without it
+  the phone number is silently dropped rather than saved.
 
 ## About, Contact & Policy pages
 
