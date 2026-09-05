@@ -10,6 +10,7 @@ import { getEventHistoryForAccount } from "@/lib/eventRsvps";
 import { getEventsAdminOverview } from "@/lib/eventsAdmin";
 import { getScheduleForAccount, getSignupsForAccount } from "@/lib/eventSales";
 import { getMusicianProfile } from "@/lib/musicianProfiles";
+import { getArtInventory, getArtProfile, getArtStats, getPendingArtBatches, getProductsForAccount } from "@/lib/artCollective";
 import { EVENTS } from "@/lib/events";
 import LogoutButton from "@/components/portal/LogoutButton";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
@@ -17,10 +18,12 @@ import AmbassadorTab from "@/components/dashboard/tabs/AmbassadorTab";
 import CustomerTab from "@/components/dashboard/tabs/CustomerTab";
 import EventsTab from "@/components/dashboard/tabs/EventsTab";
 import VendorTab from "@/components/dashboard/tabs/VendorTab";
+import ArtTab from "@/components/dashboard/tabs/ArtTab";
 import MusicTab from "@/components/dashboard/tabs/MusicTab";
 import SsbdTab from "@/components/dashboard/tabs/SsbdTab";
 import EventsAdminTab from "@/components/dashboard/tabs/EventsAdminTab";
 import EventSalesTab from "@/components/dashboard/tabs/EventSalesTab";
+import ArtAdminTab from "@/components/dashboard/tabs/ArtAdminTab";
 import SettingsTab from "@/components/dashboard/tabs/SettingsTab";
 import { getTier } from "@/lib/tiers";
 
@@ -69,6 +72,14 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
 
   const musicianProfile = await getMusicianProfile(account.code);
 
+  const artProfile = await getArtProfile(account.code);
+  const [artStats, artInventory, artProducts] = account.permissions.art
+    ? await Promise.all([getArtStats(account.code), getArtInventory(account.code), getProductsForAccount(account.code)])
+    : [{ totalSalesCents: 0, itemsSold: 0, orderCount: 0 }, [], []];
+
+  const canAccessArtAdmin = account.isSuperAdmin || account.permissions.artAdmin;
+  const pendingArtBatches = canAccessArtAdmin ? await getPendingArtBatches() : undefined;
+
   const isNew = searchParams?.new === "1";
   const payoutSaved = searchParams?.saved === "1";
   const linkAdded = searchParams?.linkAdded === "1";
@@ -79,6 +90,11 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
   const workSignup = typeof searchParams?.workSignup === "string" ? searchParams.workSignup : undefined;
   const musicSaved = searchParams?.musicSaved === "1";
   const musicError = typeof searchParams?.musicError === "string" ? searchParams.musicError : undefined;
+  const artSaved = searchParams?.artSaved === "1";
+  const artError = typeof searchParams?.artError === "string" ? searchParams.artError : undefined;
+  const artProductSubmitted = searchParams?.artProductSubmitted === "1";
+  const artProductError =
+    typeof searchParams?.artProductError === "string" ? searchParams.artProductError : undefined;
 
   return (
     <section className="mx-auto w-full max-w-5xl px-6 py-16">
@@ -136,6 +152,20 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
         vendor={
           <VendorTab vendorName={vendorArtist?.name} stats={vendorStats} products={vendorProducts} />
         }
+        art={
+          <ArtTab
+            code={account.code}
+            hasArtAccess={account.permissions.art}
+            profile={artProfile}
+            stats={artStats}
+            inventory={artInventory}
+            products={artProducts}
+            saved={artSaved}
+            error={artError}
+            productSubmitted={artProductSubmitted}
+            productError={artProductError}
+          />
+        }
         music={
           <MusicTab
             code={account.code}
@@ -158,6 +188,7 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
             />
           ) : null
         }
+        artAdmin={pendingArtBatches ? <ArtAdminTab batches={pendingArtBatches} /> : null}
         settings={
           <SettingsTab
             account={account}
@@ -169,10 +200,12 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
         visible={{
           ambassador: account.permissions.ambassador,
           vendor: showVendor,
+          art: account.permissions.art,
           music: account.permissions.music,
           ssbd: account.permissions.ssbd,
           eventsAdmin: canAccessEventsAdmin,
           eventSales: canAccessEventSales,
+          artAdmin: canAccessArtAdmin,
         }}
       />
     </section>

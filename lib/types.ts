@@ -36,6 +36,13 @@ export interface AccountPermissions {
   // "SELL FOR US" — event/festival sales crew. Separate from `ambassador`:
   // signs up to work specific events rather than referring sales online.
   eventSales: boolean;
+  // Self-service Art Collective membership — profile + submitting
+  // products for the ART tab. Distinct from `vendor`, which is the
+  // existing curated/static artist system.
+  art: boolean;
+  // Reviews art-collective product submissions (ART ADMIN tab). An artist
+  // doesn't get to approve their own submissions just by having `art`.
+  artAdmin: boolean;
 }
 
 // Despite the name, this now represents any backend-portal account, not

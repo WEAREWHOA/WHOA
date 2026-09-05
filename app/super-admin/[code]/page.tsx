@@ -36,6 +36,18 @@ const PERMISSION_ROWS = [
     hint: "EVENTS ADMIN tab — KPIs and guest lists for every event. Super Admins already have this.",
   },
   {
+    field: "perm_art",
+    permission: "art",
+    label: "Art Collective",
+    hint: "ART tab — self-editable artist profile and product submissions. Approves an Art Collective application.",
+  },
+  {
+    field: "perm_art_admin",
+    permission: "artAdmin",
+    label: "Art Admin",
+    hint: "ART ADMIN tab — approve or decline submitted products. Super Admins already have this.",
+  },
+  {
     field: "perm_event_sales",
     permission: "eventSales",
     label: "Event Sales",

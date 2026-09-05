@@ -102,10 +102,12 @@ except the immersive home hub and `/pos`.
   Ambassadors, Vendor Sales, Music, SSBD, Events Admin, and Event Sales
   tabs only render if a Super Admin has granted that permission — see
   [Backend Portal & permissions](#backend-portal--permissions)
-- `/sell-for-us`, `/music-collective/apply` — pending-approval applications
-  for the event sales crew and the Music Collective, respectively — see
-  [Sell For Us & Event Sales](#sell-for-us--event-sales) and
-  [Music Collective](#music-collective)
+- `/sell-for-us`, `/music-collective/apply`, `/art-collective/apply` —
+  pending-approval applications for the event sales crew, the Music
+  Collective, and the Art Collective, respectively — see
+  [Sell For Us & Event Sales](#sell-for-us--event-sales),
+  [Music Collective](#music-collective), and
+  [Art Collective](#art-collective)
 - `/super-admin`, `/super-admin/[code]` — Super Admin only: search any
   account by name/email/code and edit its permissions
 - `/r/[slug]` — a trackable link. Logs a click on that specific link, sets a
@@ -174,7 +176,7 @@ revoked by deleting its row (which logout does).
 **Setup:**
 
 1. Create a Supabase project (or use an existing one).
-2. Run all seventeen migrations against it, **in order** — paste each into the
+2. Run all nineteen migrations against it, **in order** — paste each into the
    Supabase SQL Editor, or apply them with the Supabase CLI if the project
    is linked (`supabase db push`):
    - `supabase/migrations/0001_init.sql` — creates `ambassadors` and
@@ -235,7 +237,19 @@ revoked by deleting its row (which logout does).
      keyed by `ambassador_code`. Backs both the Music Collective
      application and the Music tab's self-editing profile — see
      [Music Collective](#music-collective) below.
-   All seventeen enable RLS with no public policies — only the
+   - `supabase/migrations/0018_approval_tokens.sql` — adds
+     `approval_tokens`, backing the one-click Approve/Decline buttons in
+     every staff notification email — see
+     [One-click email approvals](#one-click-email-approvals) below.
+   - `supabase/migrations/0019_art_collective.sql` — adds `perm_art` and
+     `perm_art_admin` to `ambassadors`, `art_profiles` (the self-editing
+     artist profile), `art_products` (the submission queue, pushed into
+     Square Catalog on approval), and the public `art-photos` Storage
+     bucket. See [Art Collective](#art-collective) below. If the bucket
+     insert fails on your Supabase project (storage schema shape can vary),
+     create it by hand instead: Dashboard → Storage → New bucket → name
+     `art-photos` → Public bucket: on.
+   All nineteen enable RLS with no public policies — only the
    `service_role` key (which is what this app uses) can read or write.
 3. **Bootstrap the first Super Admin** — there's no self-serve way to grant
    `is_super_admin` (by design), so after signing up your own account at
@@ -292,6 +306,14 @@ readability.
 - **Event Sales** (`perm_event_sales`) — granted by approving a
   [Sell For Us](#sell-for-us--event-sales) application. Unlocks the EVENT
   SALES tab: sign up to work any upcoming event, plus a Welcome Guide.
+- **Art Collective** (`perm_art`) — granted by approving an
+  [Art Collective](#art-collective) application. Unlocks the ART tab: a
+  self-editing artist profile (name, medium, tagline, bio, profile photo,
+  links) plus submitting products, up to 5 at a time, for review.
+- **Art Admin** (`perm_art_admin`) — the ART ADMIN tab: approve or decline
+  submitted products, individually or as a whole batch. Distinct from
+  `perm_art` — an artist doesn't get to approve their own submissions.
+  Super Admins always have this.
 
 `components/dashboard/DashboardTabs.tsx` only renders the tab buttons a
 given account actually has permission for; `app/portal/[code]/page.tsx`
@@ -407,6 +429,105 @@ for musicians:
 - The public `/music-collective` roster page still shows only the
   hand-authored `MUSICIANS` list (`lib/musicians.ts`) — surfacing approved
   `musician_profiles` there too is a natural follow-up, not yet wired up.
+
+## One-click email approvals
+
+Every staff notification email that gates something pending — a Sell For
+Us, Music Collective, or Art Collective application; a request to work an
+event; a submitted product — carries two buttons, **Approve** and
+**Decline**, so staff can act straight from the inbox with no login
+required (`lib/approvalTokens.ts`, `app/api/approve/[token]/route.ts`):
+
+- Sending one of these emails (`lib/email.ts`'s `buildApprovalActions`)
+  creates a single `approval_tokens` row and builds both button URLs from
+  the same token — the decision comes from which link is clicked
+  (`?decision=approve` vs. `?decision=decline`), not from the token
+  itself. The unguessable token in the URL is the credential, same posture
+  as a password-reset link.
+- Clicking either button hits `/api/approve/[token]`, which looks up the
+  token, applies the right action for its `kind` (grant/revoke a
+  permission via `updatePermissions`, or review an event signup/art
+  product), then marks the token used. **First click wins** — a token can
+  only ever resolve one way; replaying the other button (or the same one)
+  afterward shows "already handled" instead of taking a second action.
+  Tokens expire after 30 days.
+- Brand Ambassador access is the one exception worth calling out:
+  `/apply` grants it instantly (see below), so there's nothing pending to
+  approve. That email's "Approve" is just an acknowledgment; "Decline" is
+  the useful button — a fast one-click revoke for a bad-faith signup,
+  without a trip to Super Admin.
+- A batch of art product submissions (see [Art Collective](#art-collective)
+  below) is the one case with no single-token "approve everything" email
+  button — each product in the batch gets its own pair of buttons instead,
+  and approving/declining the whole batch at once is a button in the ART
+  ADMIN tab.
+
+## Art Collective
+
+`/art-collective/apply` (`app/art-collective/apply/`) — "Join our Art
+Collective," the same pending-approval shape as Sell For Us and Music
+Collective, but with a real product pipeline behind it. Deliberately
+separate from the existing curated `ARTIST/VENDOR` tab/`lib/artists.ts`
+system, which stays as-is for already-curated artists.
+
+- The application form collects contact info, artist name, medium,
+  tagline, bio, a handful of platform links, and an optional password —
+  same existing-account-by-email check and create-or-link logic as the
+  other applications. The submission is saved straight into `art_profiles`
+  (`saveArtProfile`, `lib/artCollective.ts`) and emails
+  info@wearewhoa.com with Approve/Decline buttons
+  (`sendArtApplicationNotification`).
+- **Approval** grants the new `art` permission (from Super Admin, or the
+  email's Approve button). Once approved, the **ART** tab
+  (`ArtTab.tsx`) becomes a self-editing profile (with a profile photo
+  upload) plus real KPIs — total sales, units sold, orders — and a live
+  inventory list, all read from the same Square-synced tables
+  (`square_products`/`square_product_variations`/`square_order_line_items`)
+  the existing Vendor tab uses, just scoped directly by the artist's own
+  ambassador code instead of a separate static vendor slug
+  (`getArtStats`/`getArtInventory`, `lib/artCollective.ts`).
+- **Submitting products**: the ART tab's form (`ArtProductSubmitForm.tsx`,
+  a client component so "add another product" can grow the form) accepts
+  up to 5 products in one batch, each with a name, price, optional
+  size/description/details, and photos uploaded straight from the
+  artist's device (`<input type="file" multiple>` — Next.js server actions
+  receive real `File` objects in `FormData`, no separate upload endpoint
+  needed). Every submission also requires one choice, shared by the whole
+  batch: **online store only**, or **online store + retail store &
+  events** (`also_retail_events`) — every approved product goes into the
+  online store either way, so this is purely a signal for staff to also
+  physically stock or bring units, not a catalog visibility flag (Square
+  has no notion of "hide from in-person checkout" once an item exists at a
+  location).
+- Photos upload to a public Supabase Storage bucket (`art-photos`, see
+  migration `0019_art_collective.sql`) via `uploadArtPhoto`
+  (`lib/artCollective.ts`), used for both product photos and the profile
+  picture.
+- Submitting sends **one notification email per product** (not per batch)
+  to info@wearewhoa.com, each with its own Approve/Decline buttons, plus
+  an entry in the **ART ADMIN** tab (`ArtAdminTab.tsx`) grouped by
+  submission batch — every pending product can be approved/declined
+  individually, or a whole batch at once with one "Approve all" button
+  (`reviewArtBatchAction`, `app/art-admin/actions.ts`).
+- **Approving a product is a real Square Catalog write**, not just a
+  status flip: `reviewArtProduct` (`lib/artCollective.ts`) creates the
+  item + variation via `catalog.object.upsert`, uploads each photo
+  directly to Square via `catalog.images.create`, marks it present at the
+  configured location (so it's sellable in person immediately, same as
+  any other item), and adds it to the configured online-store channel (see
+  [Environment variables](#environment-variables)'s
+  `SQUARE_ONLINE_CHANNEL_NAME`) so it shows on `/shop` right away — no
+  waiting on the webhook sync.
+- **Why the item is named `"<Product Name> - <Artist Name>"`**: the
+  existing Square→Supabase sync (`lib/squareSync.ts`'s `syncFullCatalog`)
+  re-derives every product's `owner_code` from scratch on *every* full
+  resync — matching a name suffix against the curated `ARTISTS` list
+  (`lib/vendorMatch.ts`). Art Collective artists are matched the exact
+  same way, just against `art_profiles` instead
+  (`matchArtCollectiveCode`, checked first) — so an approved product's
+  attribution survives every future resync instead of being silently
+  wiped back to `null` the next time *any* item anywhere in the catalog
+  changes.
 
 ## Square Customers matching
 

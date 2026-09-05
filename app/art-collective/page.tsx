@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 import ArtCollectiveGrid from "@/components/artcollective/ArtCollectiveGrid";
@@ -23,6 +24,12 @@ export default function ArtCollectivePage() {
         <p className="mt-3 max-w-md text-sm text-white/60">
           Click an artist to step into their shop.
         </p>
+        <Link
+          href="/art-collective/apply"
+          className="btn-flame mt-6 inline-flex rounded-full px-6 py-3 text-sm"
+        >
+          Apply to join
+        </Link>
       </div>
 
       <ArtCollectiveGrid artists={ARTISTS} />
