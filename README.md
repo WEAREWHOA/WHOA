@@ -135,6 +135,8 @@ npm run build
 | `NEXT_PUBLIC_SITE_URL`          | `http://localhost:3000` | Production domain, used for `metadataBase`, `sitemap.xml`, and `robots.txt` — set once the real domain is known |
 | `SQUARE_ONLINE_CHANNEL_NAME`    | `Online Store` | Name of the Square sales channel that marks an item for `/shop` — set to `WHOA` for this account (see [Square ↔ Supabase sync](#square--supabase-sync)) |
 | `RESEND_API_KEY`                | —          | Resend API key — sends order confirmation and event RSVP/ticket confirmation emails. `wearewhoa.art` must be a verified sending domain in Resend (see `lib/email.ts`) |
+| `MAILCHIMP_API_KEY`             | —          | Mailchimp API key (Account → Extras → API keys). Its `-<datacenter>` suffix (e.g. `-us21`) is required and is parsed to build the API host — see `lib/mailchimp.ts` |
+| `MAILCHIMP_AUDIENCE_ID`         | —          | The Mailchimp Audience/List ID (Audience → Settings → Audience name and defaults) that the `/events` newsletter signup subscribes into |
 
 ## SEO & metadata
 
@@ -742,6 +744,26 @@ toggle:
   Tickets** link instead of the in-app RSVP/checkout button, never both,
   and are never charged through this app. `priceCents`/
   `earlyBirdPriceCents` and `href` are mutually exclusive per event.
+- **Tickets close automatically once an event is over** —
+  `lib/events.ts`'s `isTicketingOpen(event)` (backed by
+  `getTicketingCloseDate(event)`) computes the moment purchasing/RSVPing
+  actually closes: the event's own stated end time on its last day
+  (`endDate ?? startDate`), parsed from `timeLabel` and rolled to the next
+  calendar day for an overnight window like "9PM – 4AM"; 11PM on its last
+  day when `timeLabel` has no parseable clock time at all ("3 Days", "4
+  Days"). Past that moment, `EventCard` and `EventModal` swap every CTA —
+  Buy Tickets, Free RSVP, or an external `href` link alike — for a
+  disabled "Event Ended" pill, and `eventRsvpAction` refuses server-side
+  regardless of what the client sends (the same never-trust-the-client
+  posture as `getCurrentPriceCents`). This is what lets the site keep a
+  full historical flyer archive (see below) without any of those old
+  events staying purchasable forever.
+- **Historical flyer archive** — every past WHOAdega/SH!FT/community flyer
+  WHOA has put out is in `EVENTS`, not just upcoming ones, so `/events`
+  doubles as a running archive. They stay fully visible (`isTicketingOpen`
+  is what closes their CTA, not a filter that hides them), transcribed
+  from the original flyer image for title, date, time, venue, lineup, and
+  any stated price/ticket link.
 - **`components/events/EventCheckoutModal.tsx`** is the actual flow,
   opened from either `EventCard` or `EventModal`'s button — name, email,
   optional phone, an optional "pick an artist" dropdown (see below), and
@@ -797,6 +819,24 @@ toggle:
 The only WHOA-run event with a price set today is "WHOA Wednesday — Spooky
 Secret Lineup" ($10 early bird, $15 general admission at the door) — every
 other current event shows Free RSVP until a real price is set on it.
+
+- **Newsletter signup** (`components/events/EventsNewsletterBanner.tsx`,
+  shown at the top of `/events`) — an email field that subscribes into a
+  Mailchimp audience tagged `event`, so the WHOAdega/SH!FT/events crowd
+  can be emailed separately from anyone who only ever bought from
+  `/shop`. `lib/mailchimp.ts`'s `subscribeToNewsletter(email, tags)` calls
+  Mailchimp's Marketing API directly (no SDK dependency): it tries to
+  create the member with the tag already attached, and if they're already
+  on the list (Mailchimp's `Member Exists` response), it falls back to
+  just adding the tag via a separate call — deliberately never resending a
+  `status` on that fallback path, so this can't accidentally force-resubscribe
+  someone who previously opted out. `app/events/actions.ts`'s
+  `subscribeEventsNewsletterAction` is the public-facing server action;
+  like `lib/contact.ts`'s `submitContactMessage`, it fails soft (returns an
+  error string) rather than throwing. Requires `MAILCHIMP_API_KEY` and
+  `MAILCHIMP_AUDIENCE_ID` (see [Environment variables](#environment-variables))
+  — without them, signup attempts return a "not set up yet" error rather
+  than crashing the page.
 
 ## About, Contact & Policy pages
 

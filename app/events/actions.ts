@@ -8,8 +8,11 @@ import { setSquareCustomerId } from "@/lib/store";
 import { findOrCreateSquareCustomerId } from "@/lib/squareCustomers";
 import { createRsvpRecord } from "@/lib/eventRsvps";
 import { sendEventConfirmationEmail } from "@/lib/email";
-import { EVENTS, getCurrentPriceCents } from "@/lib/events";
+import { EVENTS, getCurrentPriceCents, isTicketingOpen } from "@/lib/events";
 import { SITE_URL } from "@/lib/site";
+import { subscribeToNewsletter } from "@/lib/mailchimp";
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export interface EventRsvpResult {
   ok: boolean;
@@ -40,6 +43,12 @@ export async function eventRsvpAction(input: {
   const event = EVENTS.find((e) => e.id === input.eventId);
   if (!event) {
     return { ok: false, error: "That event couldn't be found." };
+  }
+  // The UI already hides the button once an event has ended (see
+  // isTicketingOpen in lib/events.ts) — re-checked here since that's only
+  // ever a client-side courtesy, not enforcement.
+  if (!isTicketingOpen(event)) {
+    return { ok: false, error: "RSVPs/tickets for this event have closed." };
   }
 
   const name = input.name.trim();
@@ -186,4 +195,24 @@ export async function eventRsvpAction(input: {
     signedIn: account.signedIn || undefined,
     qrDataUrl,
   };
+}
+
+// Powers the /events page's newsletter banner. Public-facing, so this
+// fails soft (returns an error string) rather than throwing — same
+// posture as lib/contact.ts's submitContactMessage.
+export async function subscribeEventsNewsletterAction(input: { email: string }): Promise<{
+  ok: boolean;
+  error?: string;
+}> {
+  const email = input.email.trim().slice(0, 200);
+  if (!EMAIL_PATTERN.test(email)) {
+    return { ok: false, error: "Enter a valid email." };
+  }
+
+  try {
+    return await subscribeToNewsletter(email, ["event"]);
+  } catch (err) {
+    console.error("subscribeEventsNewsletterAction failed:", err);
+    return { ok: false, error: "Newsletter signup isn't set up yet — try again later." };
+  }
 }

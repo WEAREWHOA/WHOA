@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
-import { getCurrentPriceCents, type EventInfo } from "@/lib/events";
+import { getCurrentPriceCents, isTicketingOpen, type EventInfo } from "@/lib/events";
 import { useRsvpSet } from "@/components/events/useRsvp";
 import { formatCents } from "@/lib/money";
 
@@ -132,7 +132,11 @@ export default function EventCard({
         {/* An event with its own external ticketing gets exactly one CTA —
             an outbound Buy Tickets link — never alongside an in-app RSVP
             button. Real RSVP/ticket checkout is only for events we run. */}
-        {event.href ? (
+        {!isTicketingOpen(event) ? (
+          <span className="block w-full cursor-not-allowed rounded-full border border-white/30 px-4 py-3 text-center text-sm font-semibold tracking-wide text-white/60 uppercase">
+            Event Ended
+          </span>
+        ) : event.href ? (
           <a
             href={event.href}
             target="_blank"
