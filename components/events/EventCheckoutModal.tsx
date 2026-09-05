@@ -118,6 +118,26 @@ export default function EventCheckoutModal({
     setSigningOut(false);
   }
 
+  // The Square <Script> tag's onLoad callback only reliably fires the
+  // first time it's ever injected — opening this modal again (or landing
+  // back on checkout after navigating away and back) mounts a fresh
+  // <Script> while the browser has already loaded that src, so onLoad can
+  // silently never fire for this mount even though window.Square is right
+  // there. Poll for it directly as a fallback so scriptReady still flips
+  // true, instead of the 10s timeout below wrongly reporting an ad blocker.
+  useEffect(() => {
+    if (!isPaid || scriptReady) return;
+    const check = () => {
+      if (window.Square) setScriptReady(true);
+    };
+    const immediate = setTimeout(check, 0);
+    const interval = setInterval(check, 200);
+    return () => {
+      clearTimeout(immediate);
+      clearInterval(interval);
+    };
+  }, [isPaid, scriptReady]);
+
   // Card field only exists for a paid event — a free RSVP never loads the
   // Square SDK at all.
   useEffect(() => {
