@@ -1,5 +1,6 @@
 import { EVENTS, type EventInfo } from "./events";
 import { getAllRsvps, type EventRsvpRecord } from "./eventRsvps";
+import { getPendingWorkSignups, type PendingSignupWithEvent } from "./eventSales";
 
 export interface ArtistBreakdownEntry {
   artist: string;
@@ -27,6 +28,9 @@ export interface EventsAdminOverview {
     eventsWithGuests: number;
     topArtists: ArtistBreakdownEntry[];
   };
+  // Pending "Sell For Us" requests to work a specific event, awaiting
+  // approve/decline from this tab — see lib/eventSales.ts.
+  pendingWorkSignups: PendingSignupWithEvent[];
 }
 
 function buildArtistBreakdown(guests: EventRsvpRecord[]): ArtistBreakdownEntry[] {
@@ -92,10 +96,12 @@ export async function getEventsAdminOverview(): Promise<EventsAdminOverview> {
   const totalRevenueCents = all.reduce((sum, s) => sum + s.revenueCents, 0);
   const eventsWithGuests = all.filter((s) => s.totalGuests > 0).length;
   const topArtists = buildArtistBreakdown(rsvps).slice(0, 10);
+  const pendingWorkSignups = await getPendingWorkSignups();
 
   return {
     upcoming,
     past,
     totals: { totalGuests, totalRevenueCents, eventsWithGuests, topArtists },
+    pendingWorkSignups,
   };
 }

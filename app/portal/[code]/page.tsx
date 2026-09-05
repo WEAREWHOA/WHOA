@@ -8,6 +8,9 @@ import { getVendorProducts, getVendorStats } from "@/lib/vendor";
 import { getCustomerHistory } from "@/lib/squareCustomers";
 import { getEventHistoryForAccount } from "@/lib/eventRsvps";
 import { getEventsAdminOverview } from "@/lib/eventsAdmin";
+import { getScheduleForAccount, getSignupsForAccount } from "@/lib/eventSales";
+import { getMusicianProfile } from "@/lib/musicianProfiles";
+import { EVENTS } from "@/lib/events";
 import LogoutButton from "@/components/portal/LogoutButton";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import AmbassadorTab from "@/components/dashboard/tabs/AmbassadorTab";
@@ -17,6 +20,7 @@ import VendorTab from "@/components/dashboard/tabs/VendorTab";
 import MusicTab from "@/components/dashboard/tabs/MusicTab";
 import SsbdTab from "@/components/dashboard/tabs/SsbdTab";
 import EventsAdminTab from "@/components/dashboard/tabs/EventsAdminTab";
+import EventSalesTab from "@/components/dashboard/tabs/EventSalesTab";
 import SettingsTab from "@/components/dashboard/tabs/SettingsTab";
 import { getTier } from "@/lib/tiers";
 
@@ -54,6 +58,17 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
   const canAccessEventsAdmin = account.isSuperAdmin || account.permissions.eventsAdmin;
   const eventsAdminOverview = canAccessEventsAdmin ? await getEventsAdminOverview() : undefined;
 
+  const canAccessEventSales = account.permissions.eventSales;
+  const [eventSalesSignups, eventSalesSchedule] = canAccessEventSales
+    ? await Promise.all([getSignupsForAccount(account.code), getScheduleForAccount(account.code)])
+    : [[], []];
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const upcomingEvents = EVENTS.filter((e) => (e.endDate ?? e.startDate) >= todayKey).sort((a, b) =>
+    a.startDate.localeCompare(b.startDate),
+  );
+
+  const musicianProfile = await getMusicianProfile(account.code);
+
   const isNew = searchParams?.new === "1";
   const payoutSaved = searchParams?.saved === "1";
   const linkAdded = searchParams?.linkAdded === "1";
@@ -61,6 +76,9 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
   const passwordChanged = searchParams?.passwordChanged === "1";
   const settingsError =
     typeof searchParams?.settingsError === "string" ? searchParams.settingsError : undefined;
+  const workSignup = typeof searchParams?.workSignup === "string" ? searchParams.workSignup : undefined;
+  const musicSaved = searchParams?.musicSaved === "1";
+  const musicError = typeof searchParams?.musicError === "string" ? searchParams.musicError : undefined;
 
   return (
     <section className="mx-auto w-full max-w-5xl px-6 py-16">
@@ -118,9 +136,28 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
         vendor={
           <VendorTab vendorName={vendorArtist?.name} stats={vendorStats} products={vendorProducts} />
         }
-        music={<MusicTab />}
+        music={
+          <MusicTab
+            code={account.code}
+            hasMusicAccess={account.permissions.music}
+            profile={musicianProfile}
+            saved={musicSaved}
+            error={musicError}
+          />
+        }
         ssbd={<SsbdTab />}
         eventsAdmin={eventsAdminOverview ? <EventsAdminTab data={eventsAdminOverview} /> : null}
+        eventSales={
+          canAccessEventSales ? (
+            <EventSalesTab
+              code={account.code}
+              upcoming={upcomingEvents}
+              signups={eventSalesSignups}
+              schedule={eventSalesSchedule}
+              workSignup={workSignup}
+            />
+          ) : null
+        }
         settings={
           <SettingsTab
             account={account}
@@ -135,6 +172,7 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
           music: account.permissions.music,
           ssbd: account.permissions.ssbd,
           eventsAdmin: canAccessEventsAdmin,
+          eventSales: canAccessEventSales,
         }}
       />
     </section>

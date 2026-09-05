@@ -99,9 +99,13 @@ except the immersive home hub and `/pos`.
   every account, whatever its permissions, uses the same login
 - `/portal/[code]` — the account's dashboard (session-protected — only the
   logged-in owner can view it). Customer is always visible; Brand
-  Ambassadors, Vendor Sales, Music, and SSBD tabs only render if a Super
-  Admin has granted that permission — see
+  Ambassadors, Vendor Sales, Music, SSBD, Events Admin, and Event Sales
+  tabs only render if a Super Admin has granted that permission — see
   [Backend Portal & permissions](#backend-portal--permissions)
+- `/sell-for-us`, `/music-collective/apply` — pending-approval applications
+  for the event sales crew and the Music Collective, respectively — see
+  [Sell For Us & Event Sales](#sell-for-us--event-sales) and
+  [Music Collective](#music-collective)
 - `/super-admin`, `/super-admin/[code]` — Super Admin only: search any
   account by name/email/code and edit its permissions
 - `/r/[slug]` — a trackable link. Logs a click on that specific link, sets a
@@ -170,7 +174,7 @@ revoked by deleting its row (which logout does).
 **Setup:**
 
 1. Create a Supabase project (or use an existing one).
-2. Run all fifteen migrations against it, **in order** — paste each into the
+2. Run all seventeen migrations against it, **in order** — paste each into the
    Supabase SQL Editor, or apply them with the Supabase CLI if the project
    is linked (`supabase db push`):
    - `supabase/migrations/0001_init.sql` — creates `ambassadors` and
@@ -221,7 +225,17 @@ revoked by deleting its row (which logout does).
      `ambassadors.payout_method`'s check constraint to `venmo`/`zelle` only
      (dropping PayPal/bank transfer), migrating any existing PayPal/bank
      rows to Venmo.
-   All fifteen enable RLS with no public policies — only the
+   - `supabase/migrations/0016_event_sales.sql` — adds `perm_event_sales`
+     to `ambassadors`, plus `event_sales_applications` (every "Sell For Us"
+     submission) and `event_sales_signups` (one row per account/event
+     request to work it, `pending`/`approved`/`declined`). See
+     [Sell For Us & Event Sales](#sell-for-us--event-sales) below.
+   - `supabase/migrations/0017_musician_profiles.sql` — adds
+     `musician_profiles` (artist name, genre, tagline, bio, links jsonb),
+     keyed by `ambassador_code`. Backs both the Music Collective
+     application and the Music tab's self-editing profile — see
+     [Music Collective](#music-collective) below.
+   All seventeen enable RLS with no public policies — only the
    `service_role` key (which is what this app uses) can read or write.
 3. **Bootstrap the first Super Admin** — there's no self-serve way to grant
    `is_super_admin` (by design), so after signing up your own account at
@@ -263,16 +277,21 @@ readability.
   Managing the artist's own listings (editing/uploading their catalog
   items, links, etc.) from this tab is a planned follow-up, not yet built
   — today it's read-only sales/inventory.
-- **Music** (`perm_music`) — reserved for musicians; ships as a "coming
-  soon" placeholder (`MusicTab.tsx`) since there's no Square sales data
-  for music-collective artists yet, same honesty-over-fake-data posture as
-  everywhere else in this app.
+- **Music** (`perm_music`) — granted by approving a
+  [Music Collective](#music-collective) application. Unlocks a self-editing
+  artist profile (name, genre, tagline, bio, links) in `MusicTab.tsx`,
+  backed by `musician_profiles`.
 - **SSBD** (`perm_ssbd`) — Same Same But Different crew submissions tab.
 - **Events Admin** (`perm_events_admin`) — the EVENTS ADMIN tab: KPIs
-  (total guests, revenue, events with signups, most-requested artists) and
-  a per-event guest list across **every** event, not just the account's
-  own. Super Admins always have this, without needing the permission
-  toggled on. See [Events](#events) below.
+  (total guests, revenue, events with signups, most-requested artists), a
+  per-event guest list across **every** event, and pending "work signup"
+  requests to approve/decline (see
+  [Sell For Us & Event Sales](#sell-for-us--event-sales)). Super Admins
+  always have this, without needing the permission toggled on. See
+  [Events](#events) below.
+- **Event Sales** (`perm_event_sales`) — granted by approving a
+  [Sell For Us](#sell-for-us--event-sales) application. Unlocks the EVENT
+  SALES tab: sign up to work any upcoming event, plus a Welcome Guide.
 
 `components/dashboard/DashboardTabs.tsx` only renders the tab buttons a
 given account actually has permission for; `app/portal/[code]/page.tsx`
@@ -309,6 +328,85 @@ account before doing anything:
   click stat, and event RSVP tied to that account stays exactly as it was
   — "delete my account" means "delete my login," not "erase my history."
   The session is destroyed immediately after, same as a normal logout.
+
+## Sell For Us & Event Sales
+
+`/sell-for-us` (`app/sell-for-us/`) — a public application for the event
+and festival sales crew, separate from the Brand Ambassador program (which
+is about online referrals, not working events in person). Modeled on
+`/apply`, but approval isn't instant:
+
+- The form collects name, email, phone, Instagram (optional), a free-text
+  message, and an optional password. `applySellForUsAction`
+  (`app/sell-for-us/actions.ts`) checks for an existing account by email
+  first (`getByEmail`) and links the application to it if found, rather
+  than creating a duplicate — the same "do they already have an account"
+  check every signup flow on this site does. A brand-new applicant's
+  password creates their account and signs them in immediately (safe,
+  since only they know it); an existing account's password is never
+  touched by this form, and they're deliberately **not** auto-logged in by
+  just typing a matching email — that would let anyone sign into someone
+  else's account.
+- The application is stored in `event_sales_applications`
+  (`recordEventSalesApplication`, `lib/eventSales.ts`) and emails
+  info@wearewhoa.com via Resend (`sendEventSalesApplicationNotification`,
+  `lib/email.ts`), reply-to'd to the applicant. The visitor lands on
+  `/sell-for-us/thank-you` — there's no instant access, unlike `/apply`.
+- **Approval** is just granting the `eventSales` permission for that
+  account from `/super-admin`, same mechanism as every other tab — no
+  separate "applications inbox" to build or check.
+- Once approved, the **EVENT SALES** tab (`EventSalesTab.tsx`) appears in
+  the portal: every upcoming event (from `lib/events.ts`'s `EVENTS`) with a
+  "Sign up to work" button. Clicking it calls `signupToWorkEventAction`
+  (`lib/actions.ts`), which inserts a row into `event_sales_signups`
+  (unique per account/event — signing up twice just surfaces an error) and
+  emails info@wearewhoa.com (`sendEventWorkSignupNotification`) asking
+  staff to approve or decline it.
+- Pending work-signup requests are approved/declined from the **EVENTS
+  ADMIN** tab's "Work signup requests" section
+  (`reviewWorkSignupAction`, `app/events-admin/actions.ts` — gated the same
+  way as the rest of that tab: Super Admin or `perm_events_admin`). An
+  approved signup is what "the schedule" is built from —
+  `getScheduleForAccount` (`lib/eventSales.ts`) is every event this account
+  is approved to work, soonest first, shown at the top of their EVENT SALES
+  tab.
+- `/event-sales/welcome-guide` — a Welcome Guide for the whole crew, close
+  in spirit and copy to the existing SSBD Welcome Guide
+  (`components/ssbd/WelcomeGuide.tsx`) but generalized for any WHOA event
+  or festival rather than just Same Same But Different
+  (`components/eventSales/WelcomeGuide.tsx`). Gated server-side on the
+  `eventSales` permission (real session auth, unlike the SSBD guide's
+  shared-password gate) rather than a manually shared password, since this
+  is tied to a real per-account permission.
+
+## Music Collective
+
+`/music-collective/apply` (`app/music-collective/apply/`) — "Join our
+Music Collective," the same pending-approval shape as Sell For Us above,
+for musicians:
+
+- The form collects contact name, email, artist/stage name, genre,
+  tagline, bio, a handful of platform links (Spotify, SoundCloud,
+  Instagram, YouTube — plus Apple Music/TikTok/Website from the portal
+  form), and an optional password. `applyMusicAction` does the same
+  existing-account-by-email check and create-or-link logic as
+  `applySellForUsAction`.
+- The submission is saved straight into `musician_profiles`
+  (`saveMusicianProfile`, `lib/musicianProfiles.ts`) — the same row the
+  Music tab edits after approval, so nothing typed at application time is
+  lost. It also emails info@wearewhoa.com (`sendMusicApplicationNotification`).
+  The visitor lands on `/music-collective/apply/thank-you`.
+- **Approval** is granting the existing `music` permission for that
+  account from `/super-admin` — the same permission the Music tab has
+  always used, now with something real behind it.
+- Once approved, the **Music** tab (`MusicTab.tsx`) becomes a
+  self-editing profile form — artist name, genre, tagline, bio, and links —
+  saved via `saveMusicianProfileAction` (`lib/actions.ts`). Before
+  approval, the tab instead shows a pending-review message (if they've
+  already applied) or an "Apply to join" link (if they haven't).
+- The public `/music-collective` roster page still shows only the
+  hand-authored `MUSICIANS` list (`lib/musicians.ts`) — surfacing approved
+  `musician_profiles` there too is a natural follow-up, not yet wired up.
 
 ## Square Customers matching
 

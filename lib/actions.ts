@@ -5,6 +5,7 @@ import {
   createAmbassador,
   createLink,
   deactivateAccount,
+  getByCode,
   getByEmail,
   getCredentialsByCode,
   getCredentialsByEmail,
@@ -13,6 +14,10 @@ import {
   updatePasswordHash,
 } from "./store";
 import { createSession, destroySession, getSessionAmbassadorCode, hashPassword, verifyPassword } from "./auth";
+import { EVENTS } from "./events";
+import { requestEventWorkSignup } from "./eventSales";
+import { saveMusicianProfile, type MusicProfileLink } from "./musicianProfiles";
+import { sendEventWorkSignupNotification } from "./email";
 import type { PayoutSettings } from "./types";
 
 export async function loginAction(formData: FormData) {
@@ -226,4 +231,88 @@ export async function deleteAccountAction(formData: FormData) {
 
   await destroySession();
   redirect("/login?accountDeleted=1");
+}
+
+// Backs the EVENT SALES tab's per-event "Sign up to work" button. Requires
+// the eventSales permission (granted by a Super Admin after a Sell For Us
+// application) — it doesn't check the application itself, just the
+// permission it results in, same as every other tab.
+export async function signupToWorkEventAction(formData: FormData) {
+  const code = String(formData.get("code") || "").trim();
+  const eventId = String(formData.get("eventId") || "").trim();
+
+  const sessionCode = await getSessionAmbassadorCode();
+  if (!sessionCode || sessionCode.toUpperCase() !== code.toUpperCase()) {
+    redirect("/login");
+  }
+
+  const account = await getByCode(code);
+  if (!account?.permissions.eventSales) redirect(`/portal/${code}`);
+
+  const event = EVENTS.find((e) => e.id === eventId);
+  if (!event) redirect(`/portal/${code}`);
+
+  const result = await requestEventWorkSignup(code, eventId);
+
+  if (result.ok) {
+    // Best-effort — the signup itself is already recorded either way.
+    try {
+      await sendEventWorkSignupNotification({
+        name: account.name,
+        email: account.email,
+        eventTitle: event.title,
+        eventDateLabel: event.dateLabel,
+      });
+    } catch (emailErr) {
+      console.error("sendEventWorkSignupNotification failed:", emailErr);
+    }
+  }
+
+  redirect(`/portal/${code}?workSignup=${result.ok ? "requested" : "error"}`);
+}
+
+// Backs the Music tab's profile form — both the initial save right after a
+// Music Collective application and every edit after approval. Requires the
+// music permission; an applicant whose account isn't approved yet can't
+// use this to bypass review (their initial profile is saved by the
+// application action itself, not this one).
+export async function saveMusicianProfileAction(formData: FormData) {
+  const code = String(formData.get("code") || "").trim();
+  const sessionCode = await getSessionAmbassadorCode();
+  if (!sessionCode || sessionCode.toUpperCase() !== code.toUpperCase()) {
+    redirect("/login");
+  }
+
+  const account = await getByCode(code);
+  if (!account?.permissions.music) redirect(`/portal/${code}`);
+
+  const artistName = String(formData.get("artistName") || "").trim();
+  if (!artistName) redirect(`/portal/${code}?musicError=missing`);
+
+  const subgenre = String(formData.get("subgenre") || "").trim();
+  const tagline = String(formData.get("tagline") || "").trim();
+  const bio = String(formData.get("bio") || "").trim();
+
+  const linkFields: { label: string; field: string }[] = [
+    { label: "Spotify", field: "linkSpotify" },
+    { label: "Apple Music", field: "linkAppleMusic" },
+    { label: "SoundCloud", field: "linkSoundCloud" },
+    { label: "YouTube", field: "linkYouTube" },
+    { label: "TikTok", field: "linkTikTok" },
+    { label: "Instagram", field: "linkInstagram" },
+    { label: "Website", field: "linkWebsite" },
+  ];
+  const links: MusicProfileLink[] = linkFields
+    .map(({ label, field }) => ({ label, url: String(formData.get(field) || "").trim() }))
+    .filter((link) => link.url.length > 0);
+
+  try {
+    await saveMusicianProfile(code, { artistName, subgenre, tagline, bio, links });
+  } catch (err) {
+    unstable_rethrow(err);
+    console.error("saveMusicianProfileAction failed:", err);
+    redirect(`/portal/${code}?musicError=server`);
+  }
+
+  redirect(`/portal/${code}?musicSaved=1`);
 }

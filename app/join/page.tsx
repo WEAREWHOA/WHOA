@@ -38,6 +38,12 @@ const TILES = [
     description: "Find WHOA in person — the WHOADEGA and pop-up retail dates.",
     gradient: "linear-gradient(160deg, #0d3b3b, #1a8a6b 55%, #baff29)",
   },
+  {
+    href: "/sell-for-us",
+    title: "Sell For Us",
+    description: "Join the crew that sells and hosts at WHOA events and festivals.",
+    gradient: "linear-gradient(160deg, #3a2a05, #8a6a15 55%, #ffce29)",
+  },
 ];
 
 export default function JoinPage() {
