@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
@@ -53,12 +52,20 @@ export default async function ShopPage() {
         <p className="mt-3 max-w-md text-sm text-white/60">
           Same stock, same prices, whether you&apos;re here or at the booth.
         </p>
-        <Link
-          href="/custom-design"
-          className="relative z-10 mt-5 inline-block rounded-full border border-white/20 px-5 py-2.5 text-xs font-semibold tracking-wide text-white/80 uppercase hover:border-flame-2/60 hover:text-white"
+        {/* The editor itself is built and still lives at /custom-design —
+            it just isn't open to customers yet, so this is a label rather
+            than a link. To reopen it, swap this back for a
+            <Link href="/custom-design"> with the same styling. */}
+        <span
+          aria-disabled="true"
+          className="relative z-10 mt-5 inline-flex cursor-default items-center gap-2 rounded-full border border-white/10 px-5 py-2.5 text-xs font-semibold tracking-wide text-white/40 uppercase select-none"
         >
-          Try the Custom Design editor (test) →
-        </Link>
+          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
+            <rect x="4" y="10" width="16" height="10" rx="2" />
+            <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+          </svg>
+          Custom Design editor — Coming Soon
+        </span>
       </div>
 
       {error && (
