@@ -1140,6 +1140,15 @@ explicitly a test of the submission pipeline, not a live ordering flow** —
 the page says so, and no email/fulfillment integration exists yet; that's
 future work once the pipeline itself is proven out.
 
+**Not open to customers yet.** `/shop` used to carry a "Try the Custom
+Design editor (test) →" button; it's now a locked, non-interactive
+"Custom Design editor — Coming Soon" label, and `/custom-design` is out of
+`app/sitemap.ts` so it isn't advertised to search engines while it's
+closed. The page itself is untouched and still reachable by direct URL for
+demos. To reopen it: swap the label in `app/shop/page.tsx` back for a
+`<Link href="/custom-design">` (the old classes are in that comment) and
+put the sitemap entry back.
+
 - **Two kinds of template, one shared interface** — `GarmentTemplate` in
   `lib/customDesign.ts` is a discriminated union. Tapered Sweatpants (no
   real photo available yet) is `kind: "vector"`: a list of polygons in a

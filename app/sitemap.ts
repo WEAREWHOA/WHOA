@@ -27,7 +27,6 @@ const STATIC_ROUTES = [
   { path: "/music-collective/apply", priority: 0.6 },
   { path: "/art-collective/apply", priority: 0.6 },
   { path: "/games", priority: 0.6 },
-  { path: "/custom-design", priority: 0.6 },
   { path: "/same-same-but-whoa", priority: 0.5 },
   { path: "/site-concept", priority: 0.4 },
   { path: "/shipping-policy", priority: 0.3 },
