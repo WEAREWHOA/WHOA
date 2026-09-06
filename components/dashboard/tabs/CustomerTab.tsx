@@ -1,5 +1,10 @@
+"use client";
+
+import { useState } from "react";
 import { formatCents } from "@/lib/money";
 import type { CustomerOrderSummary, CustomerProfile } from "@/lib/squareCustomers";
+
+const ORDERS_PER_PAGE = 10;
 
 const STATE_LABELS: Record<string, string> = {
   OPEN: "Open",
@@ -63,6 +68,16 @@ export default function CustomerTab({
   profile: CustomerProfile | null;
   orders: CustomerOrderSummary[];
 }) {
+  const [page, setPage] = useState(0);
+
+  // Orders arrive newest-first (see getOrdersForSquareCustomer), so paging
+  // forward walks back through time to the very first purchase they made
+  // with us — rather than dumping years of history in one scroll.
+  const pageCount = Math.max(1, Math.ceil(orders.length / ORDERS_PER_PAGE));
+  const safePage = Math.min(page, pageCount - 1);
+  const first = safePage * ORDERS_PER_PAGE;
+  const last = Math.min(first + ORDERS_PER_PAGE, orders.length);
+
   if (!linked) {
     return (
       <div className="border-flame-2/40 bg-flame-2/10 rounded-xl border px-5 py-4 text-sm text-muted">
@@ -97,18 +112,53 @@ export default function CustomerTab({
         </div>
       )}
 
-      <h3 className="font-display mt-8 text-xl">Transactions</h3>
+      <div className="mt-8 flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="font-display text-xl">Transactions</h3>
+        {orders.length > 0 && (
+          <p className="text-xs text-muted">
+            {orders.length === 1
+              ? "1 transaction"
+              : `Showing ${first + 1}\u2013${last} of ${orders.length}`}
+          </p>
+        )}
+      </div>
 
       {orders.length === 0 ? (
         <p className="border-border mt-4 rounded-xl border px-5 py-4 text-sm text-muted">
           No purchase history on file yet.
         </p>
       ) : (
-        <div className="mt-4 flex flex-col gap-4">
-          {orders.map((order) => (
-            <OrderCard key={order.id} order={order} />
-          ))}
-        </div>
+        <>
+          <div className="mt-4 flex flex-col gap-4">
+            {orders.slice(first, last).map((order) => (
+              <OrderCard key={order.id} order={order} />
+            ))}
+          </div>
+
+          {pageCount > 1 && (
+            <div className="mt-6 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setPage(Math.max(0, safePage - 1))}
+                disabled={safePage === 0}
+                className="rounded-full border border-border px-4 py-2 text-xs font-semibold tracking-wide uppercase transition-colors hover:border-flame-2/60 disabled:cursor-default disabled:opacity-35 disabled:hover:border-border"
+              >
+                ← Newer
+              </button>
+              <span className="text-xs text-muted">
+                Page {safePage + 1} of {pageCount}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPage(Math.min(pageCount - 1, safePage + 1))}
+                disabled={safePage >= pageCount - 1}
+                className="rounded-full border border-border px-4 py-2 text-xs font-semibold tracking-wide uppercase transition-colors hover:border-flame-2/60 disabled:cursor-default disabled:opacity-35 disabled:hover:border-border"
+              >
+                Older →
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
