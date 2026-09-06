@@ -695,7 +695,28 @@ here.
   uploaded for an
   item (not just the first), so `/shop/[itemId]`
   (`components/shop/ProductGallery.tsx`) shows a real thumbnail gallery
-  instead of a single image when more than one exists. A category badge
+  instead of a single image when more than one exists.
+- **Size and Color show as separate selectors, not one combined dropdown**
+  — but only for an item built with Square's structured Item Options
+  feature (`CatalogItem.itemOptions` + each variation's
+  `itemOptionValues`), which is what the combined display Square itself
+  shows (e.g. "Medium, Black") actually means under the hood.
+  `resolveItemOptions` (`lib/catalog.ts`, shared by both `listProducts` and
+  `getProduct`) derives `Product.options` — each option's real values, only
+  the ones this specific item's own variations actually use, not every
+  value the option has across the whole catalog — and each variation's
+  `optionValueIds` (option id → chosen value id). `AddToCart.tsx` renders
+  one selector per option (color swatches when the option has
+  `showColors` set in Square, a plain dropdown otherwise), disabling any
+  value that has no matching variation for the rest of the current
+  selection rather than landing on an unresolvable combination. An item
+  that doesn't use Item Options at all — a plain variation name string
+  like "Medium / Black" — gets `Product.options: []` and falls back to
+  exactly the single combined dropdown this always had; nothing changes
+  for it. Fixing this for an existing WHOA item that isn't split today
+  means reconfiguring it with real Item Options in Square's own catalog
+  editor, not something this app can infer from a flat name string.
+  A category badge
   on a product page links to `/shop?category=<id>`, which pre-filters the
   grid via `useSearchParams()` inside a `<Suspense>` boundary — kept
   client-side specifically so `/shop` itself stays statically rendered
