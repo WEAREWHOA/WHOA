@@ -320,7 +320,7 @@ export default function SquareSyncAdminPage() {
           <input
             value={ambassadorCode}
             onChange={(e) => setAmbassadorCode(e.target.value)}
-            placeholder="Ambassador code (e.g. WHOA-WHOADY15)"
+            placeholder="Ambassador code (e.g. JANEDOE)"
             className="w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
           />
           <input

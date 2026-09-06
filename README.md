@@ -210,7 +210,7 @@ gradient rather than as space.
   with `?promoError=1` rather than silently charging full price.
 
 A seeded demo ambassador is available for exploring a populated portal:
-**code `WHOA-DEMO15`, password `whoa-demo-2026`**.
+**code `DEMOAMBASSADOR`, password `whoa-demo-2026`**.
 
 ## Getting started
 
@@ -347,7 +347,16 @@ revoked by deleting its row (which logout does).
      insert fails on your Supabase project (storage schema shape can vary),
      create it by hand instead: Dashboard → Storage → New bucket → name
      `art-photos` → Public bucket: on.
-   All nineteen enable RLS with no public policies — only the
+   - `supabase/migrations/0020_modernize_ambassador_codes.sql` — retires
+     the legacy `WHOA-<NAME>15` code format. Rebuilds every foreign key
+     pointing at `ambassadors(code)` with `ON UPDATE CASCADE` (they were all
+     created with the default `NO ACTION`, so a code could not be renamed at
+     all), renames each legacy code the way `generateAmbassadorCode` would
+     today, and — crucially — inserts a link whose slug is the **old** code,
+     so referral URLs and typed promo codes already out in the world keep
+     resolving to the same account. Safe to re-run. See
+     [Ambassador codes](#ambassador-codes).
+   All twenty enable RLS with no public policies — only the
    `service_role` key (which is what this app uses) can read or write.
 3. **Bootstrap the first Super Admin** — there's no self-serve way to grant
    `is_super_admin` (by design), so after signing up your own account at
@@ -685,6 +694,43 @@ system, which stays as-is for already-curated artists.
     casing/underscores/punctuation around "ARTIST" don't matter), and the
     text before it must match a known artist name exactly, not just start
     with it.
+
+## Ambassador codes
+
+An account's code is the most public thing about it: it's the referral URL
+(`/r/<code>`), the promo code typed into checkout, and the text inside the
+Square discount name (`WHOA Ambassador (<code>)`) on every attributed
+order. That name is built from `ambassador.code` at request time in
+`checkoutAction`, and the in-person register posts through the same action
+as the website — so a code is never written down anywhere in Square, and
+renaming one is picked up by both automatically on the next sale.
+
+Codes used to look like `WHOA-JANE15`. They're now generated from the
+account's own name run together — `generateAmbassadorCode` in
+`lib/store.ts`: first + last, uppercased, non-alphanumerics stripped, 20
+characters max, a numeric suffix on collision — so "Jane Doe" becomes
+`JANEDOE`.
+
+`supabase/migrations/0020_modernize_ambassador_codes.sql` moves the
+stragglers over. Three things worth knowing about it:
+
+- **Codes were not renameable before it.** Every table referencing
+  `ambassadors(code)` was created with the default `ON UPDATE NO ACTION`,
+  so changing a code raised a foreign key violation. The migration rebuilds
+  all nine constraints with `ON UPDATE CASCADE`, reusing each existing
+  definition so they keep their own `ON DELETE` behaviour (`CASCADE` for
+  most, `SET NULL` for `event_rsvps.account_code`).
+- **The old code keeps working.** A rename would otherwise break every
+  card, sticker and story link already printed or posted. `/r/<slug>` and
+  the checkout promo box both resolve through `links.slug`
+  (`getLinkBySlug`), so the migration gives each renamed account a link
+  whose slug is its former code — old links and old promo codes still
+  land, still attributed, still discounted. The account's default link is
+  moved onto the new code *first*, or that insert would collide with it and
+  be skipped.
+- **It's re-runnable**, and mirrors the app's own collision rule rather
+  than inventing a second one, so an account renamed here ends up with
+  exactly the code it would have been given signing up today.
 
 ## Square Customers matching
 

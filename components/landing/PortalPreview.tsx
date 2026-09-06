@@ -34,7 +34,7 @@ export default function PortalPreview() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-muted">Ambassador code</p>
-              <p className="font-mono-code mt-1 text-lg text-flame">WHOA-DEMO15</p>
+              <p className="font-mono-code mt-1 text-lg text-flame">DEMOAMBASSADOR</p>
             </div>
             <span
               className="rounded-full px-3 py-1 text-xs font-semibold"
