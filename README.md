@@ -695,6 +695,53 @@ system, which stays as-is for already-curated artists.
     text before it must match a known artist name exactly, not just start
     with it.
 
+## Account media
+
+Every account gets its own media library, and can upload to whichever tabs
+it has unlocked — a musician adds press shots under MUSIC, an artist adds
+work under ART, an ambassador adds promo creative, event sales crew add
+shots from events they worked, and anyone at all can add a profile photo
+from SETTINGS. Anything uploaded can be deleted by its owner from the same
+place.
+
+- **One bucket, keyed by account.** `whoa-media/<ACCOUNT CODE>/<kind>/<uuid>.<ext>`.
+  Supabase has no per-user buckets — a "folder" is only a filename prefix —
+  so one bucket with the code as its first segment gives everyone their own
+  space without a second set of storage rules to keep in sync.
+- **The bucket creates itself.** `ensureMediaBucket` (`lib/media.ts`) makes
+  it through the Storage API on first use. The older `art-photos` bucket had
+  to be created by hand in the dashboard, because a migration's `insert into
+  storage.buckets` is rejected on many projects — and when nobody did, every
+  upload failed forever. Nothing about this one needs a dashboard visit.
+- **Public bucket, server-only writes.** These are storefront images: Square
+  fetches an approved product's photos by URL to copy them into its own
+  catalog, and the shop wants them cacheable. Uploads only ever happen
+  inside a Server Action holding the service-role key, so nobody writes to
+  storage from a browser.
+- **Permissions decide the kinds.** `MEDIA_KINDS` maps each kind to the
+  permission that unlocks it (`null` = every account). `uploadMediaAction`
+  re-checks both the session *and* the account's permissions server-side, so
+  posting `kind=vendor` from a hand-rolled form without the Vendor tab gets
+  nowhere.
+- **Deletes are owner-scoped in the query**, not just by a check beforehand
+  (`deleteMedia` filters on `ambassador_code` as well as `id`), so a guessed
+  id can't reach another account's photo even if a caller forgets to look
+  first. Storage is cleared before the row: a row without a file is a broken
+  thumbnail its owner can still remove, while a file without a row is
+  invisible and permanent.
+- **Limits:** 5MB per file, JPG/PNG/WebP/GIF only, enforced in `uploadMedia`
+  rather than per caller so a new upload surface can't skip them.
+- `account_media` (migration 0021) indexes every file. Art Collective
+  uploads route through the same path now, so they're listed and deletable
+  too; photos uploaded before this keep working, since their absolute URLs
+  are stored on the profile and product rows.
+
+**Square stays in sync as before.** An approved product's photos are copied
+into Square's own catalog at approval time (`square.catalog.images.create`),
+so Square serves its own copy from then on. Replacing an image on the WHOA
+side does *not* update Square's copy — re-pushing on change would be its own
+piece of work.
+
 ## Ambassador codes
 
 An account's code is the most public thing about it: it's the referral URL

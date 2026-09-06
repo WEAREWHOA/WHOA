@@ -26,6 +26,14 @@ import {
   type ArtLink,
   type SubmitArtProductInput,
 } from "./artCollective";
+import {
+  canUploadKind,
+  deleteMedia,
+  isMediaKind,
+  MediaError,
+  uploadMedia,
+  type MediaKind,
+} from "./media";
 import { sendEventWorkSignupNotification, sendArtProductSubmissionNotification } from "./email";
 import type { PayoutSettings } from "./types";
 
@@ -516,4 +524,89 @@ export async function submitArtProductsAction(formData: FormData) {
   }
 
   redirect(`/portal/${code}?artProductSubmitted=1${photoFailed ? "&artPhotoError=1" : ""}`);
+}
+
+// --- Account media library -------------------------------------------------
+
+/**
+ * Uploads one file into the signed-in account's own media folder.
+ *
+ * Both halves of "who is allowed to do this" are re-checked server-side and
+ * never trusted from the form: the session decides whose folder it lands in,
+ * and the account's own permissions decide which kinds it may use — so
+ * posting `kind=vendor` from a form without the Vendor tab gets nowhere.
+ */
+export async function uploadMediaAction(formData: FormData) {
+  const code = String(formData.get("code") || "").trim();
+  const sessionCode = await getSessionAmbassadorCode();
+  if (!sessionCode || sessionCode.toUpperCase() !== code.toUpperCase()) {
+    redirect("/login");
+  }
+
+  const account = await getByCode(code);
+  if (!account) redirect("/login");
+
+  const kindValue = String(formData.get("kind") || "");
+  if (!isMediaKind(kindValue) || !canUploadKind(kindValue, account.permissions)) {
+    redirect(`/portal/${code}?mediaError=forbidden`);
+  }
+  const kind = kindValue as MediaKind;
+
+  const files = formData
+    .getAll("media")
+    .filter((f): f is File => f instanceof File && f.size > 0);
+  if (files.length === 0) redirect(`/portal/${code}?mediaError=empty`);
+
+  let uploaded = 0;
+  let firstProblem: string | null = null;
+
+  for (const file of files) {
+    try {
+      await uploadMedia(code, kind, file);
+      uploaded += 1;
+    } catch (err) {
+      unstable_rethrow(err);
+      console.error("uploadMediaAction failed for one file:", err);
+      // Keep going: one oversized file in a multi-select shouldn't throw
+      // away the ones that were fine. Report the first reason afterwards.
+      if (!firstProblem) {
+        firstProblem = err instanceof MediaError ? err.message : "server";
+      }
+    }
+  }
+
+  if (uploaded === 0) {
+    redirect(`/portal/${code}?mediaError=${encodeURIComponent(firstProblem ?? "server")}`);
+  }
+
+  redirect(
+    `/portal/${code}?mediaUploaded=${uploaded}${
+      firstProblem ? `&mediaError=${encodeURIComponent(firstProblem)}` : ""
+    }`,
+  );
+}
+
+/** Deletes one of the signed-in account's own files. */
+export async function deleteMediaAction(formData: FormData) {
+  const code = String(formData.get("code") || "").trim();
+  const sessionCode = await getSessionAmbassadorCode();
+  if (!sessionCode || sessionCode.toUpperCase() !== code.toUpperCase()) {
+    redirect("/login");
+  }
+
+  const mediaId = String(formData.get("mediaId") || "").trim();
+  if (!mediaId) redirect(`/portal/${code}?mediaError=missing`);
+
+  try {
+    // deleteMedia scopes to the owner in its own query too, so this can't
+    // reach another account's row even if the id is guessed.
+    const removed = await deleteMedia(code, mediaId);
+    if (!removed) redirect(`/portal/${code}?mediaError=missing`);
+  } catch (err) {
+    unstable_rethrow(err);
+    console.error("deleteMediaAction failed:", err);
+    redirect(`/portal/${code}?mediaError=server`);
+  }
+
+  redirect(`/portal/${code}?mediaDeleted=1`);
 }

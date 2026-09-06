@@ -6,6 +6,8 @@ import { getSessionAmbassadorCode } from "@/lib/auth";
 import { getArtist } from "@/lib/artists";
 import { getVendorProducts, getVendorStats } from "@/lib/vendor";
 import { getCustomerHistory } from "@/lib/squareCustomers";
+import { allowedKinds, listMedia, type MediaItem } from "@/lib/media";
+import MediaLibrary from "@/components/portal/MediaLibrary";
 import { getEventHistoryForAccount } from "@/lib/eventRsvps";
 import { getEventsAdminOverview } from "@/lib/eventsAdmin";
 import { getScheduleForAccount, getSignupsForAccount } from "@/lib/eventSales";
@@ -49,6 +51,16 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
   const [vendorProducts, vendorStats] = vendorArtist
     ? await Promise.all([getVendorProducts(vendorArtist.slug), getVendorStats(vendorArtist.slug)])
     : [undefined, undefined];
+
+  // Never fatal: a storage hiccup should cost someone their photo grid, not
+  // their whole dashboard.
+  let media: MediaItem[] = [];
+  try {
+    media = await listMedia(account.code);
+  } catch (err) {
+    console.error("Failed to load account media:", err);
+  }
+  const mediaKinds = allowedKinds(account.permissions);
 
   const customerHistory = await getCustomerHistory(account);
   const eventHistory = await getEventHistoryForAccount(account.code);
@@ -97,6 +109,22 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
   const artProductError =
     typeof searchParams?.artProductError === "string" ? searchParams.artProductError : undefined;
   const artPhotoError = searchParams?.artPhotoError === "1";
+  const mediaUploaded =
+    typeof searchParams?.mediaUploaded === "string" ? Number(searchParams.mediaUploaded) : 0;
+  const mediaDeleted = searchParams?.mediaDeleted === "1";
+  const mediaError =
+    typeof searchParams?.mediaError === "string" ? searchParams.mediaError : undefined;
+  const MEDIA_ERROR_TEXT: Record<string, string> = {
+    forbidden: "You don't have access to upload that kind of media.",
+    empty: "Choose a file to upload first.",
+    missing: "That file has already been removed.",
+    server: "Something went wrong with that upload — try again.",
+  };
+  // Anything not in the table is a specific, already-readable reason from
+  // MediaError (file too big, wrong format), passed through as-is.
+  const mediaMessage = mediaError
+    ? (MEDIA_ERROR_TEXT[mediaError] ?? mediaError)
+    : null;
 
   return (
     <section className="mx-auto w-full max-w-5xl px-6 py-16">
@@ -132,6 +160,26 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
         </div>
       </div>
 
+      {(mediaUploaded > 0 || mediaDeleted || mediaMessage) && (
+        <div className="mt-6 flex flex-col gap-2">
+          {mediaUploaded > 0 && (
+            <p className="rounded-lg border border-flame-2/40 bg-flame-2/10 px-4 py-2 text-sm text-flame-3">
+              {mediaUploaded === 1 ? "Image uploaded." : `${mediaUploaded} images uploaded.`}
+            </p>
+          )}
+          {mediaDeleted && (
+            <p className="rounded-lg border border-flame-2/40 bg-flame-2/10 px-4 py-2 text-sm text-flame-3">
+              Image deleted.
+            </p>
+          )}
+          {mediaMessage && (
+            <p className="rounded-lg border border-flame-1/40 bg-flame-1/10 px-4 py-3 text-sm text-flame-3">
+              {mediaMessage}
+            </p>
+          )}
+        </div>
+      )}
+
       <DashboardTabs
         customer={
           <CustomerTab
@@ -142,7 +190,8 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
         }
         events={<EventsTab upcoming={eventHistory.upcoming} past={eventHistory.past} />}
         ambassador={
-          <AmbassadorTab
+          <>
+            <AmbassadorTab
             ambassador={account}
             stats={stats}
             tier={tier}
@@ -151,12 +200,22 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
             linkDeleted={linkDeleted}
             payoutSaved={payoutSaved}
           />
+            {mediaKinds.includes("ambassador") && (
+              <MediaLibrary code={account.code} kind="ambassador" items={media} />
+            )}
+          </>
         }
         vendor={
-          <VendorTab vendorName={vendorArtist?.name} stats={vendorStats} products={vendorProducts} />
+          <>
+            <VendorTab vendorName={vendorArtist?.name} stats={vendorStats} products={vendorProducts} />
+            {mediaKinds.includes("vendor") && (
+              <MediaLibrary code={account.code} kind="vendor" items={media} />
+            )}
+          </>
         }
         art={
-          <ArtTab
+          <>
+            <ArtTab
             code={account.code}
             hasArtAccess={account.permissions.art}
             profile={artProfile}
@@ -168,38 +227,57 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
             productSubmitted={artProductSubmitted}
             productError={artProductError}
             photoError={artPhotoError}
-          />
+            />
+            {mediaKinds.includes("art") && (
+              <MediaLibrary code={account.code} kind="art" items={media} />
+            )}
+          </>
         }
         music={
-          <MusicTab
+          <>
+            <MusicTab
             code={account.code}
             hasMusicAccess={account.permissions.music}
             profile={musicianProfile}
             saved={musicSaved}
             error={musicError}
           />
+            {mediaKinds.includes("music") && (
+              <MediaLibrary code={account.code} kind="music" items={media} />
+            )}
+          </>
         }
         ssbd={<SsbdTab />}
         eventsAdmin={eventsAdminOverview ? <EventsAdminTab data={eventsAdminOverview} /> : null}
         eventSales={
           canAccessEventSales ? (
-            <EventSalesTab
-              code={account.code}
-              upcoming={upcomingEvents}
-              signups={eventSalesSignups}
-              schedule={eventSalesSchedule}
-              workSignup={workSignup}
-            />
+            <>
+              <EventSalesTab
+                code={account.code}
+                upcoming={upcomingEvents}
+                signups={eventSalesSignups}
+                schedule={eventSalesSchedule}
+                workSignup={workSignup}
+              />
+              {mediaKinds.includes("eventSales") && (
+                <MediaLibrary code={account.code} kind="eventSales" items={media} />
+              )}
+            </>
           ) : null
         }
         artAdmin={pendingArtBatches ? <ArtAdminTab batches={pendingArtBatches} /> : null}
         settings={
-          <SettingsTab
+          <>
+            <SettingsTab
             account={account}
             settingsSaved={settingsSaved}
             passwordChanged={passwordChanged}
             settingsError={settingsError}
           />
+            {mediaKinds.includes("profile") && (
+              <MediaLibrary code={account.code} kind="profile" items={media} />
+            )}
+          </>
         }
         visible={{
           ambassador: account.permissions.ambassador,
