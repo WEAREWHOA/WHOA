@@ -133,7 +133,7 @@ export default function LoginForm({
                 name="identifier"
                 type="text"
                 required
-                placeholder="WHOA-DEMO15"
+                placeholder="DEMOAMBASSADOR"
                 className="font-mono-code mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
               />
             </div>
@@ -158,7 +158,7 @@ export default function LoginForm({
           </form>
 
           <p className="mt-4 text-center text-xs text-muted">
-            Try the demo: <span className="font-mono-code">WHOA-DEMO15</span> /{" "}
+            Try the demo: <span className="font-mono-code">DEMOAMBASSADOR</span> /{" "}
             <span className="font-mono-code">whoa-demo-2026</span>
           </p>
         </>
