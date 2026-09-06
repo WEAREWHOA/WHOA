@@ -176,12 +176,21 @@ gradient rather than as space.
   [Sell For Us & Event Sales](#sell-for-us--event-sales),
   [Music Collective](#music-collective), and
   [Art Collective](#art-collective)
-- `/site-concept` — a visual map of the site (`app/site-concept/page.tsx`):
-  every frontend and backend journey spiraling out from the home page in
-  an inline-SVG diagram, plus a linked index of each destination and a
-  plain-English "how it fits together" explainer (Square/Supabase/Resend,
-  and the one-account-model that ties every tab together). Linked from the
-  footer.
+- `/site-concept` — a map of the site by **who uses it**, not by route
+  (`app/site-concept/page.tsx`). An inline-SVG fan shows the ten kinds of
+  person who show up (customer, referred shopper, event goer, brand
+  ambassador, artist, musician, vendor, event sales crew, register staff,
+  admin) converging on one account and fanning back out into the dashboard
+  tabs each one unlocks. Below it, a journey card per person walks their
+  funnel end to end — how they find us, each step they take, and what they
+  end up with — with the real pages linked. Closes on a plain-English
+  explainer of why it's one account and how Square/Supabase/Resend sit
+  under every journey. Linked from the footer.
+
+  Every route and permission on that page is read off the real flows, so
+  it's documentation that rots visibly if a flow changes. The fan is
+  `hidden md:block`: shrunk to a phone its labels would be unreadable, and
+  the cards say the same thing at any width.
 - `/super-admin`, `/super-admin/[code]` — Super Admin only: search any
   account by name/email/code and edit its permissions
 - `/r/[slug]` — a trackable link. Logs a click on that specific link, sets a
