@@ -684,12 +684,13 @@ long before this account system existed. So that history shows up
 automatically for anyone who signs up (or already has an account) with the
 same email — no manual linking step.
 
-- `lib/squareCustomers.ts` — `findSquareCustomerIdByEmail()` calls
+- `lib/squareCustomers.ts` — `findAllSquareCustomerIdsByEmail()` calls
   Square's Customers Search API with an **exact** email match (never
   fuzzy — a wrong fuzzy match would show one person's purchase history to
-  someone else, which is worse than showing nothing).
+  someone else, which is worse than showing nothing) and returns **every**
+  profile carrying that email, not just the first.
   `getOrdersForSquareCustomer()` calls Square's Orders Search API filtered
-  by that customer id — the authoritative source, not the
+  by those customer ids — the authoritative source, not the
   `square_orders` sync mirror (which has no customer id column and only
   covers orders synced since the webhook existed, not historical ones).
   Searches every Square location (via `getAllLocationIds()`, not just the
@@ -697,13 +698,28 @@ same email — no manual linking step.
   result set — checking only one location or capping at one page both
   undercounted against what Square's own dashboard shows for a customer
   with history at more than one location or more than 100 orders.
+- **One person, several Square profiles.** Square's docs warn that an
+  order or payment taken without an explicit `customer_id` "might result
+  in the creation of new instant profiles", and staff can create a
+  duplicate by hand at the register too — so the same email routinely ends
+  up on more than one Customer record. Fetching only the first match is
+  what made the Customer tab show a *subset* of someone's real
+  transactions. Orders are now gathered across every matching profile
+  (chunked to stay inside Square's per-request id cap) and deduped by
+  order id so nothing double-counts into visits or spend.
 - `getCustomerHistory()` runs on every `/portal/[code]` load for the
-  logged-in account: if `square_customer_id` isn't cached yet
-  ([migration 0006](#data-layer--auth)), it looks the email up once and
-  saves the match; from there it fetches the Square Customer profile
-  (email, phone) and full order history every load. Never throws — a
-  Square API hiccup degrades to "no purchase history shown," not a
-  broken dashboard.
+  logged-in account. It re-runs the email lookup every time rather than
+  trusting the cached `square_customer_id`
+  ([migration 0006](#data-layer--auth)) alone — a duplicate profile created
+  *after* we cached would otherwise stay invisible forever, and its orders
+  with it. The cached id stays the primary one (it's what checkout reuses
+  to attach future orders), and is only written if we didn't have one.
+  Never throws — a Square API hiccup degrades to "no purchase history
+  shown," not a broken dashboard.
+- The Customer tab (`components/dashboard/tabs/CustomerTab.tsx`) pages the
+  result 10 at a time, newest first, walking back to the customer's very
+  first purchase — a long-standing customer's history is hundreds of
+  orders, which is not a single scroll.
 - Square's own dashboard shows "Visits" / "First visit" / "Last visit" on
   a customer profile, but those aren't fields on the Customer object via
   the API — `deriveProfile()` computes the same thing from the exact
@@ -1018,6 +1034,21 @@ use the "Link an ambassador to a vendor" tool at the bottom of
 `/admin/square-sync` (same `SQUARE_ADMIN_SECRET` auth), or set
 `ambassadors.vendor_slug` directly in the Supabase table editor. The vendor
 slug is the artist's URL slug from `/art-collective/<slug>`.
+
+Products are attributed to a vendor **by name** (Square has no field for
+it), via `matchVendorSlug` in `lib/vendorMatch.ts`, which knows two
+conventions: the suffix `"<Product> - <Artist>"` this app writes itself,
+and the prefix `"<Artist> ARTIST <Item>"` used by consignment items entered
+in Square by hand. A product whose real name follows neither — a collab
+title like "Whoady X Whoa", where forcing a convention would put the
+mangled name in front of shoppers — goes in `PRODUCT_VENDOR_OVERRIDES` in
+the same file. Keys there are normalized and match the whole name or its
+start on a word boundary, so one row covers "Whoady X Whoa" and "Whoady X
+Whoa Tee" alike. Loosening the matcher to "starts with a vendor name"
+instead isn't safe: short names like Scarce, Noiice and Tafari would start
+swallowing unrelated items. **Attribution is applied at sync time**, so
+after editing that map, hit "Run backfill" on `/admin/square-sync` to
+re-stamp `square_products.owner_code`.
 
 ## WHOA Games
 

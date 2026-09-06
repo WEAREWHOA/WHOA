@@ -6,7 +6,9 @@ import { useLoggedIn } from "@/lib/useLoggedIn";
 
 // The same 5 destinations as BottomNav, for desktop — primary navigation
 // now lives in exactly one place conceptually, just rendered two ways
-// depending on viewport.
+// depending on viewport. Labels are written in sentence case and set in
+// caps by CSS (`uppercase`, matching BottomNav), so a screen reader still
+// hears "Events" rather than spelling out E-V-E-N-T-S.
 const links = [
   { href: "/events", label: "Events" },
   { href: "/join", label: "Join" },
@@ -24,7 +26,7 @@ export default function Navbar() {
           WHOA<span className="text-flame">.</span>
         </Link>
 
-        <nav className="hidden items-center gap-8 text-sm font-medium text-muted md:flex">
+        <nav className="hidden items-center gap-8 text-sm font-semibold tracking-wide text-muted uppercase md:flex">
           {links.map((link) => (
             <Link key={link.href} href={link.href} className="transition-colors hover:text-foreground">
               {link.label}
@@ -36,7 +38,7 @@ export default function Navbar() {
           <CartLink />
           <Link
             href={loggedIn ? "/portal" : "/login"}
-            className="btn-flame hidden rounded-full px-5 py-2 text-sm md:inline-block"
+            className="btn-flame hidden rounded-full px-5 py-2 text-xs tracking-wide uppercase md:inline-block"
           >
             {loggedIn ? "You" : "Log In / Sign Up"}
           </Link>

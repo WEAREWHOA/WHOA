@@ -30,7 +30,41 @@ export function matchesArtistName(productName: string, artistName: string): bool
 // accident on the suffix convention (e.g. "Sol Search" vs "Search").
 const VENDORS_BY_LENGTH = [...ARTISTS].sort((a, b) => b.name.length - a.name.length);
 
+// Products whose real, customer-facing name follows neither convention,
+// attributed to their vendor by hand.
+//
+// The alternative would be renaming the item in Square to fit a
+// convention, but these names are deliberate branding: "Whoady X Whoa" is
+// what the collab is called, and "Whoady ARTIST Whoady X Whoa" is what
+// shoppers would then see in the shop. Loosening the matcher to "product
+// name starts with a vendor name" isn't safe either — short vendor names
+// like Scarce, Noiice and Tafari would start swallowing unrelated items.
+//
+// Keys are normalized (lowercase, punctuation collapsed to spaces), and
+// match either the whole product name or the start of it on a word
+// boundary, so "Whoady X Whoa" and "Whoady X Whoa Tee" both land on the
+// same vendor without needing a row each.
+const PRODUCT_VENDOR_OVERRIDES: Record<string, string> = {
+  "whoady x whoa": "whoady",
+};
+
+const KNOWN_SLUGS = new Set(ARTISTS.map((artist) => artist.slug));
+
 export function matchVendorSlug(productName: string): string | undefined {
+  const normalizedProduct = normalize(productName);
+
+  for (const [prefix, slug] of Object.entries(PRODUCT_VENDOR_OVERRIDES)) {
+    if (normalizedProduct !== prefix && !normalizedProduct.startsWith(`${prefix} `)) continue;
+    // A typo'd slug here would attribute the product to a vendor who
+    // doesn't exist, and it'd silently never show on anyone's dashboard —
+    // so say so and fall through to the naming conventions instead.
+    if (!KNOWN_SLUGS.has(slug)) {
+      console.warn(`PRODUCT_VENDOR_OVERRIDES maps "${prefix}" to unknown vendor slug "${slug}"`);
+      break;
+    }
+    return slug;
+  }
+
   for (const artist of VENDORS_BY_LENGTH) {
     if (matchesArtistName(productName, artist.name)) return artist.slug;
   }

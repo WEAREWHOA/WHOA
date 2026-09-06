@@ -3,6 +3,11 @@ import { getAllLocationIds } from "./squareSync";
 import { setSquareCustomerId } from "./store";
 import type { Ambassador } from "./types";
 
+// Square caps the ids accepted by a single Orders Search filter; chunking
+// at 10 keeps each request inside that limit however many duplicate
+// profiles one person has accumulated.
+const CUSTOMER_IDS_PER_SEARCH = 10;
+
 export interface CustomerOrderLine {
   name: string;
   quantity: number;
@@ -30,13 +35,38 @@ export interface CustomerProfile {
 // matching risks linking the wrong person's purchase history to an
 // account, which is worse than not linking at all.
 export async function findSquareCustomerIdByEmail(email: string): Promise<string | null> {
-  const square = getSquare();
-  const response = await square.customers.search({
-    limit: BigInt(1),
-    query: { filter: { emailAddress: { exact: email.trim().toLowerCase() } } },
-  });
+  const ids = await findAllSquareCustomerIdsByEmail(email);
+  return ids[0] ?? null;
+}
 
-  return response.customers?.[0]?.id ?? null;
+// One person can end up with several Square customer records under the
+// same email. Square's own docs describe this: an order or payment taken
+// without an explicit customer_id "might result in the creation of new
+// instant profiles", and staff can create a duplicate by hand at the
+// register too. Every one of those profiles is the same human being, so
+// their purchase history has to be gathered from all of them — looking at
+// only the first match is what made the Customer tab show a subset of
+// someone's real transactions.
+export async function findAllSquareCustomerIdsByEmail(email: string): Promise<string[]> {
+  const square = getSquare();
+  const normalized = email.trim().toLowerCase();
+  const ids: string[] = [];
+  let cursor: string | undefined;
+
+  do {
+    const response = await square.customers.search({
+      limit: BigInt(100),
+      cursor,
+      query: { filter: { emailAddress: { exact: normalized } } },
+    });
+
+    for (const customer of response.customers ?? []) {
+      if (customer.id) ids.push(customer.id);
+    }
+    cursor = response.cursor;
+  } while (cursor);
+
+  return ids;
 }
 
 // Square's own docs warn that omitting `customer_id` on an order/payment
@@ -77,44 +107,62 @@ export async function findOrCreateSquareCustomerId(email: string, name: string):
 // a second location (an in-person/event location, say) or more than one
 // page of history would otherwise silently undercount against what
 // Square's own dashboard shows.
-export async function getOrdersForSquareCustomer(customerId: string): Promise<CustomerOrderSummary[]> {
+export async function getOrdersForSquareCustomer(
+  customerIds: string | string[],
+): Promise<CustomerOrderSummary[]> {
   const square = getSquare();
+  const ids = (Array.isArray(customerIds) ? customerIds : [customerIds]).filter(Boolean);
+  if (ids.length === 0) return [];
+
   // Square's Orders Search caps locationIds at 10 per request — fine for
   // this business today, but would need chunking if it ever grows past
   // that many Square locations.
   const locationIds = await getAllLocationIds();
   if (locationIds.length === 0) return [];
 
-  const orders: CustomerOrderSummary[] = [];
-  let cursor: string | undefined;
+  // Deduped by order id: the customer id chunks below are disjoint, but an
+  // order returned twice would double a customer's visit count and their
+  // spend, so this is cheap insurance against ever showing wrong totals.
+  const byId = new Map<string, CustomerOrderSummary>();
 
-  do {
-    const response = await square.orders.search({
-      locationIds,
-      query: { filter: { customerFilter: { customerIds: [customerId] } } },
-      limit: 100,
-      cursor,
-    });
+  // customerFilter.customerIds is capped per request the same way
+  // locationIds is, so ask in chunks rather than assuming every profile
+  // fits in one call.
+  for (let i = 0; i < ids.length; i += CUSTOMER_IDS_PER_SEARCH) {
+    const chunk = ids.slice(i, i + CUSTOMER_IDS_PER_SEARCH);
+    let cursor: string | undefined;
 
-    for (const order of response.orders ?? []) {
-      if (order.state === "DRAFT" || order.state === "CANCELED") continue;
-      orders.push({
-        id: order.id ?? "",
-        totalCents: Number(order.totalMoney?.amount ?? 0),
-        createdAt: order.createdAt ?? null,
-        state: order.state ?? "UNKNOWN",
-        lines: (order.lineItems ?? []).map((li) => ({
-          name: li.name ?? "Item",
-          quantity: Number(li.quantity ?? "1"),
-          totalCents: Number(li.totalMoney?.amount ?? 0),
-        })),
+    do {
+      const response = await square.orders.search({
+        locationIds,
+        query: { filter: { customerFilter: { customerIds: chunk } } },
+        limit: 100,
+        cursor,
       });
-    }
 
-    cursor = response.cursor;
-  } while (cursor);
+      for (const order of response.orders ?? []) {
+        if (order.state === "DRAFT" || order.state === "CANCELED") continue;
+        if (!order.id) continue;
+        byId.set(order.id, {
+          id: order.id,
+          totalCents: Number(order.totalMoney?.amount ?? 0),
+          createdAt: order.createdAt ?? null,
+          state: order.state ?? "UNKNOWN",
+          lines: (order.lineItems ?? []).map((li) => ({
+            name: li.name ?? "Item",
+            quantity: Number(li.quantity ?? "1"),
+            totalCents: Number(li.totalMoney?.amount ?? 0),
+          })),
+        });
+      }
 
-  return orders.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+      cursor = response.cursor;
+    } while (cursor);
+  }
+
+  // Newest first — the Customer tab pages backwards from here to the very
+  // first purchase they ever made with us.
+  return [...byId.values()].sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
 }
 
 // Square's Customer Directory shows "Visits" / "First visit" / "Last
@@ -144,23 +192,28 @@ export interface CustomerHistory {
 // history shown yet," not break the whole dashboard.
 export async function getCustomerHistory(account: Ambassador): Promise<CustomerHistory> {
   try {
-    let squareCustomerId = account.squareCustomerId ?? null;
+    // Look the email up every time rather than trusting the cached id
+    // alone. A duplicate profile created after we cached would otherwise be
+    // invisible forever, and its orders with it.
+    const matchedIds = await findAllSquareCustomerIdsByEmail(account.email);
+    const cachedId = account.squareCustomerId ?? null;
+    const customerIds = [...new Set([...(cachedId ? [cachedId] : []), ...matchedIds])];
 
-    if (!squareCustomerId) {
-      squareCustomerId = await findSquareCustomerIdByEmail(account.email);
-      if (squareCustomerId) {
-        await setSquareCustomerId(account.code, squareCustomerId);
-      }
+    if (customerIds.length === 0) {
+      return { linked: false, profile: null, orders: [] };
     }
 
-    if (!squareCustomerId) {
-      return { linked: false, profile: null, orders: [] };
+    // The primary id is what checkout reuses to attach future orders to
+    // this person, so keep the cached one if we already have it.
+    const primaryId = cachedId ?? customerIds[0];
+    if (primaryId !== cachedId) {
+      await setSquareCustomerId(account.code, primaryId);
     }
 
     const square = getSquare();
     const [customerResponse, orders] = await Promise.all([
-      square.customers.get({ customerId: squareCustomerId }),
-      getOrdersForSquareCustomer(squareCustomerId),
+      square.customers.get({ customerId: primaryId }),
+      getOrdersForSquareCustomer(customerIds),
     ]);
 
     const profile = deriveProfile(customerResponse.customer ?? {}, orders);
