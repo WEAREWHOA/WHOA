@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { getSupabase } from "./supabase";
+import { uploadMedia } from "./media";
 import { getSquare, getSquareLocationId } from "./square";
 import { getOnlineStoreChannelId, getOrCreateArtCollectiveCategoryId, getOrCreateArtistCategoryId } from "./catalog";
 import { matchesArtistName } from "./vendorMatch";
@@ -105,7 +106,6 @@ export function matchArtCollectiveCode(productName: string, profiles: { code: st
   return undefined;
 }
 
-const PHOTOS_BUCKET = "art-photos";
 
 // Uploads one file to the shared art-photos Storage bucket and returns its
 // public URL. Used for both product photos and the profile picture — the
@@ -113,18 +113,17 @@ const PHOTOS_BUCKET = "art-photos";
 // or create it by hand in the Supabase dashboard if that insert didn't
 // take).
 export async function uploadArtPhoto(folder: "products" | "profile", code: string, file: File): Promise<string> {
-  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-  const path = `${folder}/${code.trim().toUpperCase()}/${randomUUID()}.${ext}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
-
-  const { error } = await getSupabase()
-    .storage.from(PHOTOS_BUCKET)
-    .upload(path, buffer, { contentType: file.type || "image/jpeg", upsert: false });
-
-  if (error) throw new Error(`Failed to upload photo: ${error.message}`);
-
-  const { data } = getSupabase().storage.from(PHOTOS_BUCKET).getPublicUrl(path);
-  return data.publicUrl;
+  // Delegates to the shared media library rather than writing straight to
+  // Storage. That gets three things this used to lack: the bucket creates
+  // itself on first use (the old one had to be made by hand in the
+  // dashboard, and every upload failed until someone did), the file is
+  // indexed so the artist can see and delete it from their tab, and size
+  // and format limits apply here the same as everywhere else.
+  //
+  // Photos uploaded before this change keep working untouched — their
+  // absolute URLs are stored on the profile and product rows.
+  const item = await uploadMedia(code, folder === "profile" ? "profile" : "art", file);
+  return item.publicUrl;
 }
 
 export interface ArtProduct {

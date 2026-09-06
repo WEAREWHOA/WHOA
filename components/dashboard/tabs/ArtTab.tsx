@@ -35,6 +35,7 @@ export default function ArtTab({
   error,
   productSubmitted,
   productError,
+  photoError,
 }: {
   code: string;
   hasArtAccess: boolean;
@@ -46,6 +47,8 @@ export default function ArtTab({
   error?: string;
   productSubmitted?: boolean;
   productError?: string;
+  /** A photo didn't make it to storage, even though the rest saved. */
+  photoError?: boolean;
 }) {
   if (!hasArtAccess) {
     if (profile) {
@@ -76,6 +79,15 @@ export default function ArtTab({
     ? (PRODUCT_ERROR_MESSAGES[productError] ?? PRODUCT_ERROR_MESSAGES.server)
     : null;
   const linkByLabel = new Map((profile?.links ?? []).map((link) => [link.label, link.url]));
+
+  // Shown alongside the success notice, not instead of it: the text saved,
+  // the image didn't, and saying only "saved" would be a lie.
+  const photoWarning = photoError ? (
+    <div className="border-flame-1/40 bg-flame-1/10 text-flame-3 mt-4 rounded-xl border px-5 py-4 text-sm">
+      Your details saved, but the image couldn&apos;t be uploaded. Try again with a smaller JPG or
+      PNG — if it keeps failing, tell us at info@wearewhoa.com and we&apos;ll sort it out.
+    </div>
+  ) : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -135,6 +147,7 @@ export default function ArtTab({
             Profile saved.
           </p>
         )}
+        {saved && photoWarning}
         {errorMessage && (
           <p className="mt-4 rounded-lg border border-flame-1/40 bg-flame-1/10 px-4 py-3 text-sm text-flame-3">
             {errorMessage}
@@ -260,6 +273,7 @@ export default function ArtTab({
             Submitted — we&apos;ll email you once it&apos;s reviewed.
           </p>
         )}
+        {productSubmitted && photoWarning}
         {productErrorMessage && (
           <p className="mt-4 rounded-lg border border-flame-1/40 bg-flame-1/10 px-4 py-3 text-sm text-flame-3">
             {productErrorMessage}
