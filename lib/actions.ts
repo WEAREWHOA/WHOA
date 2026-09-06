@@ -382,13 +382,19 @@ export async function saveArtProfileAction(formData: FormData) {
     url: String(formData.get(field) || "").trim(),
   })).filter((link) => link.url.length > 0);
 
+  // A failed upload used to be logged and swallowed: the profile saved,
+  // the photo silently didn't, and the artist was left staring at a form
+  // that claimed success. Track it instead and say so below — the text
+  // still saves, so one bad upload doesn't cost them their bio.
   let profileImageUrl: string | undefined;
+  let photoFailed = false;
   const photo = formData.get("profileImage");
   if (photo instanceof File && photo.size > 0) {
     try {
       profileImageUrl = await uploadArtPhoto("profile", code, photo);
     } catch (err) {
       console.error("Failed to upload profile photo:", err);
+      photoFailed = true;
     }
   }
 
@@ -408,7 +414,7 @@ export async function saveArtProfileAction(formData: FormData) {
     redirect(`/portal/${code}?artError=server`);
   }
 
-  redirect(`/portal/${code}?artSaved=1`);
+  redirect(`/portal/${code}?artSaved=1${photoFailed ? "&artPhotoError=1" : ""}`);
 }
 
 const MAX_ART_PRODUCTS_PER_SUBMISSION = 5;
@@ -437,6 +443,11 @@ export async function submitArtProductsAction(formData: FormData) {
   }
   const alsoRetailEvents = retailChoice === "yes";
 
+  // Same reasoning as the profile photo above: a product whose photos all
+  // failed to upload is nearly useless in the shop, so the artist has to be
+  // told rather than left to discover it after review.
+  let photoFailed = false;
+
   const products: SubmitArtProductInput[] = [];
   for (let i = 0; i < MAX_ART_PRODUCTS_PER_SUBMISSION; i++) {
     const name = String(formData.get(`product-${i}-name`) || "").trim();
@@ -459,6 +470,7 @@ export async function submitArtProductsAction(formData: FormData) {
         photoUrls.push(await uploadArtPhoto("products", code, file));
       } catch (err) {
         console.error(`Failed to upload photo for product ${i}:`, err);
+        photoFailed = true;
       }
     }
 
@@ -503,5 +515,5 @@ export async function submitArtProductsAction(formData: FormData) {
     redirect(`/portal/${code}?artProductError=server`);
   }
 
-  redirect(`/portal/${code}?artProductSubmitted=1`);
+  redirect(`/portal/${code}?artProductSubmitted=1${photoFailed ? "&artPhotoError=1" : ""}`);
 }

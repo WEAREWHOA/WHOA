@@ -121,7 +121,20 @@ export async function uploadArtPhoto(folder: "products" | "profile", code: strin
     .storage.from(PHOTOS_BUCKET)
     .upload(path, buffer, { contentType: file.type || "image/jpeg", upsert: false });
 
-  if (error) throw new Error(`Failed to upload photo: ${error.message}`);
+  if (error) {
+    // "Bucket not found" is the one failure worth naming, because it isn't
+    // the uploader's fault and it isn't transient: migration 0019's insert
+    // into storage.buckets is rejected by some Supabase projects, so the
+    // bucket has to be created by hand (Dashboard -> Storage -> New bucket
+    // -> art-photos -> Public). Without this, every upload fails forever
+    // and the message gives nobody a way to work that out.
+    const missingBucket = /bucket not found/i.test(error.message);
+    throw new Error(
+      missingBucket
+        ? `Photo storage isn't set up yet: the "${PHOTOS_BUCKET}" bucket doesn't exist in Supabase.`
+        : `Failed to upload photo: ${error.message}`,
+    );
+  }
 
   const { data } = getSupabase().storage.from(PHOTOS_BUCKET).getPublicUrl(path);
   return data.publicUrl;

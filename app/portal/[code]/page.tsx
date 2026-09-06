@@ -96,6 +96,7 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
   const artProductSubmitted = searchParams?.artProductSubmitted === "1";
   const artProductError =
     typeof searchParams?.artProductError === "string" ? searchParams.artProductError : undefined;
+  const artPhotoError = searchParams?.artPhotoError === "1";
 
   return (
     <section className="mx-auto w-full max-w-5xl px-6 py-16">
@@ -166,6 +167,7 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
             error={artError}
             productSubmitted={artProductSubmitted}
             productError={artProductError}
+            photoError={artPhotoError}
           />
         }
         music={
