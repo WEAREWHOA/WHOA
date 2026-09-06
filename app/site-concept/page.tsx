@@ -13,17 +13,19 @@ interface ConceptNode {
   blurb: string;
 }
 
-// The real orbiting buttons on the standard home page (see
-// components/home/OrbitField.tsx) — this arm mirrors that exact set, since
-// it's the actual customer-facing map of the site today.
+// The six planets orbiting the sun on the home page (see
+// components/home/SolarSystem.tsx), then the places they lead on to. The
+// home page deliberately shows only the first six — games, the register and
+// the adventure all live one level in, off those pages, rather than
+// crowding the hub itself.
 const FRONTEND_NODES: ConceptNode[] = [
   { label: "Shop The WHOADEGA", href: "/shop", blurb: "Square-powered storefront — browse, cart, checkout." },
-  { label: "Music Collective", href: "/music-collective", blurb: "Meet the DJs & producers behind WHOA Wednesday." },
+  { label: "Events", href: "/events", blurb: "Flyer archive, RSVP/tickets, and the live calendar." },
   { label: "Art Collective", href: "/art-collective", blurb: "Independent artists — shop their work directly." },
-  { label: "Event Calendar", href: "/events", blurb: "Flyer archive, RSVP/tickets, and the live calendar." },
-  { label: "Brand Ambassadors", href: "/ambassadors", blurb: "Referral program landing page — apply to join." },
-  { label: "WHOA Games", href: "/games", blurb: "Snake, puzzle, graffiti wall, scavenger hunt & more." },
-  { label: "Same Same But WHOA", href: "/same-same-but-whoa", blurb: "A psychedelic point-and-click adventure." },
+  { label: "Music Collective", href: "/music-collective", blurb: "Meet the DJs & producers behind WHOA Wednesday." },
+  { label: "Join", href: "/join", blurb: "Every way to get involved, in one place." },
+  { label: "About", href: "/about", blurb: "Story, mission, partnerships, and contact." },
+  { label: "WHOA Games", href: "/games", blurb: "Incoming, snake, puzzle, graffiti wall & more." },
   { label: "WHOA POS", href: "/pos", blurb: "The in-person register staff use at events & pop-ups." },
 ];
 

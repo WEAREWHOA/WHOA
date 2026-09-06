@@ -149,11 +149,6 @@ body {
   to { background-position: 300% 0; }
 }
 
-@keyframes hub-bob {
-  0%, 100% { translate: 0 0; }
-  50% { translate: 0 -12px; }
-}
-
 .whoa-sphere {
   overflow: hidden;
   isolation: isolate;
@@ -168,6 +163,16 @@ body {
   opacity: 0.9;
 }
 
+/* Home page's sun: bright in the middle and falling off to the rim, so the
+   rotating conic gradient underneath reads as a burning star rather than a
+   ball lit from one side (which is what .whoa-sphere-shade below does). */
+.whoa-sun-core {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.1) 46%, transparent 62%),
+    radial-gradient(circle at 50% 50%, transparent 55%, rgba(10, 1, 22, 0.55) 100%);
+  box-shadow: inset 0 0 46px rgba(255, 255, 255, 0.22);
+}
+
 .whoa-sphere-shade {
   background:
     radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.45), transparent 42%),
@@ -177,35 +182,6 @@ body {
 
 @keyframes whoa-sphere-rotate {
   to { rotate: 360deg; }
-}
-
-.tunnel-overlay {
-  background: radial-gradient(circle at 50% 50%, #ffffff 0%, #ff2fb0 14%, #7b2ff7 32%, #29e6ff 52%, #0a0116 78%);
-  animation: tunnel-flash 0.9s ease-out forwards;
-}
-
-.tunnel-ring {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 3rem;
-  height: 3rem;
-  margin: -1.5rem 0 0 -1.5rem;
-  border-radius: 9999px;
-  border: 3px solid #ffffff;
-  opacity: 0;
-}
-
-@keyframes tunnel-flash {
-  0% { opacity: 0; }
-  12% { opacity: 1; }
-  100% { opacity: 1; }
-}
-
-@keyframes tunnel-ring-fly {
-  0% { scale: 0.2; opacity: 0.9; }
-  55% { opacity: 0.7; }
-  100% { scale: 22; opacity: 0; }
 }
 
 @keyframes adventure-fade-in {
@@ -279,16 +255,8 @@ body {
     animation: psychedelic-shift 8s linear infinite;
   }
 
-  .hub-bob {
-    animation: hub-bob 5s ease-in-out infinite;
-  }
-
   .whoa-sphere-spin {
     animation: whoa-sphere-rotate 22s linear infinite;
-  }
-
-  .tunnel-ring {
-    animation: tunnel-ring-fly 0.9s cubic-bezier(0.15, 0.6, 0.25, 1) forwards;
   }
 
   .event-float {

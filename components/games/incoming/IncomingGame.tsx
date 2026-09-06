@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 
 const RUN_MS = 45_000;
 const KEY_SPEED = 300; // px/s
@@ -98,7 +97,7 @@ function getBestServerSnapshot(): number {
   return 0;
 }
 
-export default function ComingSoonGame() {
+export default function IncomingGame() {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -507,62 +506,49 @@ export default function ComingSoonGame() {
   useEffect(() => stop, [stop]);
 
   return (
-    <section className="relative flex min-h-screen flex-col items-center gap-6 px-6 py-8 text-center">
-      <PsychedelicBackground />
-
-      <div className="relative z-10 flex-shrink-0">
-        <span className="text-xs font-semibold tracking-[0.4em] text-white/60 uppercase">WHOA.</span>
-        <h1 className="text-psychedelic font-display mt-2 text-5xl tracking-wide sm:text-6xl">STAY TUNED</h1>
+    <div className="flex w-full max-w-[380px] flex-col items-center">
+      <div className="flex items-center gap-6 text-sm text-muted">
+        <span>
+          Score <span className="text-foreground font-semibold">{score}</span>
+        </span>
+        <span>
+          Best <span className="text-flame-3 font-semibold">{best}</span>
+        </span>
+        {status === "playing" && (
+          <span>
+            Time <span className="text-foreground font-semibold">{timeLeft}s</span>
+          </span>
+        )}
       </div>
 
-      <div className="relative z-10 flex w-full max-w-[380px] flex-shrink-0 flex-col items-center">
-        <div className="flex items-center gap-6 text-sm text-white/70">
-          <span>
-            Score <span className="font-semibold text-white">{score}</span>
-          </span>
-          <span>
-            Best <span className="text-flame-3 font-semibold">{best}</span>
-          </span>
-          {status === "playing" && (
-            <span>
-              Time <span className="font-semibold text-white">{timeLeft}s</span>
-            </span>
-          )}
-        </div>
+      <div
+        ref={containerRef}
+        className="relative mt-4 aspect-[3/4] w-full max-w-[380px] touch-none overflow-hidden rounded-2xl border border-white/15 bg-black/30 shadow-[0_0_60px_-15px_rgba(255,122,0,0.5)] backdrop-blur-sm"
+      >
+        <canvas ref={canvasRef} className="absolute inset-0" />
 
-        <div
-          ref={containerRef}
-          className="relative mt-4 aspect-[3/4] w-full max-w-[380px] flex-shrink-0 touch-none overflow-hidden rounded-2xl border border-white/15 bg-black/30 shadow-[0_0_60px_-15px_rgba(255,122,0,0.5)] backdrop-blur-sm"
-        >
-          <canvas ref={canvasRef} className="absolute inset-0" />
-
-          {status !== "playing" && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/60 px-6 text-center backdrop-blur-sm">
-              {status === "over" && (
-                <>
-                  <p className="font-display text-2xl text-white">Time&apos;s up!</p>
-                  <p className="text-sm text-white/70">
-                    You scored <span className="font-semibold text-white">{score}</span> points.
-                  </p>
-                </>
-              )}
-              <button type="button" onClick={start} className="btn-flame rounded-full px-8 py-3 text-sm font-semibold">
-                {status === "over" ? "Play again" : "Launch ship"}
-              </button>
-              {status === "idle" && (
-                <p className="max-w-[240px] text-xs text-white/60">
-                  Drag to fly, or use arrow keys / WASD + space. Your ship fires on its own too — just dodge and
-                  point it at the incoming targets.
+        {status !== "playing" && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black/60 px-6 text-center backdrop-blur-sm">
+            {status === "over" && (
+              <>
+                <p className="font-display text-2xl text-white">Time&apos;s up!</p>
+                <p className="text-sm text-white/70">
+                  You scored <span className="font-semibold text-white">{score}</span> points.
                 </p>
-              )}
-            </div>
-          )}
-        </div>
+              </>
+            )}
+            <button type="button" onClick={start} className="btn-flame rounded-full px-8 py-3 text-sm font-semibold">
+              {status === "over" ? "Play again" : "Launch ship"}
+            </button>
+            {status === "idle" && (
+              <p className="max-w-[240px] text-xs text-white/60">
+                Drag to fly, or use arrow keys / WASD + space. Your ship fires on its own too — just dodge and
+                point it at the incoming targets.
+              </p>
+            )}
+          </div>
+        )}
       </div>
-
-      <div className="relative z-10 flex-shrink-0">
-        <p className="font-display text-2xl tracking-[0.3em] text-white/80 sm:text-3xl">WHOA INCOMING</p>
-      </div>
-    </section>
+    </div>
   );
 }

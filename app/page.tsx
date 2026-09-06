@@ -1,15 +1,18 @@
 import type { Metadata } from "next";
-import ComingSoonGame from "@/components/home/ComingSoonGame";
+import PsychedelicBackground from "@/components/home/PsychedelicBackground";
+import SolarSystem from "@/components/home/SolarSystem";
 
-// Temporary "coming soon" splash while the full site isn't public yet — swap
-// back to <HomeHub /> (left untouched in ./components/home/HomeHub.tsx) when
-// it's time to launch for real. Update this metadata at the same time —
-// it's written to match the splash, not the real homepage.
 export const metadata: Metadata = {
-  title: "Stay Tuned",
-  description: "WHOA is incoming. Fly the ship, dodge the targets, and stay tuned.",
+  title: "WHOA",
+  description:
+    "The WHOA universe — shop the WHOADEGA, catch an event, join the crew, and meet the artists and musicians behind it all.",
 };
 
 export default function Home() {
-  return <ComingSoonGame />;
+  return (
+    <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 py-16 text-center">
+      <PsychedelicBackground />
+      <SolarSystem />
+    </section>
+  );
 }
