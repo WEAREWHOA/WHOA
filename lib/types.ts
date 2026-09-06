@@ -75,6 +75,28 @@ export interface ProductVariation {
   name: string;
   priceCents: number;
   inStock: number | null;
+  // Maps each Product.options[].id this variation has a choice for to the
+  // chosen ProductOptionValue id (e.g. { "<size-option-id>":
+  // "<medium-value-id>" }) — only populated for an item built with
+  // Square's structured Item Options feature. Empty for the common case of
+  // a plain variation name (e.g. "Medium / Black" as one string); AddToCart
+  // falls back to a single combined dropdown when Product.options is empty.
+  optionValueIds: Record<string, string>;
+}
+
+export interface ProductOptionValue {
+  id: string;
+  name: string;
+  // Hex color (e.g. "#ff8d4e"), only meaningful when the parent
+  // ProductOption.showColors is true.
+  color: string | null;
+}
+
+export interface ProductOption {
+  id: string;
+  name: string;
+  showColors: boolean;
+  values: ProductOptionValue[];
 }
 
 export interface ProductCategory {
@@ -93,6 +115,10 @@ export interface Product {
   imageUrls: string[];
   variations: ProductVariation[];
   categories: ProductCategory[];
+  // Square's structured Item Options (e.g. Size, Color) actually used by
+  // this item's own variations, in Square's own dimension order — empty
+  // for an item that just names each variation as one combined string.
+  options: ProductOption[];
 }
 
 // US-only for now — international shipping isn't supported yet.

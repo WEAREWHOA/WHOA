@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { SquareError, type Square } from "square";
 import { getSquare, getSquareLocationId } from "./square";
-import type { Product, ProductCategory, ProductVariation } from "./types";
+import type { Product, ProductCategory, ProductOption, ProductOptionValue, ProductVariation } from "./types";
 
 // Square's batch endpoints (catalog.batchGet, inventory.batchGetCounts)
 // document a max object-ID count per request — chunking keeps every call
@@ -13,6 +13,69 @@ function chunk<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
   for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
   return chunks;
+}
+
+interface ItemOptionMeta {
+  name: string;
+  showColors: boolean;
+}
+
+interface ItemOptionValueMeta {
+  name: string;
+  color: string | null;
+}
+
+// Builds this item's ProductOption[] (Square's structured Item Options —
+// e.g. Size, Color — see CatalogItem.itemOptions/CatalogItemVariation.
+// itemOptionValues) plus each variation's optionValueIds, from a lookup of
+// already-fetched ITEM_OPTION/ITEM_OPTION_VAL catalog objects. A product's
+// option values are derived from what its own variations actually
+// reference, not the option's global value list (which Square shares
+// across every item using that option), so a dropdown never offers a
+// choice this specific product doesn't have. Returns an empty options
+// array for an item that doesn't use Item Options at all — the common
+// case of one combined variation name (e.g. "Medium / Black") — so
+// AddToCart can fall back to its existing single dropdown.
+function resolveItemOptions(
+  data: NonNullable<Square.CatalogObject.Item["itemData"]>,
+  optionMetaById: Map<string, ItemOptionMeta>,
+  optionValueMetaById: Map<string, ItemOptionValueMeta>,
+): { options: ProductOption[]; optionValueIdsByVariationId: Map<string, Record<string, string>> } {
+  const optionValueIdsByVariationId = new Map<string, Record<string, string>>();
+  const valueIdsByOption = new Map<string, Set<string>>();
+
+  for (const variation of data.variations ?? []) {
+    if (variation.type !== "ITEM_VARIATION" || !variation.itemVariationData) continue;
+    const optionValueIds: Record<string, string> = {};
+    for (const ov of variation.itemVariationData.itemOptionValues ?? []) {
+      if (!ov.itemOptionId || !ov.itemOptionValueId) continue;
+      optionValueIds[ov.itemOptionId] = ov.itemOptionValueId;
+      const values = valueIdsByOption.get(ov.itemOptionId) ?? new Set<string>();
+      values.add(ov.itemOptionValueId);
+      valueIdsByOption.set(ov.itemOptionId, values);
+    }
+    optionValueIdsByVariationId.set(variation.id, optionValueIds);
+  }
+
+  const options: ProductOption[] = [];
+  for (const opt of data.itemOptions ?? []) {
+    const optionId = opt.itemOptionId;
+    if (!optionId) continue;
+    const meta = optionMetaById.get(optionId);
+    const valueIds = valueIdsByOption.get(optionId);
+    if (!meta || !valueIds) continue;
+
+    const values: ProductOptionValue[] = [];
+    for (const valueId of valueIds) {
+      const valueMeta = optionValueMetaById.get(valueId);
+      if (valueMeta) values.push({ id: valueId, name: valueMeta.name, color: valueMeta.color });
+    }
+    if (values.length > 0) {
+      options.push({ id: optionId, name: meta.name, showColors: meta.showColors, values });
+    }
+  }
+
+  return { options, optionValueIdsByVariationId };
 }
 
 // The "Channels" section on a Square item (Online Store, POS, etc.) isn't
@@ -95,12 +158,20 @@ export async function listProducts(options?: { onlineOnly?: boolean }): Promise<
 
   const imageIds = new Set<string>();
   const categoryIds = new Set<string>();
+  const optionIds = new Set<string>();
+  const optionValueIds = new Set<string>();
   for (const item of items) {
     if (item.type !== "ITEM" || !item.itemData) continue;
     for (const id of item.itemData.imageIds ?? []) imageIds.add(id);
+    for (const opt of item.itemData.itemOptions ?? []) {
+      if (opt.itemOptionId) optionIds.add(opt.itemOptionId);
+    }
     for (const variation of item.itemData.variations ?? []) {
       if (variation.type !== "ITEM_VARIATION" || !variation.itemVariationData) continue;
       for (const id of variation.itemVariationData.imageIds ?? []) imageIds.add(id);
+      for (const ov of variation.itemVariationData.itemOptionValues ?? []) {
+        if (ov.itemOptionValueId) optionValueIds.add(ov.itemOptionValueId);
+      }
     }
     for (const category of item.itemData.categories ?? []) {
       if (category.id) categoryIds.add(category.id);
@@ -109,7 +180,9 @@ export async function listProducts(options?: { onlineOnly?: boolean }): Promise<
 
   const imageUrlById = new Map<string, string>();
   const categoryNameById = new Map<string, string>();
-  const lookupIds = [...imageIds, ...categoryIds];
+  const optionMetaById = new Map<string, ItemOptionMeta>();
+  const optionValueMetaById = new Map<string, ItemOptionValueMeta>();
+  const lookupIds = [...imageIds, ...categoryIds, ...optionIds, ...optionValueIds];
   for (const idBatch of chunk(lookupIds, BATCH_CHUNK_SIZE)) {
     const lookupResponse = await square.catalog.batchGet({ objectIds: idBatch });
     for (const obj of lookupResponse.objects ?? []) {
@@ -117,6 +190,16 @@ export async function listProducts(options?: { onlineOnly?: boolean }): Promise<
         imageUrlById.set(obj.id, obj.imageData.url);
       } else if (obj.type === "CATEGORY" && obj.id && obj.categoryData?.name) {
         categoryNameById.set(obj.id, obj.categoryData.name);
+      } else if (obj.type === "ITEM_OPTION" && obj.id && obj.itemOptionData) {
+        optionMetaById.set(obj.id, {
+          name: obj.itemOptionData.displayName || obj.itemOptionData.name || "Option",
+          showColors: Boolean(obj.itemOptionData.showColors),
+        });
+      } else if (obj.type === "ITEM_OPTION_VAL" && obj.id && obj.itemOptionValueData) {
+        optionValueMetaById.set(obj.id, {
+          name: obj.itemOptionValueData.name ?? "",
+          color: obj.itemOptionValueData.color ?? null,
+        });
       }
     }
   }
@@ -136,6 +219,8 @@ export async function listProducts(options?: { onlineOnly?: boolean }): Promise<
     if (item.type !== "ITEM" || !item.itemData) continue;
     const data = item.itemData;
 
+    const { options, optionValueIdsByVariationId } = resolveItemOptions(data, optionMetaById, optionValueMetaById);
+
     const variations: ProductVariation[] = [];
     for (const variation of data.variations ?? []) {
       if (variation.type !== "ITEM_VARIATION" || !variation.itemVariationData) continue;
@@ -145,6 +230,7 @@ export async function listProducts(options?: { onlineOnly?: boolean }): Promise<
         name: varData.name ?? "Default",
         priceCents: Number(varData.priceMoney?.amount ?? 0),
         inStock: inventoryByVariationId.get(variation.id) ?? null,
+        optionValueIds: optionValueIdsByVariationId.get(variation.id) ?? {},
       });
     }
 
@@ -169,6 +255,7 @@ export async function listProducts(options?: { onlineOnly?: boolean }): Promise<
       imageUrls,
       variations,
       categories,
+      options,
     });
   }
 
@@ -212,13 +299,27 @@ export async function getProduct(itemId: string): Promise<Product | undefined> {
 
   const imageUrlById = new Map<string, string>();
   const categoryNameById = new Map<string, string>();
+  const optionMetaById = new Map<string, ItemOptionMeta>();
+  const optionValueMetaById = new Map<string, ItemOptionValueMeta>();
   for (const obj of response.relatedObjects ?? []) {
     if (obj.type === "IMAGE" && obj.imageData?.url) {
       imageUrlById.set(obj.id, obj.imageData.url);
     } else if (obj.type === "CATEGORY" && obj.id && obj.categoryData?.name) {
       categoryNameById.set(obj.id, obj.categoryData.name);
+    } else if (obj.type === "ITEM_OPTION" && obj.id && obj.itemOptionData) {
+      optionMetaById.set(obj.id, {
+        name: obj.itemOptionData.displayName || obj.itemOptionData.name || "Option",
+        showColors: Boolean(obj.itemOptionData.showColors),
+      });
+    } else if (obj.type === "ITEM_OPTION_VAL" && obj.id && obj.itemOptionValueData) {
+      optionValueMetaById.set(obj.id, {
+        name: obj.itemOptionValueData.name ?? "",
+        color: obj.itemOptionValueData.color ?? null,
+      });
     }
   }
+
+  const { options, optionValueIdsByVariationId } = resolveItemOptions(data, optionMetaById, optionValueMetaById);
 
   const variationIds: string[] = [];
   for (const variation of data.variations ?? []) {
@@ -235,6 +336,7 @@ export async function getProduct(itemId: string): Promise<Product | undefined> {
       name: varData.name ?? "Default",
       priceCents: Number(varData.priceMoney?.amount ?? 0),
       inStock: inventoryByVariationId.get(variation.id) ?? null,
+      optionValueIds: optionValueIdsByVariationId.get(variation.id) ?? {},
     });
   }
 
@@ -259,6 +361,7 @@ export async function getProduct(itemId: string): Promise<Product | undefined> {
     imageUrls,
     variations,
     categories,
+    options,
   };
 }
 
