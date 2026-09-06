@@ -271,10 +271,6 @@ export default function CheckoutForm({
                 Apply
               </button>
             </form>
-            <p className="mt-2 text-xs text-muted">
-              Got an ambassador&apos;s code? Enter it here for 15% off — same discount as
-              following their link.
-            </p>
             {promoError && (
               <p className="text-flame-3 mt-2 text-xs">That promo code isn&apos;t valid.</p>
             )}
