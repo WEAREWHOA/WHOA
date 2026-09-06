@@ -322,6 +322,7 @@ export async function updatePermissions(
     permissions?: Partial<AccountPermissions>;
     isSuperAdmin?: boolean;
     vendorSlug?: string | null;
+    squareCustomerId?: string | null;
   },
 ): Promise<void> {
   const patch: Record<string, unknown> = {};
@@ -335,6 +336,9 @@ export async function updatePermissions(
   if (updates.permissions?.artAdmin !== undefined) patch.perm_art_admin = updates.permissions.artAdmin;
   if (updates.isSuperAdmin !== undefined) patch.is_super_admin = updates.isSuperAdmin;
   if (updates.vendorSlug !== undefined) patch.vendor_slug = updates.vendorSlug || null;
+  // Clearing this makes the next portal load re-derive it from the
+  // account's email, which is the way back if a wrong id gets pinned.
+  if (updates.squareCustomerId !== undefined) patch.square_customer_id = updates.squareCustomerId || null;
 
   if (Object.keys(patch).length === 0) return;
 

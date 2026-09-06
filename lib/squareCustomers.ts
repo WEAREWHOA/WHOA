@@ -39,14 +39,17 @@ export async function findSquareCustomerIdByEmail(email: string): Promise<string
   return ids[0] ?? null;
 }
 
-// One person can end up with several Square customer records under the
-// same email. Square's own docs describe this: an order or payment taken
-// without an explicit customer_id "might result in the creation of new
-// instant profiles", and staff can create a duplicate by hand at the
-// register too. Every one of those profiles is the same human being, so
-// their purchase history has to be gathered from all of them — looking at
-// only the first match is what made the Customer tab show a subset of
-// someone's real transactions.
+// Every Square customer record carrying this email. One person really can
+// have several — Square's docs note that an order or payment taken without
+// an explicit customer_id "might result in the creation of new instant
+// profiles", and staff make duplicates by hand at the register too.
+//
+// Deliberately NOT used to assemble a purchase history: sharing an email
+// doesn't make two profiles the same buyer. A staff member's POS profile
+// sits under their own email and collects the orders they ring up for
+// other people, so merging on email alone shows someone a shift's worth of
+// other people's shopping as if it were their own. This is here for
+// looking up and pinning the right profile, not for merging them.
 export async function findAllSquareCustomerIdsByEmail(email: string): Promise<string[]> {
   const square = getSquare();
   const normalized = email.trim().toLowerCase();
@@ -192,28 +195,30 @@ export interface CustomerHistory {
 // history shown yet," not break the whole dashboard.
 export async function getCustomerHistory(account: Ambassador): Promise<CustomerHistory> {
   try {
-    // Look the email up every time rather than trusting the cached id
-    // alone. A duplicate profile created after we cached would otherwise be
-    // invisible forever, and its orders with it.
-    const matchedIds = await findAllSquareCustomerIdsByEmail(account.email);
-    const cachedId = account.squareCustomerId ?? null;
-    const customerIds = [...new Set([...(cachedId ? [cachedId] : []), ...matchedIds])];
+    // Exactly one profile — the account's own. Sharing an email is NOT
+    // enough to merge two Square profiles into one purchase history: staff
+    // who ring people up at the register have a POS profile under their own
+    // email whose orders are other people's purchases, and folding those in
+    // turns their Customer tab into a feed of everything they sold that
+    // shift. Genuine duplicates get linked deliberately instead, by pinning
+    // the right id (see setSquareCustomerId / the Super Admin field).
+    let squareCustomerId = account.squareCustomerId ?? null;
 
-    if (customerIds.length === 0) {
-      return { linked: false, profile: null, orders: [] };
+    if (!squareCustomerId) {
+      squareCustomerId = await findSquareCustomerIdByEmail(account.email);
+      if (squareCustomerId) {
+        await setSquareCustomerId(account.code, squareCustomerId);
+      }
     }
 
-    // The primary id is what checkout reuses to attach future orders to
-    // this person, so keep the cached one if we already have it.
-    const primaryId = cachedId ?? customerIds[0];
-    if (primaryId !== cachedId) {
-      await setSquareCustomerId(account.code, primaryId);
+    if (!squareCustomerId) {
+      return { linked: false, profile: null, orders: [] };
     }
 
     const square = getSquare();
     const [customerResponse, orders] = await Promise.all([
-      square.customers.get({ customerId: primaryId }),
-      getOrdersForSquareCustomer(customerIds),
+      square.customers.get({ customerId: squareCustomerId }),
+      getOrdersForSquareCustomer(squareCustomerId),
     ]);
 
     const profile = deriveProfile(customerResponse.customer ?? {}, orders);

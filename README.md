@@ -684,13 +684,12 @@ long before this account system existed. So that history shows up
 automatically for anyone who signs up (or already has an account) with the
 same email — no manual linking step.
 
-- `lib/squareCustomers.ts` — `findAllSquareCustomerIdsByEmail()` calls
+- `lib/squareCustomers.ts` — `findSquareCustomerIdByEmail()` calls
   Square's Customers Search API with an **exact** email match (never
   fuzzy — a wrong fuzzy match would show one person's purchase history to
-  someone else, which is worse than showing nothing) and returns **every**
-  profile carrying that email, not just the first.
+  someone else, which is worse than showing nothing).
   `getOrdersForSquareCustomer()` calls Square's Orders Search API filtered
-  by those customer ids — the authoritative source, not the
+  by customer id — the authoritative source, not the
   `square_orders` sync mirror (which has no customer id column and only
   covers orders synced since the webhook existed, not historical ones).
   Searches every Square location (via `getAllLocationIds()`, not just the
@@ -698,24 +697,32 @@ same email — no manual linking step.
   result set — checking only one location or capping at one page both
   undercounted against what Square's own dashboard shows for a customer
   with history at more than one location or more than 100 orders.
-- **One person, several Square profiles.** Square's docs warn that an
-  order or payment taken without an explicit `customer_id` "might result
-  in the creation of new instant profiles", and staff can create a
-  duplicate by hand at the register too — so the same email routinely ends
-  up on more than one Customer record. Fetching only the first match is
-  what made the Customer tab show a *subset* of someone's real
-  transactions. Orders are now gathered across every matching profile
-  (chunked to stay inside Square's per-request id cap) and deduped by
-  order id so nothing double-counts into visits or spend.
+- **A shared email does not make two Square profiles the same buyer.**
+  Square's docs note that an order taken without an explicit `customer_id`
+  "might result in the creation of new instant profiles", and staff make
+  duplicates by hand at the register too — so one email really can sit on
+  several Customer records. It's still wrong to merge them on email alone:
+  someone who works the register has a **POS profile under their own
+  email**, and the orders on it are the sales they rang up *for other
+  people*. Merging that in replaces their own shopping history with a
+  shift's worth of everyone else's — which is exactly what happened when
+  this was tried. One account reads from **one** profile;
+  `findAllSquareCustomerIdsByEmail()` exists for looking the candidates up
+  and pinning the right one, not for merging them, and
+  `getOrdersForSquareCustomer()` accepts several ids only for an account
+  deliberately linked to more than one.
 - `getCustomerHistory()` runs on every `/portal/[code]` load for the
-  logged-in account. It re-runs the email lookup every time rather than
-  trusting the cached `square_customer_id`
-  ([migration 0006](#data-layer--auth)) alone — a duplicate profile created
-  *after* we cached would otherwise stay invisible forever, and its orders
-  with it. The cached id stays the primary one (it's what checkout reuses
-  to attach future orders), and is only written if we didn't have one.
-  Never throws — a Square API hiccup degrades to "no purchase history
-  shown," not a broken dashboard.
+  logged-in account: if `square_customer_id` isn't cached yet
+  ([migration 0006](#data-layer--auth)), it looks the email up once and
+  saves the match; from there it fetches that Square Customer profile
+  (email, phone) and its full order history every load. Never throws — a
+  Square API hiccup degrades to "no purchase history shown," not a
+  broken dashboard.
+- **Pinning the right profile.** `/super-admin/[code]` has a **Square
+  customer ID** field. Empty means "auto-link from this account's email on
+  the next portal load"; setting it by hand is how you correct an account
+  that auto-linked to the wrong profile (the register case above), and
+  clearing it starts the auto-link over.
 - The Customer tab (`components/dashboard/tabs/CustomerTab.tsx`) pages the
   result 10 at a time, newest first, walking back to the customer's very
   first purchase — a long-standing customer's history is hundreds of
