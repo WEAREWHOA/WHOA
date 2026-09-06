@@ -124,6 +124,16 @@ except the immersive home hub and `/pos`.
   `/shop`. Any purchase made while that cookie is present gets the 15%
   discount applied in Square and a 10% commission recorded for the
   ambassador — this is the real, working order-attribution loop, not a stub.
+- `/checkout`'s "Promo code" field is the exact same attribution path, not
+  a second system: every ambassador's auto-created "Default" link (see
+  `ensureDefaultLink`, [Backend Portal & permissions](#backend-portal--permissions))
+  already uses their own account code as its slug, so typing that code is
+  just an alternate way to hit `getLinkBySlug` and set the same
+  `whoa_ref` cookie (`applyPromoCodeAction`, `app/checkout/actions.ts`) —
+  same discount, same commission, and it counts as a real click on their
+  Default link too. Works for any of an ambassador's link slugs, not only
+  their account code. A code that doesn't match any link redirects back
+  with `?promoError=1` rather than silently charging full price.
 
 A seeded demo ambassador is available for exploring a populated portal:
 **code `WHOA-DEMO15`, password `whoa-demo-2026`**.
