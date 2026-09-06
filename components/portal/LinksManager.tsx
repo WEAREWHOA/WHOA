@@ -1,4 +1,4 @@
-import { createLinkAction } from "@/lib/actions";
+import { createLinkAction, deleteLinkAction } from "@/lib/actions";
 import type { AmbassadorLink } from "@/lib/types";
 import CopyField from "./CopyField";
 
@@ -7,11 +7,13 @@ export default function LinksManager({
   origin,
   links,
   added,
+  deleted,
 }: {
   code: string;
   origin: string;
   links: AmbassadorLink[];
   added?: boolean;
+  deleted?: boolean;
 }) {
   const sorted = [...links].sort(
     (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
@@ -31,15 +33,33 @@ export default function LinksManager({
           Link created.
         </p>
       )}
+      {deleted && (
+        <p className="mt-4 rounded-lg border border-flame-2/40 bg-flame-2/10 px-4 py-2 text-sm text-flame-3">
+          Link deleted.
+        </p>
+      )}
 
       <ul className="mt-4 flex flex-col gap-3">
         {sorted.map((link) => (
           <li key={link.id} className="rounded-lg border border-border bg-surface-raised p-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               <span className="text-sm font-medium">{link.label}</span>
-              <span className="text-xs text-muted">
-                {link.clicks} click{link.clicks === 1 ? "" : "s"}
-              </span>
+              <div className="flex shrink-0 items-center gap-3">
+                <span className="text-xs text-muted">
+                  {link.clicks} click{link.clicks === 1 ? "" : "s"}
+                </span>
+                <form action={deleteLinkAction}>
+                  <input type="hidden" name="code" value={code} />
+                  <input type="hidden" name="linkId" value={link.id} />
+                  <button
+                    type="submit"
+                    aria-label={`Delete ${link.label}`}
+                    className="text-xs font-medium text-muted underline underline-offset-2 transition-colors hover:text-flame-1"
+                  >
+                    Delete
+                  </button>
+                </form>
+              </div>
             </div>
             <CopyField value={`${origin}/r/${link.slug}`} compact />
           </li>

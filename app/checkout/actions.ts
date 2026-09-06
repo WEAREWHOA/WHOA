@@ -2,16 +2,59 @@
 
 import { randomUUID } from "crypto";
 import { cookies } from "next/headers";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { getSquare, getSquareLocationId } from "@/lib/square";
 import { getArtCollectiveProductIds, getInventoryCounts } from "@/lib/catalog";
-import { getByCode, setSquareCustomerId } from "@/lib/store";
+import { getByCode, getLinkBySlug, recordLinkClick, setSquareCustomerId } from "@/lib/store";
 import { resolveAccount } from "@/lib/accountAuth";
 import { findOrCreateSquareCustomerId } from "@/lib/squareCustomers";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { getSupabase } from "@/lib/supabase";
-import { REF_COOKIE } from "@/lib/attribution";
+import { REF_COOKIE, REF_COOKIE_DAYS } from "@/lib/attribution";
 import type { CartLine, ShippingAddress } from "@/lib/types";
 import type { Money } from "square";
+
+// A promo code is nothing new — every ambassador's auto-created "Default"
+// link (see ensureDefaultLink, lib/store.ts) already uses their own code
+// as its slug, so typing that code here is the exact same attribution
+// path as clicking /r/<code>: same cookie, same 15%/10% discount and
+// commission logic in checkoutAction below, and it counts as a real click
+// on their Default link too. No separate code-generation or validation
+// system needed.
+export async function applyPromoCodeAction(formData: FormData) {
+  const code = String(formData.get("promoCode") || "").trim();
+  if (!code) {
+    redirect("/checkout?promoError=1");
+  }
+
+  let link: Awaited<ReturnType<typeof getLinkBySlug>>;
+  try {
+    link = await getLinkBySlug(code);
+  } catch (err) {
+    unstable_rethrow(err);
+    console.error("Promo code lookup failed during checkout:", err);
+    redirect("/checkout?promoError=1");
+  }
+
+  if (!link) {
+    redirect("/checkout?promoError=1");
+  }
+
+  await recordLinkClick(link.slug).catch((err) => {
+    console.error("Failed to record promo code click during checkout:", err);
+  });
+
+  const store = await cookies();
+  store.set(REF_COOKIE, link.ambassadorCode, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: REF_COOKIE_DAYS * 24 * 60 * 60,
+    path: "/",
+  });
+
+  redirect("/checkout?promoApplied=1");
+}
 
 export interface CheckoutResult {
   ok: boolean;

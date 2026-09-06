@@ -14,6 +14,7 @@ export default function AmbassadorTab({
   tier,
   origin,
   linkAdded,
+  linkDeleted,
   payoutSaved,
 }: {
   ambassador: Ambassador;
@@ -21,6 +22,7 @@ export default function AmbassadorTab({
   tier: TierDef;
   origin: string;
   linkAdded: boolean;
+  linkDeleted: boolean;
   payoutSaved: boolean;
 }) {
   return (
@@ -45,7 +47,13 @@ export default function AmbassadorTab({
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        <LinksManager code={ambassador.code} origin={origin} links={ambassador.links} added={linkAdded} />
+        <LinksManager
+          code={ambassador.code}
+          origin={origin}
+          links={ambassador.links}
+          added={linkAdded}
+          deleted={linkDeleted}
+        />
         <ResourcePack code={ambassador.code} />
       </div>
 

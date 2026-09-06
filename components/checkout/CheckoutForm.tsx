@@ -5,7 +5,7 @@ import Script from "next/script";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/components/cart/CartProvider";
 import { formatCents } from "@/lib/money";
-import { checkoutAction } from "@/app/checkout/actions";
+import { applyPromoCodeAction, checkoutAction } from "@/app/checkout/actions";
 import { accountSignOutAction, getAccountAction } from "@/app/account/actions";
 
 interface SquareCard {
@@ -33,7 +33,15 @@ const SQUARE_JS_SRC =
     ? "https://web.squarecdn.com/v1/square.js"
     : "https://sandbox.web.squarecdn.com/v1/square.js";
 
-export default function CheckoutForm({ ambassadorCode }: { ambassadorCode: string | null }) {
+export default function CheckoutForm({
+  ambassadorCode,
+  promoApplied,
+  promoError,
+}: {
+  ambassadorCode: string | null;
+  promoApplied?: boolean;
+  promoError?: boolean;
+}) {
   const { lines, totalCents, clear } = useCart();
   const router = useRouter();
   const cardRef = useRef<SquareCard | null>(null);
@@ -238,10 +246,38 @@ export default function CheckoutForm({ ambassadorCode }: { ambassadorCode: strin
           <span>Free</span>
         </div>
 
-        {ambassadorCode && (
-          <div className="text-flame-3 mt-2 flex justify-between text-sm">
-            <span>Ambassador discount (15%)</span>
-            <span>-{formatCents(discountCents)}</span>
+        {ambassadorCode ? (
+          <>
+            <div className="text-flame-3 mt-2 flex justify-between text-sm">
+              <span>Ambassador discount (15%)</span>
+              <span>-{formatCents(discountCents)}</span>
+            </div>
+            {promoApplied && <p className="text-flame-3 mt-1 text-xs">Promo code applied.</p>}
+          </>
+        ) : (
+          <div className="mt-4">
+            <form action={applyPromoCodeAction} className="flex gap-2">
+              <input
+                name="promoCode"
+                type="text"
+                placeholder="Promo code (optional)"
+                aria-label="Promo code"
+                className="flex-1 rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-flame-2"
+              />
+              <button
+                type="submit"
+                className="shrink-0 rounded-lg border border-border-strong px-4 py-2 text-sm font-medium transition-colors hover:bg-surface"
+              >
+                Apply
+              </button>
+            </form>
+            <p className="mt-2 text-xs text-muted">
+              Got an ambassador&apos;s code? Enter it here for 15% off — same discount as
+              following their link.
+            </p>
+            {promoError && (
+              <p className="text-flame-3 mt-2 text-xs">That promo code isn&apos;t valid.</p>
+            )}
           </div>
         )}
 

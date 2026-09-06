@@ -124,6 +124,16 @@ except the immersive home hub and `/pos`.
   `/shop`. Any purchase made while that cookie is present gets the 15%
   discount applied in Square and a 10% commission recorded for the
   ambassador — this is the real, working order-attribution loop, not a stub.
+- `/checkout`'s "Promo code" field is the exact same attribution path, not
+  a second system: every ambassador's auto-created "Default" link (see
+  `ensureDefaultLink`, [Backend Portal & permissions](#backend-portal--permissions))
+  already uses their own account code as its slug, so typing that code is
+  just an alternate way to hit `getLinkBySlug` and set the same
+  `whoa_ref` cookie (`applyPromoCodeAction`, `app/checkout/actions.ts`) —
+  same discount, same commission, and it counts as a real click on their
+  Default link too. Works for any of an ambassador's link slugs, not only
+  their account code. A code that doesn't match any link redirects back
+  with `?promoError=1` rather than silently charging full price.
 
 A seeded demo ambassador is available for exploring a populated portal:
 **code `WHOA-DEMO15`, password `whoa-demo-2026`**.
@@ -298,7 +308,15 @@ readability.
   [Square Customers matching](#square-customers-matching).
 - **Brand Ambassador** (`perm_ambassador`) — referral code/link, live
   stats, links manager, payouts. Granted automatically by `/apply`; a plain
-  `/login?mode=signup` account starts without it.
+  `/login?mode=signup` account starts without it. Either way, the moment
+  the permission is on, `ensureDefaultLink` (`lib/store.ts`) guarantees a
+  "Default" link (slug: the account's own code) exists — called from
+  `createAmbassador` for `/apply`'s day-one case and from
+  `updatePermissions` for an account promoted later from `/super-admin` —
+  so the Links section is never empty, waiting on the ambassador to add
+  one themselves. `LinksManager.tsx` also lets any link, including the
+  default one, be deleted (`deleteLinkAction`/`deleteLink`, scoped to the
+  session's own account both in the action and the query).
 - **Artist/Vendor** (`perm_vendor`) — sales/inventory scoped to whichever
   artist `vendor_slug` points at (see [migration 0004](#data-layer--auth)).
   Needs both the permission and a vendor slug set to show real data.

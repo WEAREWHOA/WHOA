@@ -4,6 +4,7 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import {
   createAmbassador,
   createLink,
+  deleteLink,
   deactivateAccount,
   getByCode,
   getByEmail,
@@ -124,6 +125,23 @@ export async function createLinkAction(formData: FormData) {
 
   await createLink(code, label);
   redirect(`/portal/${code}?linkAdded=1`);
+}
+
+export async function deleteLinkAction(formData: FormData) {
+  const code = String(formData.get("code") || "").trim();
+  const linkId = String(formData.get("linkId") || "").trim();
+
+  const sessionCode = await getSessionAmbassadorCode();
+  if (!sessionCode || sessionCode !== code) {
+    redirect("/login");
+  }
+
+  if (!linkId) {
+    redirect(`/portal/${code}?error=link`);
+  }
+
+  await deleteLink(code, linkId);
+  redirect(`/portal/${code}?linkDeleted=1`);
 }
 
 export async function updatePayoutAction(formData: FormData) {

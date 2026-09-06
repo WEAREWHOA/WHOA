@@ -3,7 +3,9 @@ import { getByCode } from "@/lib/store";
 import { REF_COOKIE } from "@/lib/attribution";
 import CheckoutForm from "@/components/checkout/CheckoutForm";
 
-export default async function CheckoutPage() {
+export default async function CheckoutPage(props: PageProps<"/checkout">) {
+  const searchParams = await props.searchParams;
+
   const store = await cookies();
   const refCode = store.get(REF_COOKIE)?.value;
   // A referral-lookup hiccup should never block checkout itself — worst
@@ -22,7 +24,11 @@ export default async function CheckoutPage() {
         Almost <span className="text-flame">there</span>
       </h1>
 
-      <CheckoutForm ambassadorCode={ambassador?.code ?? null} />
+      <CheckoutForm
+        ambassadorCode={ambassador?.code ?? null}
+        promoApplied={searchParams?.promoApplied === "1"}
+        promoError={searchParams?.promoError === "1"}
+      />
     </section>
   );
 }

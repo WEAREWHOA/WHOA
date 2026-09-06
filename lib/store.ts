@@ -157,6 +157,33 @@ async function generateLinkSlug(ambassadorCode: string, label: string): Promise<
   return candidate;
 }
 
+// Ensures an ambassador always has at least one trackable link the moment
+// the ambassador permission is on, instead of an empty Links section until
+// they think to add one themselves. createAmbassador covers the common
+// case (ambassador from day one, via /apply); updatePermissions calls this
+// too, for an account promoted to ambassador later from /super-admin,
+// which previously left it with zero links. A no-op if any link already
+// exists, so re-saving the same permission doesn't create duplicates.
+async function ensureDefaultLink(code: string): Promise<void> {
+  const supabase = getSupabase();
+
+  const { data, error: checkError } = await supabase
+    .from("links")
+    .select("id")
+    .eq("ambassador_code", code)
+    .limit(1);
+  if (checkError) throw new Error(`Failed to check existing links: ${checkError.message}`);
+  if (data && data.length > 0) return;
+
+  const { error } = await supabase.from("links").insert({
+    id: `link_${code.toLowerCase()}_default`,
+    ambassador_code: code,
+    label: "Default",
+    slug: code,
+  });
+  if (error) throw new Error(`Failed to create default link: ${error.message}`);
+}
+
 // Creates a backend-portal account. Despite the name, this is used for
 // every signup — a plain customer, not just an ambassador — so the
 // permissions below default to false and only /apply (the dedicated
@@ -196,16 +223,7 @@ export async function createAmbassador(input: {
   // Only ambassadors get a trackable referral link — a plain customer
   // account has no use for one.
   if (isAmbassador) {
-    const { error: linkError } = await supabase.from("links").insert({
-      id: `link_${code.toLowerCase()}_default`,
-      ambassador_code: code,
-      label: "Default",
-      slug: code,
-    });
-
-    if (linkError) {
-      throw new Error(`Failed to create default link: ${linkError.message}`);
-    }
+    await ensureDefaultLink(code);
   }
 
   const ambassador = await getByCode(code);
@@ -320,9 +338,14 @@ export async function updatePermissions(
 
   if (Object.keys(patch).length === 0) return;
 
-  const { error } = await getSupabase().from("ambassadors").update(patch).eq("code", code.trim().toUpperCase());
+  const normalizedCode = code.trim().toUpperCase();
+  const { error } = await getSupabase().from("ambassadors").update(patch).eq("code", normalizedCode);
 
   if (error) throw new Error(`Failed to update permissions: ${error.message}`);
+
+  if (updates.permissions?.ambassador === true) {
+    await ensureDefaultLink(normalizedCode);
+  }
 }
 
 export async function createLink(ambassadorCode: string, label: string): Promise<AmbassadorLink> {
@@ -348,6 +371,19 @@ export async function createLink(ambassadorCode: string, label: string): Promise
   }
 
   return mapLink(data as LinkRow);
+}
+
+// Scoped by ambassador_code as well as id — defense in depth so a bug in
+// the calling action's session check could never let one account delete
+// another's link, not just a UI-level restriction.
+export async function deleteLink(ambassadorCode: string, linkId: string): Promise<void> {
+  const { error } = await getSupabase()
+    .from("links")
+    .delete()
+    .eq("id", linkId)
+    .eq("ambassador_code", ambassadorCode);
+
+  if (error) throw new Error(`Failed to delete link: ${error.message}`);
 }
 
 export async function getLinkBySlug(

@@ -83,6 +83,7 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
   const isNew = searchParams?.new === "1";
   const payoutSaved = searchParams?.saved === "1";
   const linkAdded = searchParams?.linkAdded === "1";
+  const linkDeleted = searchParams?.linkDeleted === "1";
   const settingsSaved = searchParams?.settingsSaved === "1";
   const passwordChanged = searchParams?.passwordChanged === "1";
   const settingsError =
@@ -146,6 +147,7 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
             tier={tier}
             origin={origin}
             linkAdded={linkAdded}
+            linkDeleted={linkDeleted}
             payoutSaved={payoutSaved}
           />
         }
