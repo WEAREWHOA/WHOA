@@ -24,13 +24,22 @@ interface Star {
   parallax: number;
 }
 
+// Nebulae, not a backdrop wash. Kept small relative to the viewport and far
+// apart, with plenty of untouched black between them — the earlier version
+// used radii near half the screen at high alpha, which lit every pixel and
+// left the page reading as a colour gradient rather than as space.
 const BLOBS: Blob[] = [
-  { baseXFrac: 0.2, baseYFrac: 0.25, radius: 420, hue: 320, hueSpeed: 6, driftSpeed: 0.6, driftAmount: 60, phase: 0, parallax: 40 },
-  { baseXFrac: 0.8, baseYFrac: 0.2, radius: 380, hue: 265, hueSpeed: 8, driftSpeed: 0.5, driftAmount: 70, phase: 1.4, parallax: -30 },
-  { baseXFrac: 0.75, baseYFrac: 0.75, radius: 460, hue: 85, hueSpeed: 5, driftSpeed: 0.4, driftAmount: 50, phase: 2.6, parallax: 50 },
-  { baseXFrac: 0.25, baseYFrac: 0.78, radius: 400, hue: 190, hueSpeed: 7, driftSpeed: 0.55, driftAmount: 65, phase: 3.8, parallax: -45 },
-  { baseXFrac: 0.5, baseYFrac: 0.5, radius: 340, hue: 40, hueSpeed: 9, driftSpeed: 0.7, driftAmount: 45, phase: 5.1, parallax: 25 },
+  { baseXFrac: 0.16, baseYFrac: 0.2, radius: 260, hue: 320, hueSpeed: 6, driftSpeed: 0.6, driftAmount: 60, phase: 0, parallax: 40 },
+  { baseXFrac: 0.86, baseYFrac: 0.14, radius: 220, hue: 265, hueSpeed: 8, driftSpeed: 0.5, driftAmount: 70, phase: 1.4, parallax: -30 },
+  { baseXFrac: 0.84, baseYFrac: 0.82, radius: 280, hue: 85, hueSpeed: 5, driftSpeed: 0.4, driftAmount: 50, phase: 2.6, parallax: 50 },
+  { baseXFrac: 0.18, baseYFrac: 0.85, radius: 240, hue: 190, hueSpeed: 7, driftSpeed: 0.55, driftAmount: 65, phase: 3.8, parallax: -45 },
 ];
+
+// How bright a nebula gets at its core. Low enough that the black underneath
+// still shows through it, so the colour reads as gas rather than paint.
+const BLOB_ALPHA = 0.42;
+
+const SPACE_BLACK = "#01000a";
 
 function makeStars(count: number): Star[] {
   const stars: Star[] = [];
@@ -49,7 +58,9 @@ function makeStars(count: number): Star[] {
   return stars;
 }
 
-const STARS = makeStars(140);
+// A dense field, because black space with only a scattering of dots reads
+// as an empty background rather than as a sky.
+const STARS = makeStars(320);
 
 export default function PsychedelicBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -103,7 +114,7 @@ export default function PsychedelicBackground() {
       const t = time / 1000;
 
       ctx!.clearRect(0, 0, width, height);
-      ctx!.fillStyle = "#0a0116";
+      ctx!.fillStyle = SPACE_BLACK;
       ctx!.fillRect(0, 0, width, height);
 
       ctx!.filter = "none";
@@ -127,7 +138,7 @@ export default function PsychedelicBackground() {
         const hue = (blob.hue + t * blob.hueSpeed) % 360;
 
         const gradient = ctx!.createRadialGradient(x, y, 0, x, y, blob.radius);
-        gradient.addColorStop(0, `hsla(${hue}, 95%, 60%, 0.85)`);
+        gradient.addColorStop(0, `hsla(${hue}, 95%, 60%, ${BLOB_ALPHA})`);
         gradient.addColorStop(1, `hsla(${hue}, 95%, 60%, 0)`);
 
         ctx!.fillStyle = gradient;
@@ -135,6 +146,23 @@ export default function PsychedelicBackground() {
         ctx!.arc(x, y, blob.radius, 0, Math.PI * 2);
         ctx!.fill();
       }
+
+      // Vignette last, over everything, so the frame falls off to true black
+      // at the edges instead of a nebula running off the side of the screen.
+      ctx!.filter = "none";
+      ctx!.globalCompositeOperation = "source-over";
+      const vignette = ctx!.createRadialGradient(
+        width / 2,
+        height / 2,
+        Math.min(width, height) * 0.28,
+        width / 2,
+        height / 2,
+        Math.max(width, height) * 0.75,
+      );
+      vignette.addColorStop(0, "rgba(1, 0, 10, 0)");
+      vignette.addColorStop(1, "rgba(1, 0, 10, 0.92)");
+      ctx!.fillStyle = vignette;
+      ctx!.fillRect(0, 0, width, height);
 
       if (!reduceMotion) {
         raf = requestAnimationFrame(draw);
@@ -158,7 +186,7 @@ export default function PsychedelicBackground() {
     <canvas
       ref={canvasRef}
       aria-hidden
-      className="pointer-events-none fixed inset-0 -z-10 h-full w-full bg-[#0a0116]"
+      className="pointer-events-none fixed inset-0 -z-10 h-full w-full bg-[#01000a]"
     />
   );
 }

@@ -5,23 +5,26 @@ import { useEffect, useRef } from "react";
 
 interface Planet {
   label: string;
-  caption: string;
   href: string;
   accent: string;
-  /** Diameter of the planet body in px. */
-  size: number;
+  /**
+   * Diameter as a fraction of `--whoa-planet` (set on the container below).
+   * Relative rather than absolute so every planet grows and shrinks with the
+   * viewport together, keeping the size pecking order intact.
+   */
+  scale: number;
 }
 
 // The whole homepage, deliberately: six places a customer actually needs.
 // Everything else (games, the register, the backend portal) lives one level
 // in, off the pages below — the hub stays a hub rather than a directory.
 const PLANETS: Planet[] = [
-  { label: "SHOP WHOADEGA", caption: "The store", href: "/shop", accent: "#29e6ff", size: 30 },
-  { label: "EVENTS", caption: "What's coming up", href: "/events", accent: "#ff8a29", size: 24 },
-  { label: "ART COLLECTIVE", caption: "The artists", href: "/art-collective", accent: "#fff229", size: 26 },
-  { label: "MUSIC COLLECTIVE", caption: "The sound", href: "/music-collective", accent: "#baff29", size: 26 },
-  { label: "JOIN", caption: "Be part of it", href: "/join", accent: "#ff2fb0", size: 22 },
-  { label: "ABOUT", caption: "Who we are", href: "/about", accent: "#b829ff", size: 22 },
+  { label: "SHOP WHOADEGA", href: "/shop", accent: "#29e6ff", scale: 1 },
+  { label: "EVENTS", href: "/events", accent: "#ff8a29", scale: 0.82 },
+  { label: "ART COLLECTIVE", href: "/art-collective", accent: "#fff229", scale: 0.88 },
+  { label: "MUSIC COLLECTIVE", href: "/music-collective", accent: "#baff29", scale: 0.88 },
+  { label: "JOIN", href: "/join", accent: "#ff2fb0", scale: 0.76 },
+  { label: "ABOUT", href: "/about", accent: "#b829ff", scale: 0.76 },
 ];
 
 // One shared angular velocity for every planet, so the angular gap between
@@ -31,22 +34,29 @@ const ANGULAR_SPEED = 0.000022;
 
 const DEFAULT_SIZE = { width: 1200, height: 800 };
 const DEFAULT_SUN_RADIUS = 110;
+const DEFAULT_PLANET_RADIUS = 36;
 
 /**
  * Room a planet's own label needs around it, plus how far the innermost
  * orbit sits off the sun. A phone gets tighter numbers because its labels
- * wrap to two narrow lines (see `max-w-[86px]` below) instead of running on
- * one long line — without that the outermost orbit would have to hug the
- * middle of the screen to keep "MUSIC COLLECTIVE" from clipping off the edge.
+ * wrap to two narrow lines (see `max-w` below) instead of running on one
+ * long line — without that the outermost orbit would have to hug the middle
+ * of the screen to keep "MUSIC COLLECTIVE" from clipping off the edge.
  */
 function metrics(width: number) {
   const compact = width < 640;
   return {
-    labelMarginX: compact ? 56 : 100,
-    labelMarginY: compact ? 62 : 64,
+    // Half a label's width, near enough — this is the clearance the
+    // outermost orbit leaves so a label centred under its planet still
+    // lands inside the viewport instead of running off the edge.
+    labelMarginX: compact ? 56 : 120,
+    labelMarginY: compact ? 60 : 78,
     // Enough that a label sitting between its planet and the sun still
-    // clears the sun's outer glow, not just its disc.
-    sunGap: compact ? 74 : 96,
+    // clears the sun's outer glow, not just its disc. A phone gets a
+    // smaller gap because 195px of half-screen has to hold the sun, the
+    // gap, the planet and its label — a desktop-sized gap would push the
+    // innermost orbit past the edge and take every label with it.
+    sunGap: compact ? 44 : 96,
   };
 }
 
@@ -55,12 +65,16 @@ function metrics(width: number) {
  * viewport actually has, rather than using fixed radii that would overflow a
  * phone or huddle in the middle of a desktop. X and Y are solved separately,
  * so a tall narrow screen simply gets tall narrow ellipses.
+ *
+ * `planetRadius` is measured rather than assumed so that resizing the planets
+ * pushes the orbits out to match, instead of walking them into the sun at one
+ * end and off the screen edge at the other.
  */
-function orbitRadii(size: { width: number; height: number }, sunRadius: number) {
+function orbitRadii(size: { width: number; height: number }, sunRadius: number, planetRadius: number) {
   const { labelMarginX, labelMarginY, sunGap } = metrics(size.width);
-  const innermost = sunRadius + sunGap;
-  const maxX = Math.max(innermost, size.width / 2 - labelMarginX);
-  const maxY = Math.max(innermost, size.height / 2 - labelMarginY);
+  const innermost = sunRadius + sunGap + planetRadius;
+  const maxX = Math.max(innermost, size.width / 2 - labelMarginX - planetRadius);
+  const maxY = Math.max(innermost, size.height / 2 - labelMarginY - planetRadius);
   const last = Math.max(1, PLANETS.length - 1);
 
   return PLANETS.map((_, i) => ({
@@ -82,15 +96,23 @@ export default function SolarSystem() {
 
     let size = DEFAULT_SIZE;
     let sunRadius = DEFAULT_SUN_RADIUS;
+    let planetRadius = DEFAULT_PLANET_RADIUS;
 
     function measure() {
       const rect = container!.getBoundingClientRect();
       size = { width: rect.width, height: rect.height };
       if (sunRef.current) sunRadius = sunRef.current.getBoundingClientRect().width / 2;
 
+      // Every planet wrapper is sized to its own body, so the widest one is
+      // the clearance the outermost orbit has to leave at the screen edge.
+      planetRadius = planetRefs.current.reduce((widest, el) => {
+        if (!el) return widest;
+        return Math.max(widest, el.getBoundingClientRect().width / 2);
+      }, 0) || DEFAULT_PLANET_RADIUS;
+
       // Rings only change with the viewport, so they're sized here rather
       // than every frame alongside the planets.
-      const radii = orbitRadii(size, sunRadius);
+      const radii = orbitRadii(size, sunRadius, planetRadius);
       radii.forEach(({ radiusX, radiusY }, i) => {
         const ring = ringRefs.current[i];
         if (!ring) return;
@@ -100,7 +122,7 @@ export default function SolarSystem() {
     }
 
     function place(t: number) {
-      const radii = orbitRadii(size, sunRadius);
+      const radii = orbitRadii(size, sunRadius, planetRadius);
       PLANETS.forEach((_, i) => {
         const el = planetRefs.current[i];
         if (!el) return;
@@ -134,7 +156,11 @@ export default function SolarSystem() {
   }, []);
 
   return (
-    <div ref={containerRef} className="absolute inset-0">
+    <div
+      ref={containerRef}
+      className="absolute inset-0"
+      style={{ ["--whoa-planet" as string]: "clamp(44px, 7.5vw, 72px)" }}
+    >
       {/* Orbit paths. Purely decorative — the planets themselves are the
           links, so these never take a tap that was meant for a planet. */}
       {PLANETS.map((planet, i) => (
@@ -152,7 +178,7 @@ export default function SolarSystem() {
       <div
         ref={sunRef}
         className="whoa-sphere absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full"
-        style={{ width: "clamp(120px, 22vw, 220px)", height: "clamp(120px, 22vw, 220px)" }}
+        style={{ width: "clamp(104px, 22vw, 220px)", height: "clamp(104px, 22vw, 220px)" }}
       >
         <div className="whoa-sphere-spin absolute inset-0 rounded-full" aria-hidden />
         {/* A star, not a planet — lit from the middle out, where
@@ -160,10 +186,13 @@ export default function SolarSystem() {
         <div className="whoa-sun-core absolute inset-0 rounded-full" aria-hidden />
 
         <div className="relative z-10 flex w-[82%] flex-col items-center text-center">
-          <h1 className="font-display text-4xl leading-[0.9] tracking-wide text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.75)] sm:text-5xl">
+          {/* Sized off the same viewport width the sun itself is clamped
+              to, so the wordmark scales with the disc instead of spilling
+              out of it once the sun shrinks on a phone. */}
+          <h1 className="font-display leading-[0.9] tracking-wide whitespace-nowrap text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.75)] text-[clamp(1.6rem,5.5vw,3rem)]">
             WHOA.
           </h1>
-          <p className="mt-1.5 text-[0.55rem] leading-tight font-semibold tracking-[0.18em] text-white/85 uppercase sm:text-[0.65rem]">
+          <p className="mt-1.5 leading-tight font-semibold tracking-[0.18em] whitespace-nowrap text-white/85 uppercase text-[clamp(0.4rem,1.2vw,0.65rem)]">
             Pick a planet
           </p>
         </div>
@@ -176,6 +205,7 @@ export default function SolarSystem() {
             planetRefs.current[i] = el;
           }}
           className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+          style={{ width: `calc(var(--whoa-planet) * ${planet.scale})` }}
         >
           {/* The link's own box is just the planet body, so the body lands
               exactly on its orbit ring; the label hangs off it absolutely,
@@ -183,14 +213,13 @@ export default function SolarSystem() {
               without pulling the body off the ring to make room for itself. */}
           <Link
             href={planet.href}
-            className="pointer-events-auto group relative flex items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-8 focus-visible:outline-white"
-            style={{ width: planet.size, height: planet.size }}
+            className="pointer-events-auto group relative block aspect-square w-full rounded-full focus-visible:outline-2 focus-visible:outline-offset-8 focus-visible:outline-white"
           >
             <span
-              className="block h-full w-full rounded-full transition-transform duration-300 group-hover:scale-125"
+              className="block h-full w-full rounded-full transition-transform duration-300 group-hover:scale-110"
               style={{
                 background: `radial-gradient(circle at 32% 28%, #ffffff, ${planet.accent} 58%, ${planet.accent}44)`,
-                boxShadow: `0 0 22px -2px ${planet.accent}, 0 0 44px -8px ${planet.accent}`,
+                boxShadow: `0 0 30px -2px ${planet.accent}, 0 0 60px -10px ${planet.accent}`,
               }}
               aria-hidden
             />
@@ -199,16 +228,11 @@ export default function SolarSystem() {
                 `sm` up — a long label like "MUSIC COLLECTIVE" would otherwise
                 need more horizontal room than a 390px screen has to spare at
                 the outer edge of its orbit. */}
-            <span className="absolute top-full left-1/2 mt-1.5 flex w-[86px] -translate-x-1/2 flex-col items-center text-center sm:w-auto">
-              <span
-                className="font-display text-[0.7rem] leading-[1.1] tracking-[0.12em] sm:text-sm sm:whitespace-nowrap"
-                style={{ color: planet.accent, textShadow: "0 2px 12px rgba(0,0,0,0.95)" }}
-              >
-                {planet.label}
-              </span>
-              <span className="mt-1 text-[0.55rem] leading-[1.1] text-white/60 sm:text-[0.65rem] sm:whitespace-nowrap">
-                {planet.caption}
-              </span>
+            <span
+              className="font-display absolute top-full left-1/2 mt-2 block w-[104px] -translate-x-1/2 text-center text-[0.8rem] leading-[1.15] tracking-[0.12em] sm:w-auto sm:text-xl sm:whitespace-nowrap"
+              style={{ color: planet.accent, textShadow: "0 2px 12px rgba(0,0,0,0.95)" }}
+            >
+              {planet.label}
             </span>
           </Link>
         </div>
