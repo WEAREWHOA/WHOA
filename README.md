@@ -110,7 +110,11 @@ no 3D library, nothing new in `package.json`.
   the same viewport width, so it scales with the disc instead of spilling
   out of it once the sun shrinks.
 - **Labels only, no taglines.** A planet is a destination, not a card — the
-  one-word-per-planet label is the whole affordance.
+  label is the whole affordance.
+- **The sun is a link too**, pointing at `/shop` (`SUN_HREF`). It's the
+  biggest thing on the page and sits where a thumb naturally lands, so the
+  middle should never be a dead spot; the Shop WHOADEGA planet points at
+  the same place for anyone reading the page as a set of labelled orbits.
 - `prefers-reduced-motion: reduce` skips the `requestAnimationFrame` loop
   entirely and places the planets once, so the page is fully usable (and
   screenshot-stable) without any movement.
@@ -144,8 +148,8 @@ gradient rather than as space.
 
 - `/` — the home page: a solar system (`components/home/SolarSystem.tsx`)
   with WHOA as the sun and exactly six planets orbiting it — Shop
-  WHOADEGA, Events, Art Collective, Music Collective, Join, About. See
-  [Home page](#home-page).
+  WHOADEGA, Events, Art Collective, Music Collective, Join, About. The sun
+  itself links to `/shop`. See [Home page](#home-page).
 - `/join` — "Join the Community" hub tying together the ambassador
   program, events, the art/music collectives, and pop ups/retail
 - `/about` — hub: story, mission, partnerships, contact, and legal/info

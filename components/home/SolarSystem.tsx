@@ -32,6 +32,11 @@ const PLANETS: Planet[] = [
 // into each other, whatever radius each one lands on.
 const ANGULAR_SPEED = 0.000022;
 
+// Where the sun itself points. Deliberately the same destination as the
+// Shop Whoadega planet — the middle of the page is the biggest target on
+// it, and the shop is where most visitors are heading.
+const SUN_HREF = "/shop";
+
 const DEFAULT_SIZE = { width: 1200, height: 800 };
 const DEFAULT_SUN_RADIUS = 110;
 const DEFAULT_PLANET_RADIUS = 36;
@@ -85,7 +90,7 @@ function orbitRadii(size: { width: number; height: number }, sunRadius: number, 
 
 export default function SolarSystem() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const sunRef = useRef<HTMLDivElement>(null);
+  const sunRef = useRef<HTMLAnchorElement>(null);
   const planetRefs = useRef<(HTMLDivElement | null)[]>([]);
   const ringRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -175,28 +180,29 @@ export default function SolarSystem() {
         />
       ))}
 
-      <div
+      {/* The sun is the shop — it's the biggest thing on the page and the
+          most common destination, so tapping the middle should never be a
+          dead spot. The Shop Whoadega planet points at the same place for
+          anyone reading the page as a set of labelled orbits. */}
+      <Link
         ref={sunRef}
-        className="whoa-sphere absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full"
+        href={SUN_HREF}
+        aria-label="WHOA — shop the WHOADEGA"
+        className="whoa-sphere group absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-8 focus-visible:outline-white"
         style={{ width: "clamp(104px, 22vw, 220px)", height: "clamp(104px, 22vw, 220px)" }}
       >
-        <div className="whoa-sphere-spin absolute inset-0 rounded-full" aria-hidden />
+        <span className="whoa-sphere-spin absolute inset-0 rounded-full" aria-hidden />
         {/* A star, not a planet — lit from the middle out, where
             .whoa-sphere-shade would light it from one side like a moon. */}
-        <div className="whoa-sun-core absolute inset-0 rounded-full" aria-hidden />
+        <span className="whoa-sun-core absolute inset-0 rounded-full" aria-hidden />
 
-        <div className="relative z-10 flex w-[82%] flex-col items-center text-center">
-          {/* Sized off the same viewport width the sun itself is clamped
-              to, so the wordmark scales with the disc instead of spilling
-              out of it once the sun shrinks on a phone. */}
-          <h1 className="font-display leading-[0.9] tracking-wide whitespace-nowrap text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.75)] text-[clamp(1.6rem,5.5vw,3rem)]">
-            WHOA.
-          </h1>
-          <p className="mt-1.5 leading-tight font-semibold tracking-[0.18em] whitespace-nowrap text-white/85 uppercase text-[clamp(0.4rem,1.2vw,0.65rem)]">
-            Pick a planet
-          </p>
-        </div>
-      </div>
+        {/* Sized off the same viewport width the sun itself is clamped to,
+            so the wordmark scales with the disc instead of spilling out of
+            it once the sun shrinks on a phone. */}
+        <h1 className="font-display relative z-10 leading-[0.9] tracking-wide whitespace-nowrap text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.75)] transition-transform duration-300 group-hover:scale-105 text-[clamp(1.6rem,5.5vw,3rem)]">
+          WHOA.
+        </h1>
+      </Link>
 
       {PLANETS.map((planet, i) => (
         <div
