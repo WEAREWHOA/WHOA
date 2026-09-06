@@ -23,6 +23,7 @@ export async function updateAccountPermissionsAction(formData: FormData) {
     },
     isSuperAdmin: formData.get("is_super_admin") === "on",
     vendorSlug: String(formData.get("vendor_slug") || "").trim(),
+    squareCustomerId: String(formData.get("square_customer_id") || "").trim(),
   });
 
   redirect(`/super-admin/${code}?saved=1`);

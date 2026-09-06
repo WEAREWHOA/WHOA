@@ -118,6 +118,27 @@ export default async function SuperAdminAccountPage(props: PageProps<"/super-adm
           />
         </div>
 
+        <div>
+          <label htmlFor="square_customer_id" className="text-sm font-medium">
+            Square customer ID
+          </label>
+          <p className="mt-1 text-xs text-muted">
+            Which Square profile the Customer tab reads purchase history from. Left empty, it&apos;s
+            filled in automatically from this account&apos;s email on their next portal load. Set it
+            by hand when that picks the wrong profile — someone who works the register has a POS
+            profile under the same email, and its orders are the sales they rang up for other
+            people, not their own shopping. Clear it to start over.
+          </p>
+          <input
+            id="square_customer_id"
+            name="square_customer_id"
+            type="text"
+            defaultValue={account.squareCustomerId ?? ""}
+            placeholder="auto-linked by email if left empty"
+            className="font-mono-code mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
+          />
+        </div>
+
         <label className="border-flame-1/40 bg-flame-1/10 flex items-start gap-3 rounded-xl border p-4">
           <input
             type="checkbox"
