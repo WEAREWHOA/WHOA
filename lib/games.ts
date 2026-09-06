@@ -16,6 +16,14 @@ export interface GameTile {
 // dashboard's Music tab, etc.) until each one actually ships.
 export const GAME_TILES: GameTile[] = [
   {
+    id: "incoming",
+    title: "WHOA Incoming",
+    tagline: "45 seconds, one ship, a sky full of incoming. Beat your best.",
+    accent: "#ff7a00",
+    href: "/games/incoming",
+    status: "live",
+  },
+  {
     id: "snake",
     title: "WHOA Snake",
     tagline: "A paint line eating 1-of-1 drops. Beat the score, unlock a code.",

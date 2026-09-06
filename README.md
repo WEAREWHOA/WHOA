@@ -22,7 +22,7 @@ Super Admin has granted them. See
 
 An Etsy-app-inspired shell: a persistent 5-tab nav (Events / Join / Shop /
 You / About) rendered two ways depending on viewport, on every page
-except the immersive home hub and `/pos`.
+except the full-bleed home page and `/pos`.
 
 - `components/BottomNav.tsx` — a fixed bottom tab bar, mobile only
   (`md:hidden`), safe-area-aware (`env(safe-area-inset-bottom)`) for iOS
@@ -65,6 +65,42 @@ except the immersive home hub and `/pos`.
   statically rendered instead of opting into dynamic rendering for one
   query param) to support deep links like the Pop Ups & Retail tile.
 
+## Home page
+
+`/` is a solar system, not a landing page: WHOA is the sun, and six
+planets orbit it — **Shop WHOADEGA**, **Events**, **Art Collective**,
+**Music Collective**, **Join**, **About**. That's the entire home page on
+purpose. Everything else the site can do (games, the register, the
+backend portal, the adventure) lives one level in, off those six pages, so
+the hub stays a hub rather than a directory of links.
+
+It's plain DOM and CSS in `components/home/SolarSystem.tsx` — no canvas,
+no 3D library, nothing new in `package.json`.
+
+- **Orbits are computed from the viewport, not hard-coded.** `orbitRadii()`
+  spreads six rings evenly between the sun's edge and whatever room the
+  screen actually has, solving X and Y separately — so a phone gets tall
+  narrow ellipses and a wide monitor gets wide flat ones, instead of fixed
+  radii that would overflow one and huddle in the middle of the other.
+  `metrics()` supplies tighter label margins below `640px`.
+- **Planets can't collide.** Every planet shares one `ANGULAR_SPEED` and
+  starts at its own angle around the dial, so the angular gap between any
+  two never changes — they drift as a formation, whatever radius each one
+  lands on. The drift is slow enough (`0.000022 rad/ms`, ~4.8 minutes per
+  lap) that a small dot is never a moving target for a cursor or a thumb.
+- **The label hangs off the link, and the link is just the dot.** The `<a>`
+  is sized to the planet body alone so the body sits exactly on its ring;
+  the label is absolutely positioned beneath it, still inside the same `<a>`
+  and so still part of the same tap target. Sizing the link to include the
+  label instead would push every body off its own orbit to make room.
+  Watch out here: Tailwind v4 compiles `-translate-x-1/2` to the standalone
+  `translate` property, which *composes with* the inline `transform` the
+  animation loop writes each frame rather than replacing it — a centering
+  utility on an element the loop positions shifts it a second time.
+- `prefers-reduced-motion: reduce` skips the `requestAnimationFrame` loop
+  entirely and places the planets once, so the page is fully usable (and
+  screenshot-stable) without any movement.
+
 ## Routes
 
 **Storefront**
@@ -84,7 +120,10 @@ except the immersive home hub and `/pos`.
 
 **Backend Portal**
 
-- `/` — marketing landing page: hero, how-it-works, tiers, portal preview, FAQ, apply CTA
+- `/` — the home page: a solar system (`components/home/SolarSystem.tsx`)
+  with WHOA as the sun and exactly six planets orbiting it — Shop
+  WHOADEGA, Events, Art Collective, Music Collective, Join, About. See
+  [Home page](#home-page).
 - `/join` — "Join the Community" hub tying together the ambassador
   program, events, the art/music collectives, and pop ups/retail
 - `/about` — hub: story, mission, partnerships, contact, and legal/info
@@ -958,9 +997,17 @@ slug is the artist's URL slug from `/art-collective/<slug>`.
 
 `/games` — a hub of small in-store/online games, built incrementally.
 `lib/games.ts` lists every tile; a tile without an `href` is a real planned
-build marked "Coming soon," not a dead link. Also reachable from the
-homepage orbit (`components/home/OrbitField.tsx`, the "WHOA GAMES" stop).
+build marked "Coming soon," not a dead link. The home page deliberately
+doesn't link here — games live one level in, off `/join` and the footer,
+so the six planets stay the six things a customer actually came for.
 
+- **WHOA Incoming** (`components/games/incoming/IncomingGame.tsx`) — a
+  45-second canvas shooter: drag (or arrow keys / WASD + space) to fly the
+  ship, dodge what's falling, and shoot it down. Best score is kept in
+  `localStorage` under `whoa_incoming_best_score`. This was the temporary
+  "stay tuned" splash that stood in for the home page before launch; the
+  splash is gone and the game moved here intact, so nothing was thrown
+  away when the real home page landed.
 - **WHOA Snake** (`components/games/snake/`) — a canvas Snake game where
   the trail is a flame gradient and the food is a "1-of-1 drop." Reaching
   a score threshold reveals a discount code, shown as something to tell
