@@ -82,12 +82,18 @@ no 3D library, nothing new in `package.json`.
   screen actually has, solving X and Y separately — so a phone gets tall
   narrow ellipses and a wide monitor gets wide flat ones, instead of fixed
   radii that would overflow one and huddle in the middle of the other.
-  `metrics()` supplies tighter label margins below `640px`.
+  Both the sun's radius and the widest planet's radius are *measured* and
+  subtracted, so resizing either one moves the orbits to match rather than
+  walking planets into the sun at one end and off the screen at the other.
+  `metrics()` supplies tighter margins below `640px`: a phone's 195px of
+  half-screen has to hold the sun, the gap, the planet and its label, so a
+  desktop-sized `sunGap` there would push the innermost orbit past the edge
+  and take every label with it.
 - **Planets can't collide.** Every planet shares one `ANGULAR_SPEED` and
   starts at its own angle around the dial, so the angular gap between any
   two never changes — they drift as a formation, whatever radius each one
   lands on. The drift is slow enough (`0.000022 rad/ms`, ~4.8 minutes per
-  lap) that a small dot is never a moving target for a cursor or a thumb.
+  lap) that a planet is never a moving target for a cursor or a thumb.
 - **The label hangs off the link, and the link is just the dot.** The `<a>`
   is sized to the planet body alone so the body sits exactly on its ring;
   the label is absolutely positioned beneath it, still inside the same `<a>`
@@ -97,9 +103,25 @@ no 3D library, nothing new in `package.json`.
   `translate` property, which *composes with* the inline `transform` the
   animation loop writes each frame rather than replacing it — a centering
   utility on an element the loop positions shifts it a second time.
+- **Planets are sized in one place.** Each one carries a `scale` against a
+  single `--whoa-planet: clamp(44px, 7.5vw, 72px)` on the container, so the
+  whole set grows and shrinks together (44px on a phone, 72px on a desktop)
+  and keeps its size pecking order. The sun's own wordmark is clamped off
+  the same viewport width, so it scales with the disc instead of spilling
+  out of it once the sun shrinks.
+- **Labels only, no taglines.** A planet is a destination, not a card — the
+  one-word-per-planet label is the whole affordance.
 - `prefers-reduced-motion: reduce` skips the `requestAnimationFrame` loop
   entirely and places the planets once, so the page is fully usable (and
   screenshot-stable) without any movement.
+
+The backdrop is `components/home/PsychedelicBackground.tsx`, a canvas of
+drifting hue-cycling nebulae over a dense twinkling star field, vignetted
+to true black at the edges. The nebulae are deliberately small relative to
+the viewport and pushed out to the corners, at an alpha low enough that the
+black shows through them — an earlier pass used radii near half the screen
+at high alpha, which lit every pixel and made the page read as a colour
+gradient rather than as space.
 
 ## Routes
 
