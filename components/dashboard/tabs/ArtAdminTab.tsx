@@ -1,4 +1,5 @@
 import { formatCents } from "@/lib/money";
+import { ART_SIZES, totalSizeStock } from "@/lib/artCollective";
 import type { ArtProduct, PendingArtBatch } from "@/lib/artCollective";
 import {
   reviewArtBatchAction,
@@ -21,6 +22,17 @@ function ProductRow({ product }: { product: PendingArtBatch["products"][number] 
             {product.size ? ` · ${product.size}` : ""} ·{" "}
             {product.alsoRetailEvents ? "Retail + events" : "Online store only"}
           </p>
+          {/* Approving a size run creates one Square variation per size and
+              sets its stock, so the counts are part of what's being
+              approved, not an afterthought. */}
+          {totalSizeStock(product.sizeStock) > 0 && (
+            <p className="mt-1 text-xs text-muted">
+              {ART_SIZES.filter((size) => (product.sizeStock[size] ?? 0) > 0)
+                .map((size) => `${size} ×${product.sizeStock[size]}`)
+                .join("  ·  ")}{" "}
+              ({totalSizeStock(product.sizeStock)} total)
+            </p>
+          )}
         </div>
       </div>
       <div className="flex shrink-0 gap-2">

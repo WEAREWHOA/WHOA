@@ -3,6 +3,7 @@ import { formatCents } from "@/lib/money";
 import ArtProductRequest from "@/components/dashboard/tabs/ArtProductRequest";
 import { saveArtProfileAction } from "@/lib/actions";
 import ArtProductSubmitForm from "@/components/artCollective/ArtProductSubmitForm";
+import { ART_SIZES, totalSizeStock } from "@/lib/artCollective";
 import type { ArtInventoryItem, ArtProduct, ArtProfile, ArtStats } from "@/lib/artCollective";
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -297,7 +298,17 @@ export default function ArtTab({
                     <p className="text-xs text-muted">
                       {formatCents(product.priceCents)}
                       {product.size ? ` · ${product.size}` : ""}
+                      {totalSizeStock(product.sizeStock) > 0
+                        ? ` · ${totalSizeStock(product.sizeStock)} in stock`
+                        : ""}
                     </p>
+                    {totalSizeStock(product.sizeStock) > 0 && (
+                      <p className="mt-1 text-xs text-muted">
+                        {ART_SIZES.filter((size) => (product.sizeStock[size] ?? 0) > 0)
+                          .map((size) => `${size} ×${product.sizeStock[size]}`)
+                          .join("  ·  ")}
+                      </p>
+                    )}
                   </div>
                   <span
                     className={`rounded-full px-3 py-1 text-xs font-semibold tracking-wide uppercase ${

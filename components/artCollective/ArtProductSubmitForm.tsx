@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { submitArtProductsAction } from "@/lib/actions";
+import { ART_SIZES } from "@/lib/artCollective";
 
 const MAX_PRODUCTS = 5;
 
@@ -45,12 +46,13 @@ export default function ArtProductSubmitForm({ code }: { code: string }) {
             </div>
             <div>
               <label htmlFor={`product-${i}-size`} className="text-xs text-muted">
-                Size <span className="text-muted">(optional)</span>
+                One-size label <span className="text-muted">(optional)</span>
               </label>
               <input
                 id={`product-${i}-size`}
                 name={`product-${i}-size`}
                 type="text"
+                placeholder="e.g. 18×24in, One size"
                 className="mt-1 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-2.5 text-sm outline-none focus:border-flame-2"
               />
             </div>
@@ -68,6 +70,38 @@ export default function ArtProductSubmitForm({ code }: { code: string }) {
               />
             </div>
           </div>
+
+          {/* A size run: one row per size, quantity in hand. Left blank
+              entirely, the product is treated as a single item described by
+              the one-size label above — an artist selling one painting
+              shouldn't have to think in S/M/L. Anything filled in here
+              becomes a real Square variation with its own stock count, so
+              sizes sell out individually instead of the whole listing
+              going at once. */}
+          <fieldset className="mt-4 rounded-xl border border-border p-3">
+            <legend className="px-1 text-xs text-muted">
+              Sizes &amp; stock <span className="text-muted">(leave blank if it&apos;s one item)</span>
+            </legend>
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-7">
+              {ART_SIZES.map((size) => (
+                <label key={size} className="flex flex-col items-center gap-1">
+                  <span className="text-[0.7rem] font-semibold tracking-wide text-muted uppercase">
+                    {size}
+                  </span>
+                  <input
+                    name={`product-${i}-stock-${size}`}
+                    type="number"
+                    min="0"
+                    step="1"
+                    inputMode="numeric"
+                    placeholder="0"
+                    aria-label={`Quantity in size ${size}`}
+                    className="w-full rounded-lg border border-border-strong bg-surface-raised px-2 py-2 text-center text-sm outline-none focus:border-flame-2"
+                  />
+                </label>
+              ))}
+            </div>
+          </fieldset>
 
           <div className="mt-3">
             <label htmlFor={`product-${i}-description`} className="text-xs text-muted">

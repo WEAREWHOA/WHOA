@@ -19,6 +19,7 @@ import { EVENTS } from "./events";
 import { requestEventWorkSignup } from "./eventSales";
 import { saveMusicianProfile, type MusicProfileLink } from "./musicianProfiles";
 import {
+  ART_SIZES,
   cancelArtProductRequest,
   getArtProfile,
   requestArtProductChange,
@@ -27,6 +28,7 @@ import {
   uploadArtPhoto,
   type ArtLink,
   type ArtProductChanges,
+  type ArtSizeStock,
   type SubmitArtProductInput,
 } from "./artCollective";
 import {
@@ -485,12 +487,23 @@ export async function submitArtProductsAction(formData: FormData) {
       }
     }
 
+    // Only sizes with a real quantity are recorded, so an untouched grid
+    // stays an empty object — "no size breakdown", not "zero of each".
+    const sizeStock: ArtSizeStock = {};
+    for (const size of ART_SIZES) {
+      const raw = String(formData.get(`product-${i}-stock-${size}`) || "").trim();
+      if (!raw) continue;
+      const quantity = Number.parseInt(raw, 10);
+      if (Number.isFinite(quantity) && quantity > 0) sizeStock[size] = quantity;
+    }
+
     products.push({
       ambassadorCode: code,
       name,
       description: String(formData.get(`product-${i}-description`) || "").trim(),
       priceCents,
       size: String(formData.get(`product-${i}-size`) || "").trim(),
+      sizeStock,
       details: String(formData.get(`product-${i}-details`) || "").trim(),
       photoUrls,
       alsoRetailEvents,
