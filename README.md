@@ -793,6 +793,36 @@ stragglers over. Three things worth knowing about it:
   than inventing a second one, so an account renamed here ends up with
   exactly the code it would have been given signing up today.
 
+## Art product sizes & stock
+
+`size` used to be one free-text box, so a t-shirt in five sizes meant five
+submissions, five approvals and five separate Square items — and nothing
+recorded how many of each there were. Square already models this properly:
+one item, a variation per size, an inventory count per variation. The
+submission form now says the same thing.
+
+- **A size grid, XS through XXXL, with a quantity each** (`ART_SIZES`).
+  Only sizes with a real quantity are stored, so an untouched grid stays
+  `{}` — "no size breakdown", not "zero of each" — and the free-text field
+  (relabelled "one-size label") still describes a one-off piece. An artist
+  selling a single painting shouldn't have to think in S/M/L.
+- **Approval creates one Square variation per stocked size** and sets its
+  count via `inventory.batchCreateChanges`, so sizes sell out individually
+  instead of the whole listing going at once. `trackInventory` is switched
+  on for a size run, since an untracked variation reads as unlimited in the
+  shop and would never sell out.
+- **Counts are matched back to sizes by variation name**, not by array
+  position — the order Square returns variations in isn't promised to match
+  the order they were sent.
+- **A failed stock write doesn't fail the approval.** The item is live
+  either way and counts can be corrected in Square; a listing with no counts
+  beats an approval that didn't happen.
+- Both the artist's own list and the ART ADMIN review row show the
+  breakdown (`S ×3 · M ×5`), because with per-size stock the counts are part
+  of what's being approved.
+
+Stored in `art_products.size_stock` (migration 0023) as `{"S":3,"M":5}`.
+
 ## Art product change & removal requests
 
 Approval used to be one-way. Once a product was live in Square, the artist

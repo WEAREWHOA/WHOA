@@ -127,6 +127,29 @@ export async function uploadArtPhoto(folder: "products" | "profile", code: strin
 }
 
 /**
+ * The size ladder offered on the submission form, in the order it's shown.
+ * Apparel-shaped because that's what the collective sells most of; a
+ * one-off piece just leaves the whole grid blank and uses the free-text
+ * size instead.
+ */
+export const ART_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"] as const;
+
+export type ArtSize = (typeof ART_SIZES)[number];
+
+/**
+ * How many the artist has of each size. Only sizes they actually stock
+ * appear, so `{}` means "no size breakdown" rather than "none of
+ * everything".
+ */
+export type ArtSizeStock = Partial<Record<ArtSize, number>>;
+
+/** Total units across every size, for display and for "is this stocked". */
+export function totalSizeStock(stock: ArtSizeStock | null | undefined): number {
+  if (!stock) return 0;
+  return Object.values(stock).reduce((sum, n) => sum + (Number(n) || 0), 0);
+}
+
+/**
  * "removed" is a status of its own rather than a flavour of declined: the
  * product was live, it sold or could have, and its history is real — it
  * just isn't listed any more.
@@ -157,6 +180,8 @@ export interface ArtProduct {
   description: string | null;
   priceCents: number;
   size: string | null;
+  /** Per-size quantities; empty when the product has no size breakdown. */
+  sizeStock: ArtSizeStock;
   details: string | null;
   photoUrls: string[];
   alsoRetailEvents: boolean;
@@ -179,6 +204,7 @@ interface ArtProductRow {
   description: string | null;
   price_cents: number;
   size: string | null;
+  size_stock: ArtSizeStock | null;
   details: string | null;
   photo_urls: string[];
   also_retail_events: boolean;
@@ -201,6 +227,7 @@ function mapProduct(row: ArtProductRow): ArtProduct {
     description: row.description,
     priceCents: row.price_cents,
     size: row.size,
+    sizeStock: (row.size_stock ?? {}) as ArtSizeStock,
     details: row.details,
     photoUrls: Array.isArray(row.photo_urls) ? row.photo_urls : [],
     alsoRetailEvents: row.also_retail_events,
@@ -221,6 +248,7 @@ export interface SubmitArtProductInput {
   description?: string;
   priceCents: number;
   size?: string;
+  sizeStock?: ArtSizeStock;
   details?: string;
   photoUrls: string[];
   alsoRetailEvents: boolean;
@@ -241,6 +269,7 @@ export async function submitArtProducts(products: SubmitArtProductInput[]): Prom
     description: p.description || null,
     price_cents: p.priceCents,
     size: p.size || null,
+    size_stock: p.sizeStock ?? {},
     details: p.details || null,
     photo_urls: p.photoUrls,
     also_retail_events: p.alsoRetailEvents,
@@ -336,6 +365,14 @@ async function pushArtProductToSquare(product: ArtProduct, artistName: string): 
   const artCollectiveCategoryId = await getOrCreateArtCollectiveCategoryId();
   const artistCategoryId = await getOrCreateArtistCategoryId(artistName, artCollectiveCategoryId);
 
+  // One Square variation per size the artist actually stocks — which is how
+  // Square models this, and why a size run is one item with variations
+  // rather than one item per size. A product with no size breakdown keeps
+  // the single variation it always had, named by the free-text size.
+  const stockedSizes = ART_SIZES.filter((size) => (product.sizeStock?.[size] ?? 0) > 0);
+  const hasSizeRun = stockedSizes.length > 0;
+  const variationSizes: string[] = hasSizeRun ? [...stockedSizes] : [product.size || "Default"];
+
   const upsertResponse = await square.catalog.object.upsert({
     idempotencyKey,
     object: {
@@ -348,24 +385,69 @@ async function pushArtProductToSquare(product: ArtProduct, artistName: string): 
         channels: onlineChannelId ? [onlineChannelId] : undefined,
         categories: [{ id: artCollectiveCategoryId }, { id: artistCategoryId }],
         reportingCategory: { id: artistCategoryId },
-        variations: [
-          {
-            type: "ITEM_VARIATION",
-            id: `#${idempotencyKey}-variation`,
-            presentAtAllLocations: true,
-            itemVariationData: {
-              name: product.size || "Default",
-              pricingType: "FIXED_PRICING",
-              priceMoney: { amount: BigInt(product.priceCents), currency: "USD" },
-            },
+        variations: variationSizes.map((size) => ({
+          type: "ITEM_VARIATION" as const,
+          id: `#${idempotencyKey}-variation-${size.replace(/[^A-Za-z0-9]/g, "") || "default"}`,
+          presentAtAllLocations: true,
+          itemVariationData: {
+            name: size,
+            pricingType: "FIXED_PRICING" as const,
+            priceMoney: { amount: BigInt(product.priceCents), currency: "USD" },
+            // Square only decrements stock for variations that track it,
+            // and an untracked variation shows as "unlimited" in the shop —
+            // so this has to be on for a size run to sell out properly.
+            trackInventory: hasSizeRun,
           },
-        ],
+        })),
       },
     },
   });
 
   const objectId = upsertResponse.catalogObject?.id;
   if (!objectId) throw new Error("Square did not return a catalog object id");
+
+  // Stock counts, once the variations exist and have real ids. Matched back
+  // to sizes by variation name rather than by array position, because the
+  // order Square returns them in isn't promised to be the order we sent.
+  if (hasSizeRun) {
+    const created =
+      upsertResponse.catalogObject?.type === "ITEM"
+        ? (upsertResponse.catalogObject.itemData?.variations ?? [])
+        : [];
+
+    const changes = created.flatMap((variation) => {
+      if (variation.type !== "ITEM_VARIATION" || !variation.id) return [];
+      const size = variation.itemVariationData?.name as ArtSize | undefined;
+      const quantity = size ? (product.sizeStock?.[size] ?? 0) : 0;
+      if (quantity <= 0) return [];
+
+      return [
+        {
+          type: "PHYSICAL_COUNT" as const,
+          physicalCount: {
+            catalogObjectId: variation.id,
+            state: "IN_STOCK" as const,
+            locationId,
+            quantity: String(quantity),
+            occurredAt: new Date().toISOString(),
+          },
+        },
+      ];
+    });
+
+    if (changes.length > 0) {
+      try {
+        await square.inventory.batchCreateChanges({
+          idempotencyKey: `${idempotencyKey}-stock`,
+          changes,
+        });
+      } catch (err) {
+        // The item is live either way; stock can be corrected in Square.
+        // Better a listing with no counts than a failed approval.
+        console.error(`Failed to set stock for art product ${product.id}:`, err);
+      }
+    }
+  }
 
   for (const [i, url] of product.photoUrls.entries()) {
     try {
@@ -390,11 +472,6 @@ async function pushArtProductToSquare(product: ArtProduct, artistName: string): 
       console.error(`Failed to attach photo ${i} for art product ${product.id}:`, err);
     }
   }
-
-  // Not currently used by the shop's own price lookups, but keeps the
-  // location explicit and mirrors how listProducts scopes searchItems to
-  // a single configured location — harmless if the account only has one.
-  void locationId;
 
   return objectId;
 }
