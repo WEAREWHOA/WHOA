@@ -126,6 +126,29 @@ export async function uploadArtPhoto(folder: "products" | "profile", code: strin
   return item.publicUrl;
 }
 
+/**
+ * "removed" is a status of its own rather than a flavour of declined: the
+ * product was live, it sold or could have, and its history is real — it
+ * just isn't listed any more.
+ */
+export type ArtProductStatus = "pending" | "approved" | "declined" | "removed";
+
+/** What an artist is asking for on an already-approved product. */
+export type ArtProductAction = "edit" | "removal";
+
+/**
+ * Only the fields an artist actually wants changed. Applied over the row on
+ * approval, so anything they left alone keeps its current value instead of
+ * being overwritten by a stale copy of the form.
+ */
+export interface ArtProductChanges {
+  name?: string;
+  description?: string;
+  price_cents?: number;
+  size?: string;
+  details?: string;
+}
+
 export interface ArtProduct {
   id: string;
   batchId: string;
@@ -137,10 +160,15 @@ export interface ArtProduct {
   details: string | null;
   photoUrls: string[];
   alsoRetailEvents: boolean;
-  status: "pending" | "approved" | "declined";
+  status: ArtProductStatus;
   squareCatalogObjectId: string | null;
   createdAt: string;
   reviewedAt: string | null;
+  /** An open request from the artist, waiting on staff. Null if none. */
+  pendingAction: ArtProductAction | null;
+  pendingChanges: ArtProductChanges | null;
+  pendingNote: string | null;
+  pendingRequestedAt: string | null;
 }
 
 interface ArtProductRow {
@@ -154,10 +182,14 @@ interface ArtProductRow {
   details: string | null;
   photo_urls: string[];
   also_retail_events: boolean;
-  status: "pending" | "approved" | "declined";
+  status: ArtProductStatus;
   square_catalog_object_id: string | null;
   created_at: string;
   reviewed_at: string | null;
+  pending_action: ArtProductAction | null;
+  pending_changes: ArtProductChanges | null;
+  pending_note: string | null;
+  pending_requested_at: string | null;
 }
 
 function mapProduct(row: ArtProductRow): ArtProduct {
@@ -176,6 +208,10 @@ function mapProduct(row: ArtProductRow): ArtProduct {
     squareCatalogObjectId: row.square_catalog_object_id,
     createdAt: row.created_at,
     reviewedAt: row.reviewed_at,
+    pendingAction: row.pending_action ?? null,
+    pendingChanges: row.pending_changes ?? null,
+    pendingNote: row.pending_note ?? null,
+    pendingRequestedAt: row.pending_requested_at ?? null,
   };
 }
 
@@ -499,4 +535,221 @@ export async function getArtInventory(code: string): Promise<ArtInventoryItem[]>
       variations,
     };
   });
+}
+
+// --- Change and removal requests on already-approved products ------------
+
+/**
+ * Records an artist's request against one of their own approved products.
+ *
+ * Scoped to the owner and to `approved` in the query itself, not just
+ * checked beforehand: nothing else should be requestable — a pending
+ * product can simply be left to the existing review, and a declined or
+ * already-removed one has no listing to change.
+ *
+ * A second request replaces the first rather than queueing behind it. If
+ * someone asks for $30 and then thinks better of it and asks for $25, the
+ * later ask is the real one, and staff should only ever see one.
+ */
+export async function requestArtProductChange(
+  code: string,
+  productId: string,
+  action: ArtProductAction,
+  changes: ArtProductChanges,
+  note: string,
+): Promise<boolean> {
+  const { data, error } = await getSupabase()
+    .from("art_products")
+    .update({
+      pending_action: action,
+      pending_changes: action === "edit" ? changes : null,
+      pending_note: note.trim() || null,
+      pending_requested_at: new Date().toISOString(),
+    })
+    .eq("id", productId)
+    .eq("ambassador_code", code.trim().toUpperCase())
+    .eq("status", "approved")
+    .select("id");
+
+  if (error) throw new Error(`Failed to save that request: ${error.message}`);
+  return (data?.length ?? 0) > 0;
+}
+
+/** Withdraws an artist's own open request, leaving the listing untouched. */
+export async function cancelArtProductRequest(code: string, productId: string): Promise<boolean> {
+  const { data, error } = await getSupabase()
+    .from("art_products")
+    .update({ pending_action: null, pending_changes: null, pending_note: null, pending_requested_at: null })
+    .eq("id", productId)
+    .eq("ambassador_code", code.trim().toUpperCase())
+    .not("pending_action", "is", null)
+    .select("id");
+
+  if (error) throw new Error(`Failed to cancel that request: ${error.message}`);
+  return (data?.length ?? 0) > 0;
+}
+
+/** Every open request across all artists, oldest first — the staff queue. */
+export async function getPendingArtProductRequests(): Promise<
+  (ArtProduct & { artistName: string })[]
+> {
+  const { data, error } = await getSupabase()
+    .from("art_products")
+    .select("*")
+    .not("pending_action", "is", null)
+    .order("pending_requested_at", { ascending: true });
+
+  if (error) throw new Error(`Failed to load change requests: ${error.message}`);
+  const products = (data ?? []).map((row) => mapProduct(row as ArtProductRow));
+  if (products.length === 0) return [];
+
+  // One lookup for every artist involved rather than one per product.
+  const names = await getAllArtProfileNames();
+  const byCode = new Map(names.map((n) => [n.code.toUpperCase(), n.artistName]));
+
+  return products.map((product) => ({
+    ...product,
+    artistName: byCode.get(product.ambassadorCode.toUpperCase()) ?? product.ambassadorCode,
+  }));
+}
+
+/**
+ * Pushes an edited product's new details to its existing Square item.
+ *
+ * Square's upsert needs the object's current version, and rejects a stale
+ * one — that's its optimistic locking, and it's why this reads the object
+ * back first rather than keeping a version cached. Only the fields that can
+ * be edited here are rewritten; categories, channels and images are read
+ * from the live object and passed through untouched, so an edit can't
+ * quietly strip an item's photos or drop it out of the online store.
+ */
+async function updateArtProductInSquare(product: ArtProduct, artistName: string): Promise<void> {
+  if (!product.squareCatalogObjectId) return;
+
+  const square = getSquare();
+  const existing = await square.catalog.object.get({ objectId: product.squareCatalogObjectId });
+  const item = existing.object;
+  if (!item || item.type !== "ITEM") return;
+
+  // Narrowed rather than asserted: `variations` is a union of catalog
+  // object types, and only a real ITEM_VARIATION with an id can be sent
+  // back as an update. Anything else falls through to leaving the existing
+  // variations exactly as they are, price edit included — better a
+  // no-op than a mangled item.
+  const first = item.itemData?.variations?.[0];
+  const variation =
+    first && first.type === "ITEM_VARIATION" && first.id ? first : undefined;
+
+  await square.catalog.object.upsert({
+    idempotencyKey: `art-product-edit-${product.id}-${Date.now()}`,
+    object: {
+      type: "ITEM",
+      id: item.id,
+      version: item.version,
+      presentAtAllLocations: item.presentAtAllLocations,
+      itemData: {
+        ...item.itemData,
+        name: buildSquareItemName(product, artistName),
+        descriptionPlaintext:
+          [product.description, product.details].filter(Boolean).join("\n\n") || undefined,
+        variations: variation
+          ? [
+              {
+                ...variation,
+                type: "ITEM_VARIATION" as const,
+                id: variation.id,
+                itemVariationData: {
+                  ...variation.itemVariationData,
+                  itemId: item.id,
+                  name: product.size || "Default",
+                  pricingType: "FIXED_PRICING" as const,
+                  priceMoney: { amount: BigInt(product.priceCents), currency: "USD" },
+                },
+              },
+            ]
+          : item.itemData?.variations,
+      },
+    },
+  });
+}
+
+/**
+ * Approves or declines an open request.
+ *
+ * Approving an edit applies the proposed fields over the row and then
+ * updates Square. Approving a removal deletes the Square item and marks the
+ * product removed — the row stays, because its sales history is real and
+ * deleting it would take that with it. Declining just clears the request.
+ *
+ * Square is touched before the row is updated in both cases: if Square
+ * refuses, this throws and the request stays open to retry, rather than
+ * leaving our records claiming something that never happened.
+ */
+export async function reviewArtProductRequest(
+  productId: string,
+  decision: "approved" | "declined",
+): Promise<void> {
+  const product = await getArtProductById(productId);
+  if (!product || !product.pendingAction) return;
+
+  const cleared = {
+    pending_action: null,
+    pending_changes: null,
+    pending_note: null,
+    pending_requested_at: null,
+  };
+
+  if (decision === "declined") {
+    const { error } = await getSupabase().from("art_products").update(cleared).eq("id", productId);
+    if (error) throw new Error(`Failed to decline that request: ${error.message}`);
+    return;
+  }
+
+  if (product.pendingAction === "removal") {
+    if (product.squareCatalogObjectId) {
+      try {
+        await getSquare().catalog.object.delete({ objectId: product.squareCatalogObjectId });
+      } catch (err) {
+        // Already gone from Square (deleted by hand there, say) is the
+        // outcome we wanted, so don't block the removal on it.
+        console.error(`Failed to delete Square item for art product ${productId}:`, err);
+      }
+    }
+
+    const { error } = await getSupabase()
+      .from("art_products")
+      .update({ ...cleared, status: "removed", reviewed_at: new Date().toISOString() })
+      .eq("id", productId);
+    if (error) throw new Error(`Failed to mark product removed: ${error.message}`);
+    return;
+  }
+
+  // An edit: fold the proposed fields over the current ones, so anything
+  // the artist left alone keeps its existing value.
+  const changes = product.pendingChanges ?? {};
+  const updated: ArtProduct = {
+    ...product,
+    name: changes.name ?? product.name,
+    description: changes.description ?? product.description,
+    priceCents: changes.price_cents ?? product.priceCents,
+    size: changes.size ?? product.size,
+    details: changes.details ?? product.details,
+  };
+
+  const profile = await getArtProfile(product.ambassadorCode);
+  await updateArtProductInSquare(updated, profile?.artistName ?? product.ambassadorCode);
+
+  const { error } = await getSupabase()
+    .from("art_products")
+    .update({
+      ...cleared,
+      name: updated.name,
+      description: updated.description,
+      price_cents: updated.priceCents,
+      size: updated.size,
+      details: updated.details,
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq("id", productId);
+  if (error) throw new Error(`Failed to apply that edit: ${error.message}`);
 }

@@ -12,7 +12,14 @@ import { getEventHistoryForAccount } from "@/lib/eventRsvps";
 import { getEventsAdminOverview } from "@/lib/eventsAdmin";
 import { getScheduleForAccount, getSignupsForAccount } from "@/lib/eventSales";
 import { getMusicianProfile } from "@/lib/musicianProfiles";
-import { getArtInventory, getArtProfile, getArtStats, getPendingArtBatches, getProductsForAccount } from "@/lib/artCollective";
+import {
+  getArtInventory,
+  getArtProfile,
+  getArtStats,
+  getPendingArtBatches,
+  getPendingArtProductRequests,
+  getProductsForAccount,
+} from "@/lib/artCollective";
 import { EVENTS } from "@/lib/events";
 import LogoutButton from "@/components/portal/LogoutButton";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
@@ -91,6 +98,7 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
 
   const canAccessArtAdmin = account.isSuperAdmin || account.permissions.artAdmin;
   const pendingArtBatches = canAccessArtAdmin ? await getPendingArtBatches() : undefined;
+  const pendingArtRequests = canAccessArtAdmin ? await getPendingArtProductRequests() : [];
 
   const isNew = searchParams?.new === "1";
   const payoutSaved = searchParams?.saved === "1";
@@ -109,6 +117,21 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
   const artProductError =
     typeof searchParams?.artProductError === "string" ? searchParams.artProductError : undefined;
   const artPhotoError = searchParams?.artPhotoError === "1";
+  const artRequestSent = searchParams?.artRequestSent === "1";
+  const artRequestCancelled = searchParams?.artRequestCancelled === "1";
+  const artRequestReviewed = searchParams?.artRequestReviewed === "1";
+  const artRequestError =
+    typeof searchParams?.artRequestError === "string" ? searchParams.artRequestError : undefined;
+  const ART_REQUEST_ERROR_TEXT: Record<string, string> = {
+    invalid: "That request didn't come through — try again.",
+    price: "Enter a valid price, or leave it blank to keep the current one.",
+    empty: "Fill in at least one field you'd like changed.",
+    missing: "That product isn't live any more, so there's nothing to change.",
+    server: "Something went wrong sending that request — try again.",
+  };
+  const artRequestMessage = artRequestError
+    ? (ART_REQUEST_ERROR_TEXT[artRequestError] ?? ART_REQUEST_ERROR_TEXT.server)
+    : null;
   const mediaUploaded =
     typeof searchParams?.mediaUploaded === "string" ? Number(searchParams.mediaUploaded) : 0;
   const mediaDeleted = searchParams?.mediaDeleted === "1";
@@ -159,6 +182,32 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
           <LogoutButton />
         </div>
       </div>
+
+      {(artRequestSent || artRequestCancelled || artRequestReviewed || artRequestMessage) && (
+        <div className="mt-6 flex flex-col gap-2">
+          {artRequestSent && (
+            <p className="border-flame-2/40 bg-flame-2/10 text-flame-3 rounded-lg border px-4 py-2 text-sm">
+              Request sent — we&apos;ll review it and let you know. Nothing changes in the shop
+              until we do.
+            </p>
+          )}
+          {artRequestCancelled && (
+            <p className="rounded-lg border border-border px-4 py-2 text-sm text-muted">
+              Request withdrawn. Your listing is unchanged.
+            </p>
+          )}
+          {artRequestReviewed && (
+            <p className="border-flame-2/40 bg-flame-2/10 text-flame-3 rounded-lg border px-4 py-2 text-sm">
+              Request handled.
+            </p>
+          )}
+          {artRequestMessage && (
+            <p className="border-flame-1/40 bg-flame-1/10 text-flame-3 rounded-lg border px-4 py-3 text-sm">
+              {artRequestMessage}
+            </p>
+          )}
+        </div>
+      )}
 
       {(mediaUploaded > 0 || mediaDeleted || mediaMessage) && (
         <div className="mt-6 flex flex-col gap-2">
@@ -265,7 +314,11 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
             </>
           ) : null
         }
-        artAdmin={pendingArtBatches ? <ArtAdminTab batches={pendingArtBatches} /> : null}
+        artAdmin={
+          pendingArtBatches ? (
+            <ArtAdminTab batches={pendingArtBatches} requests={pendingArtRequests} />
+          ) : null
+        }
         settings={
           <>
             <SettingsTab

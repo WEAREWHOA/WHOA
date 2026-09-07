@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { formatCents } from "@/lib/money";
+import ArtProductRequest from "@/components/dashboard/tabs/ArtProductRequest";
 import { saveArtProfileAction } from "@/lib/actions";
 import ArtProductSubmitForm from "@/components/artCollective/ArtProductSubmitForm";
 import type { ArtInventoryItem, ArtProduct, ArtProfile, ArtStats } from "@/lib/artCollective";
@@ -20,6 +21,7 @@ const STATUS_LABEL: Record<ArtProduct["status"], string> = {
   pending: "Pending review",
   approved: "Live in the shop",
   declined: "Not approved",
+  removed: "Taken down",
 };
 
 const LINK_LABELS = ["Instagram", "Etsy", "Website", "TikTok"] as const;
@@ -288,28 +290,34 @@ export default function ArtTab({
           <h3 className="font-display text-xl">Your submissions</h3>
           <div className="mt-4 flex flex-col gap-3">
             {products.map((product) => (
-              <div
-                key={product.id}
-                className="card-surface flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border p-4"
-              >
-                <div>
-                  <p className="text-sm font-semibold">{product.name}</p>
-                  <p className="text-xs text-muted">
-                    {formatCents(product.priceCents)}
-                    {product.size ? ` · ${product.size}` : ""}
-                  </p>
+              <div key={product.id} className="card-surface rounded-xl border border-border p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold">{product.name}</p>
+                    <p className="text-xs text-muted">
+                      {formatCents(product.priceCents)}
+                      {product.size ? ` · ${product.size}` : ""}
+                    </p>
+                  </div>
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-semibold tracking-wide uppercase ${
+                      product.status === "approved"
+                        ? "bg-tier-icon text-background"
+                        : product.status === "pending"
+                          ? "bg-flame-2/15 text-flame-3"
+                          : "border border-border-strong text-muted"
+                    }`}
+                  >
+                    {STATUS_LABEL[product.status]}
+                  </span>
                 </div>
-                <span
-                  className={`rounded-full px-3 py-1 text-xs font-semibold tracking-wide uppercase ${
-                    product.status === "approved"
-                      ? "bg-tier-icon text-background"
-                      : product.status === "declined"
-                        ? "border border-border-strong text-muted"
-                        : "bg-flame-2/15 text-flame-3"
-                  }`}
-                >
-                  {STATUS_LABEL[product.status]}
-                </span>
+
+                {/* Only a live listing can be changed or pulled. A pending
+                    one is already in review, and a declined or removed one
+                    has nothing in the shop to act on. */}
+                {product.status === "approved" && (
+                  <ArtProductRequest code={code} product={product} />
+                )}
               </div>
             ))}
           </div>

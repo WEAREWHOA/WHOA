@@ -793,6 +793,45 @@ stragglers over. Three things worth knowing about it:
   than inventing a second one, so an account renamed here ends up with
   exactly the code it would have been given signing up today.
 
+## Art product change & removal requests
+
+Approval used to be one-way. Once a product was live in Square, the artist
+who submitted it had no way to fix a typo, correct a price, or take it down
+— they had to find a human. But an approved product is a real listing in a
+real shop, so letting an artist rewrite it unilaterally isn't right either.
+So it's a request: the artist proposes, staff approve, and only then does
+anything reach Square.
+
+- **Only a live listing is requestable.** A pending product is already in
+  review, and a declined or removed one has nothing in the shop to act on.
+  Both that and ownership are enforced *in the query*
+  (`requestArtProductChange` filters on `ambassador_code` and
+  `status = 'approved'`), not merely checked beforehand.
+- **One open request per product.** A second ask replaces the first rather
+  than queueing behind it — if someone says $30 and then thinks better of it
+  and says $25, the later ask is the real one and staff should only ever see
+  one. That's why the request lives on `art_products` (migration 0022)
+  rather than in a table of its own.
+- **Blank means "leave it alone".** `pending_changes` carries only the
+  fields the artist actually filled in, and they're folded over the row on
+  approval, so an untouched field keeps its value instead of being
+  overwritten by a stale copy of the form.
+- **Editing in Square reads before it writes.** Square's upsert needs the
+  object's current version and rejects a stale one, so
+  `updateArtProductInSquare` fetches the item first. Categories, channels
+  and images are passed through from the live object untouched — an edit
+  can't quietly strip an item's photos or drop it out of the online store.
+- **Removal deletes the Square item but keeps the row**, with a status of
+  its own (`removed`). It isn't `declined` — it was live, it may have sold,
+  and that history is real. A Square item that's already gone is the outcome
+  we wanted, so it doesn't block the removal.
+- **Square is touched before our own row is updated**, both ways round. If
+  Square refuses, the action throws and the request stays open to retry,
+  rather than leaving our records claiming something that never happened.
+- The artist sees their open request (with what they asked for) and can
+  withdraw it; staff see the queue under ART ADMIN, with each proposed value
+  next to the current one, since that difference is the whole decision.
+
 ## Square Customers matching
 
 WHOA had a large existing base of Square customers with purchase history
