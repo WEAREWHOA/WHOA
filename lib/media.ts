@@ -4,8 +4,21 @@ import type { AccountPermissions } from "./types";
 
 export const MEDIA_BUCKET = "whoa-media";
 
-/** 5MB. Big enough for a good phone photo, small enough to stay quick. */
-export const MAX_MEDIA_BYTES = 5 * 1024 * 1024;
+/**
+ * Per file, and for a whole multi-select batch, because both travel in one
+ * Server Action request body.
+ *
+ * Sized from the platform rather than picked: Vercel caps a serverless
+ * function's request body at 4.5MB, and next.config.ts asks for exactly
+ * that. 4MB leaves room for the multipart overhead on top of the bytes
+ * themselves. Going higher wouldn't work — it would just move the rejection
+ * from our code to the platform's, which is what made uploads fail silently
+ * before (Next's own default is 1MB, below an ordinary phone photo).
+ */
+export const MAX_MEDIA_BYTES = 4 * 1024 * 1024;
+
+/** A batch is one request, so the same ceiling applies to all of it. */
+export const MAX_MEDIA_BATCH_BYTES = MAX_MEDIA_BYTES;
 
 export const ALLOWED_MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 

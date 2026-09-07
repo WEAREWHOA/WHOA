@@ -729,8 +729,22 @@ place.
   first. Storage is cleared before the row: a row without a file is a broken
   thumbnail its owner can still remove, while a file without a row is
   invisible and permanent.
-- **Limits:** 5MB per file, JPG/PNG/WebP/GIF only, enforced in `uploadMedia`
-  rather than per caller so a new upload surface can't skip them.
+- **Limits:** 4MB per file *and* per batch, JPG/PNG/WebP/GIF only, enforced
+  in `uploadMedia` rather than per caller so a new upload surface can't skip
+  them. Those numbers come from the platform, not taste: **a Server Action's
+  request body is capped at 1MB by default**, which is below an ordinary
+  phone photo and is why uploads used to fail for no visible reason.
+  `next.config.ts` raises it to `4.5mb` — the most worth asking for, since
+  Vercel caps a serverless function's body there too — and 4MB leaves room
+  for multipart overhead. A whole multi-select batch is one request, so the
+  same ceiling covers all of it.
+- **The size check also runs in the browser** (`MediaUploadForm`), because
+  an over-limit body is rejected while it's still being parsed — before any
+  of our code, and so before any of our error messages. That client check is
+  the only place the failure can be explained rather than just happening.
+- Files genuinely larger than this need uploading straight to Supabase
+  Storage from the browser with a signed URL, which skips the function body
+  altogether. Not built yet.
 - `account_media` (migration 0021) indexes every file. Art Collective
   uploads route through the same path now, so they're listed and deletable
   too; photos uploaded before this keep working, since their absolute URLs

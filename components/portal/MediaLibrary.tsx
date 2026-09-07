@@ -1,6 +1,7 @@
 import Image from "next/image";
-import { deleteMediaAction, uploadMediaAction } from "@/lib/actions";
-import { MAX_MEDIA_BYTES, MEDIA_KINDS, type MediaItem, type MediaKind } from "@/lib/media";
+import { deleteMediaAction } from "@/lib/actions";
+import MediaUploadForm from "@/components/portal/MediaUploadForm";
+import { MEDIA_KINDS, type MediaItem, type MediaKind } from "@/lib/media";
 
 function formatSize(bytes: number | null): string {
   if (!bytes) return "";
@@ -34,25 +35,7 @@ export default function MediaLibrary({
       <h3 className="font-display text-xl tracking-wide">{meta.label}</h3>
       <p className="mt-1 text-sm text-muted">{meta.blurb}</p>
 
-      <form action={uploadMediaAction} className="mt-4 flex flex-wrap items-center gap-3">
-        <input type="hidden" name="code" value={code} />
-        <input type="hidden" name="kind" value={kind} />
-        <input
-          type="file"
-          name="media"
-          multiple
-          accept="image/jpeg,image/png,image/webp,image/gif"
-          required
-          className="max-w-full text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-full file:border-0 file:bg-surface-raised file:px-4 file:py-2 file:text-sm file:font-semibold file:text-foreground"
-        />
-        <button type="submit" className="btn-flame rounded-full px-6 py-2.5 text-sm">
-          Upload
-        </button>
-      </form>
-      <p className="mt-2 text-xs text-muted">
-        JPG, PNG, WebP or GIF, up to {MAX_MEDIA_BYTES / 1024 / 1024}MB each. You can pick several
-        at once.
-      </p>
+      <MediaUploadForm code={code} kind={kind} />
 
       {mine.length === 0 ? (
         <p className="mt-5 rounded-xl border border-border px-4 py-3 text-sm text-muted">
