@@ -19,11 +19,14 @@ import { EVENTS } from "./events";
 import { requestEventWorkSignup } from "./eventSales";
 import { saveMusicianProfile, type MusicProfileLink } from "./musicianProfiles";
 import {
+  cancelArtProductRequest,
   getArtProfile,
+  requestArtProductChange,
   saveArtProfile,
   submitArtProducts,
   uploadArtPhoto,
   type ArtLink,
+  type ArtProductChanges,
   type SubmitArtProductInput,
 } from "./artCollective";
 import {
@@ -609,4 +612,98 @@ export async function deleteMediaAction(formData: FormData) {
   }
 
   redirect(`/portal/${code}?mediaDeleted=1`);
+}
+
+// --- An artist's own requests against their approved products ------------
+
+/**
+ * "I need this changed" or "please take this down", from the artist who
+ * submitted it. Never applies anything itself — an approved product is a
+ * live listing, so the change waits for staff. The account's ownership of
+ * the product is enforced in the query (requestArtProductChange), not just
+ * checked here.
+ */
+export async function requestArtProductChangeAction(formData: FormData) {
+  const code = String(formData.get("code") || "").trim();
+  const sessionCode = await getSessionAmbassadorCode();
+  if (!sessionCode || sessionCode.toUpperCase() !== code.toUpperCase()) {
+    redirect("/login");
+  }
+
+  const account = await getByCode(code);
+  if (!account?.permissions.art) redirect(`/portal/${code}`);
+
+  const productId = String(formData.get("productId") || "").trim();
+  const action = String(formData.get("action") || "").trim();
+  if (!productId || (action !== "edit" && action !== "removal")) {
+    redirect(`/portal/${code}?artRequestError=invalid`);
+  }
+
+  const note = String(formData.get("note") || "");
+  const changes: ArtProductChanges = {};
+
+  if (action === "edit") {
+    // Only fields the artist actually filled in travel as changes; a blank
+    // box means "leave this alone", not "set it to empty".
+    const name = String(formData.get("name") || "").trim();
+    const description = String(formData.get("description") || "").trim();
+    const size = String(formData.get("size") || "").trim();
+    const details = String(formData.get("details") || "").trim();
+    const priceRaw = String(formData.get("price") || "").trim();
+
+    if (name) changes.name = name;
+    if (description) changes.description = description;
+    if (size) changes.size = size;
+    if (details) changes.details = details;
+    if (priceRaw) {
+      const priceCents = Math.round(parseFloat(priceRaw) * 100);
+      if (!Number.isFinite(priceCents) || priceCents <= 0) {
+        redirect(`/portal/${code}?artRequestError=price`);
+      }
+      changes.price_cents = priceCents;
+    }
+
+    if (Object.keys(changes).length === 0) {
+      redirect(`/portal/${code}?artRequestError=empty`);
+    }
+  }
+
+  try {
+    const saved = await requestArtProductChange(
+      code,
+      productId,
+      action as "edit" | "removal",
+      changes,
+      note,
+    );
+    if (!saved) redirect(`/portal/${code}?artRequestError=missing`);
+  } catch (err) {
+    unstable_rethrow(err);
+    console.error("requestArtProductChangeAction failed:", err);
+    redirect(`/portal/${code}?artRequestError=server`);
+  }
+
+  redirect(`/portal/${code}?artRequestSent=1`);
+}
+
+/** Withdraws an artist's own open request before staff act on it. */
+export async function cancelArtProductRequestAction(formData: FormData) {
+  const code = String(formData.get("code") || "").trim();
+  const sessionCode = await getSessionAmbassadorCode();
+  if (!sessionCode || sessionCode.toUpperCase() !== code.toUpperCase()) {
+    redirect("/login");
+  }
+
+  const productId = String(formData.get("productId") || "").trim();
+  if (!productId) redirect(`/portal/${code}?artRequestError=invalid`);
+
+  try {
+    await cancelArtProductRequest(code, productId);
+  } catch (err) {
+    unstable_rethrow(err);
+    console.error("cancelArtProductRequestAction failed:", err);
+    redirect(`/portal/${code}?artRequestError=server`);
+  }
+
+  redirect(`/portal/${code}?artRequestCancelled=1`);
 }
