@@ -22,6 +22,7 @@ import {
   ART_SIZES,
   cancelArtProductRequest,
   getArtProfile,
+  canSubmitProducts,
   requestArtProductChange,
   saveArtProfile,
   submitArtProducts,
@@ -448,7 +449,7 @@ export async function submitArtProductsAction(formData: FormData) {
   }
 
   const account = await getByCode(code);
-  if (!account?.permissions.art) redirect(`/portal/${code}`);
+  if (!account || !canSubmitProducts(account.permissions)) redirect(`/portal/${code}`);
 
   const retailChoice = String(formData.get("alsoRetailEvents") || "");
   if (retailChoice !== "yes" && retailChoice !== "no") {
@@ -644,7 +645,7 @@ export async function requestArtProductChangeAction(formData: FormData) {
   }
 
   const account = await getByCode(code);
-  if (!account?.permissions.art) redirect(`/portal/${code}`);
+  if (!account || !canSubmitProducts(account.permissions)) redirect(`/portal/${code}`);
 
   const productId = String(formData.get("productId") || "").trim();
   const action = String(formData.get("action") || "").trim();

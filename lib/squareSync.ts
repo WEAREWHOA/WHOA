@@ -3,7 +3,7 @@ import type { Square } from "square";
 import { getSquare } from "./square";
 import { getSupabase } from "./supabase";
 import { matchVendorSlug, matchesArtistName } from "./vendorMatch";
-import { getAllArtProfileNames, matchArtCollectiveCode } from "./artCollective";
+import { getAllSellerNames, matchArtCollectiveCode } from "./artCollective";
 import { getOrCreateArtCollectiveCategoryId, getOrCreateArtistCategoryId } from "./catalog";
 import { ARTISTS } from "./artists";
 
@@ -32,12 +32,14 @@ export async function syncFullCatalog(): Promise<{ productIds: string[]; variati
   const variationIds: string[] = [];
   let cursor: string | undefined;
 
-  // Fetched once per resync (not per item) — dynamic Art Collective
-  // artists are matched the same way as the static ARTISTS list (name
-  // suffix), so a product created via the Art Collective pipeline keeps
-  // its owner_code across every future full resync instead of it being
-  // wiped back to null (see lib/artCollective.ts's matchArtCollectiveCode).
-  const artProfiles = await getAllArtProfileNames();
+  // Fetched once per resync (not per item) — dynamic sellers are matched
+  // the same way as the static ARTISTS list (name suffix), so a product
+  // created via the submission pipeline keeps its owner_code across every
+  // future full resync instead of it being wiped back to null (see
+  // lib/artCollective.ts's matchArtCollectiveCode). Sellers rather than
+  // just art profiles, because vendors and musicians submit through the
+  // same pipeline and their sales have to attribute too.
+  const artProfiles = await getAllSellerNames();
 
   do {
     const response = await square.catalog.searchItems({ limit: 100, cursor });
@@ -283,7 +285,7 @@ const UNMATCHED_SAMPLE_LIMIT = 25;
 // than guessed at. See unmatchedSample above for what's left uncategorized.
 export async function backfillArtistCategories(): Promise<CategorizeArtistsResult> {
   const square = getSquare();
-  const artProfiles = await getAllArtProfileNames();
+  const artProfiles = await getAllSellerNames();
   const names = [...artProfiles.map((p) => p.artistName), ...ARTISTS.map((a) => a.name)];
 
   const artCollectiveCategoryId = await getOrCreateArtCollectiveCategoryId();

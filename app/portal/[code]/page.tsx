@@ -18,6 +18,7 @@ import {
   getArtStats,
   getPendingArtBatches,
   getPendingArtProductRequests,
+  canSubmitProducts,
   getProductsForAccount,
 } from "@/lib/artCollective";
 import { EVENTS } from "@/lib/events";
@@ -92,9 +93,15 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
   const musicianProfile = await getMusicianProfile(account.code);
 
   const artProfile = await getArtProfile(account.code);
-  const [artStats, artInventory, artProducts] = account.permissions.art
-    ? await Promise.all([getArtStats(account.code), getArtInventory(account.code), getProductsForAccount(account.code)])
-    : [{ totalSalesCents: 0, itemsSold: 0, orderCount: 0 }, [], []];
+  const [artStats, artInventory] = account.permissions.art
+    ? await Promise.all([getArtStats(account.code), getArtInventory(account.code)])
+    : [{ totalSalesCents: 0, itemsSold: 0, orderCount: 0 }, []];
+
+  // Submissions aren't art-only any more — a vendor or musician uses the
+  // same pipeline — so they're loaded for anyone who can submit, and the
+  // same list is handed to whichever of the three tabs is showing.
+  const canSubmit = canSubmitProducts(account.permissions);
+  const artProducts = canSubmit ? await getProductsForAccount(account.code) : [];
 
   const canAccessArtAdmin = account.isSuperAdmin || account.permissions.artAdmin;
   const pendingArtBatches = canAccessArtAdmin ? await getPendingArtBatches() : undefined;
@@ -256,7 +263,17 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
         }
         vendor={
           <>
-            <VendorTab vendorName={vendorArtist?.name} stats={vendorStats} products={vendorProducts} />
+            <VendorTab
+              vendorName={vendorArtist?.name}
+              stats={vendorStats}
+              products={vendorProducts}
+              code={account.code}
+              canSubmit={account.permissions.vendor}
+              submissions={artProducts}
+              submitted={artProductSubmitted}
+              submitError={artProductError}
+              photoError={artPhotoError}
+            />
             {mediaKinds.includes("vendor") && (
               <MediaLibrary code={account.code} kind="vendor" items={media} />
             )}
@@ -285,12 +302,16 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
         music={
           <>
             <MusicTab
-            code={account.code}
-            hasMusicAccess={account.permissions.music}
-            profile={musicianProfile}
-            saved={musicSaved}
-            error={musicError}
-          />
+              code={account.code}
+              hasMusicAccess={account.permissions.music}
+              profile={musicianProfile}
+              saved={musicSaved}
+              error={musicError}
+              submissions={artProducts}
+              submitted={artProductSubmitted}
+              submitError={artProductError}
+              photoError={artPhotoError}
+            />
             {mediaKinds.includes("music") && (
               <MediaLibrary code={account.code} kind="music" items={media} />
             )}

@@ -470,3 +470,105 @@ export async function sendArtProductSubmissionNotification(input: {
     actions,
   });
 }
+
+/**
+ * Tells a seller what happened to something they submitted.
+ *
+ * The counterpart to sendArtProductSubmissionNotification, which notifies
+ * staff. The portal already promises "we'll email you once it's reviewed",
+ * and until now nothing did — a decision only showed up if the seller
+ * happened to open their dashboard again. This is the email that makes
+ * that promise true, for both kinds of decision: the original submission,
+ * and a later request to edit or pull a listing.
+ *
+ * Reply-to is the staff inbox rather than the seller's own address: this
+ * one goes outward, so a reply should reach a human at WHOA, not bounce
+ * back to the person who received it.
+ */
+export async function sendProductDecisionNotification(input: {
+  /** The seller's own address — where this is going. */
+  email: string;
+  sellerName: string;
+  productName: string;
+  decision: "approved" | "declined";
+  /** Which of their asks this answers. */
+  request: "submission" | "edit" | "removal";
+  /** Their own words on the request, echoed back so the email makes sense on its own. */
+  note?: string | null;
+  portalUrl: string;
+}): Promise<void> {
+  const approved = input.decision === "approved";
+
+  const HEADLINES: Record<typeof input.request, { approved: string; declined: string }> = {
+    submission: {
+      approved: "Your product is live",
+      declined: "Your product wasn't approved",
+    },
+    edit: {
+      approved: "Your changes are live",
+      declined: "Your change request wasn't approved",
+    },
+    removal: {
+      approved: "Your product has been taken down",
+      declined: "Your removal request wasn't approved",
+    },
+  };
+
+  const BODIES: Record<typeof input.request, { approved: string; declined: string }> = {
+    submission: {
+      approved:
+        "It's approved and in the shop now — online, and on the register at the WHOADEGA. Sales show up on your dashboard as they come in.",
+      declined:
+        "We didn't approve this one. It's not a dead end — reply to this email and we'll tell you what would get it over the line.",
+    },
+    edit: {
+      approved: "We've applied your changes, and the listing in the shop is up to date.",
+      declined:
+        "We've left the listing as it was. Reply to this email if you'd like to talk it through.",
+    },
+    removal: {
+      approved:
+        "It's out of the shop. Your sales history for it stays on your dashboard — nothing you've already earned goes anywhere.",
+      declined:
+        "The listing is still up. Reply to this email if you need it down and we'll sort it out.",
+    },
+  };
+
+  const accent = approved ? "#ff7a00" : "#b8ada0";
+  const noteHtml = input.note
+    ? `<p style="margin:16px 0 0;padding:12px 14px;border-left:2px solid #2a231b;color:#b8ada0;font-size:13px;line-height:1.5;">
+         You told us: &ldquo;${escapeHtml(input.note)}&rdquo;
+       </p>`
+    : "";
+
+  const html = wrapEmail(`
+        <p style="margin:0;color:${accent};font-size:12px;letter-spacing:0.2em;text-transform:uppercase;font-weight:600;">
+          ${approved ? "Approved" : "Not approved"}
+        </p>
+        <h1 style="margin:8px 0 0;color:#f7f0e6;font-size:26px;">${escapeHtml(HEADLINES[input.request][input.decision])}</h1>
+        <p style="margin:12px 0 0;color:#f7f0e6;font-size:15px;font-weight:600;">${escapeHtml(input.productName)}</p>
+        <p style="margin:12px 0 0;color:#b8ada0;font-size:14px;line-height:1.6;">
+          ${escapeHtml(BODIES[input.request][input.decision])}
+        </p>
+        ${noteHtml}
+        <p style="margin:24px 0 0;">
+          <a href="${input.portalUrl}" style="display:inline-block;background:#ff7a00;color:#0a0806;font-size:14px;font-weight:600;text-decoration:none;padding:12px 22px;border-radius:999px;">
+            Open your dashboard
+          </a>
+        </p>
+        <p style="margin:20px 0 0;color:#6b6157;font-size:11px;line-height:1.5;">
+          Sent to ${escapeHtml(input.sellerName)} because you submitted this through your WHOA dashboard.
+        </p>`);
+
+  const { error } = await getResend().emails.send({
+    from: FROM_ADDRESS,
+    to: input.email,
+    replyTo: REPLY_TO,
+    subject: `${HEADLINES[input.request][input.decision]}: ${input.productName}`,
+    html,
+  });
+
+  if (error) {
+    throw new Error(`Resend failed to send decision notification: ${error.message}`);
+  }
+}
