@@ -1,6 +1,5 @@
 import Link from "next/link";
 import {
-  ACTIVATION_DAYS,
   ACTIVATIONS,
   ANNOUNCEMENTS,
   DOCS,
@@ -149,56 +148,26 @@ export default function EventDetails({ code }: { code: string }) {
         </h2>
         <p className="mt-2 text-sm text-muted">
           Everything WHOA is running at SSBD beyond the booth. Times are when
-          the activation itself runs — check your own shift above for when
+          the activation itself runs — check your own shift below for when
           you&apos;re on.
         </p>
-
-        <div className="mt-4 space-y-4">
-          {ACTIVATION_DAYS.map((day) => {
-            const onThisDay = ACTIVATIONS.filter((a) => a.day === day);
-            // A day with nothing on it isn't an empty card — it's nothing.
-            if (onThisDay.length === 0) return null;
-
-            return (
-              <div
-                key={day}
-                className="card-surface rounded-2xl border border-border p-5"
-              >
-                <h3 className="text-flame-2 text-xs font-semibold tracking-[0.2em] uppercase">
-                  {day === "TBD" ? "Still being scheduled" : day}
-                </h3>
-
-                <ul className="mt-3 divide-y divide-border">
-                  {onThisDay.map((a) => (
-                    <li
-                      key={a.id}
-                      className="flex flex-col gap-1 py-3 sm:flex-row sm:gap-5"
-                    >
-                      {/* Fixed-width on desktop so the times line up into a
-                          column you can scan, rather than ragging with the
-                          length of each title. */}
-                      <span className="font-display shrink-0 text-sm tracking-wide sm:w-40">
-                        {a.time}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="font-display text-lg uppercase">
-                          {a.title}
-                        </p>
-                        {a.by && (
-                          <p className="text-sm text-muted">with {a.by}</p>
-                        )}
-                        {a.note && (
-                          <p className="mt-0.5 text-sm text-foreground/80">
-                            {a.note}
-                          </p>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          })}
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {ACTIVATIONS.map((a) => (
+            <div
+              key={a.id}
+              className="card-surface rounded-2xl border border-border p-5"
+            >
+              <span className="text-flame-2 text-xs font-semibold tracking-[0.2em] uppercase">
+                {a.day === "TBD" ? "Day TBD" : a.day}
+              </span>
+              <h3 className="font-display mt-2 text-lg uppercase">{a.title}</h3>
+              <p className="mt-1 text-sm text-muted">{a.time}</p>
+              {a.by && <p className="mt-1 text-sm text-muted">with {a.by}</p>}
+              {a.note && (
+                <p className="mt-2 text-sm text-foreground/80">{a.note}</p>
+              )}
+            </div>
+          ))}
         </div>
       </section>
 

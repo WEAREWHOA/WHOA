@@ -172,83 +172,69 @@ export const DOCS: CrewDoc[] = [
 /** The festival runs Friday–Sunday; "TBD" is for anything not yet placed. */
 export type ActivationDay = "Friday" | "Saturday" | "Sunday" | "TBD";
 
-export const ACTIVATION_DAYS: ActivationDay[] = [
-  "Friday",
-  "Saturday",
-  "Sunday",
-  "TBD",
-];
-
 export interface Activation {
   id: string;
   title: string;
   day: ActivationDay;
-  /** Clock window as crew should read it, e.g. "6:00 PM – 8:00 PM". */
+  /** Clock window as crew say it out loud, e.g. "11:15 PM–1:15 AM". */
   time: string;
   /** A named guest running it, where it isn't WHOA crew. */
   by?: string;
-  /**
-   * What a worker needs to know that the time alone doesn't tell them —
-   * usually which main-stage sets it runs against, since that's what
-   * decides how busy the booth will be.
-   */
+  /** Anything else crew need that the day and time don't cover. */
   note?: string;
 }
 
 // Everything WHOA is running at SSBD beyond the booth itself, in the order
-// it happens. Authored per day rather than as one flat list because that's
-// how crew actually read it — "what am I working around on Saturday" — and
-// grouping in the UI then needs no date parsing.
+// it happens. Each one is its own card on the crew page, so the list stays
+// authored flat rather than nested by day.
 //
-// Times that cross midnight are written as they're said out loud
-// ("11:15 PM – 1:15 AM"), not normalised to a 24-hour range: this is a
+// Times that cross midnight are written the way they're said out loud
+// ("11:15 PM–1:15 AM"), not normalised to a 24-hour range: this is a
 // run-of-show for people on their feet, not a scheduling API.
 export const ACTIVATIONS: Activation[] = [
   {
     id: "opening-gallery-soiree",
     title: "Opening Gallery Soirée: A Cheese & Jazz Experience",
     day: "Friday",
-    time: "6:00 PM – 8:00 PM",
+    time: "6–8 PM",
     by: "Julien Cantlem",
   },
   {
     id: "silent-discwhoa-friday",
     title: "Silent DiscWHOA",
     day: "Friday",
-    time: "11:00 PM – 1:00 AM",
-    note: "Runs during Effin & Of The Trees.",
+    time: "11 PM–1 AM",
   },
   {
     id: "ecstatic-paint-party",
     title: "Ecstatic Paint Party",
     day: "Saturday",
-    time: "2:00 PM – 3:00 PM",
+    time: "2–3 PM",
   },
   {
     id: "wasani-whoa",
     title: "Wasani WHOA",
     day: "Saturday",
-    time: "10:20 PM – 11:10 PM",
+    time: "10:20 PM–11:10 PM",
   },
   {
     id: "silent-discwhoa-saturday",
     title: "Silent DiscWHOA",
     day: "Saturday",
-    time: "11:15 PM – 1:15 AM",
-    note: "Runs during Gramatik & LSDREAM.",
+    time: "11:15 PM–1:15 AM",
   },
   {
     id: "whoalympics",
     title: "WHOALYMPICS",
     day: "Sunday",
-    time: "4:00 PM – 5:00 PM",
+    time: "4–5 PM",
   },
   {
     id: "chill-pill-runway-show",
     title: "Chill Pill Runway Show",
     day: "TBD",
     time: "TBD",
-    note: "Happening at Creation Station / WHOA OASIS — day and time still being worked out.",
+    note: "At Creation Station / WHOA OASIS — day and time still being worked out.",
   },
 ];
 
