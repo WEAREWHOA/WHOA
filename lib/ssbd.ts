@@ -67,7 +67,7 @@ export const ANNOUNCEMENTS: Announcement[] = [
     title: "Chill Pill Runway Show",
     date: "During SSBD — Sept 25–27, 2026",
     tag: "Update",
-    body: "There's a runway show happening at SSBD, produced by Lily Flores of Chill Pill. Exact time and location within the festival to come — check back here.",
+    body: "There's a runway show happening at SSBD, produced by Lily Flores of Chill Pill. It's happening at Creation Station / WHOA OASIS — the day and time are still being worked out, so check back here.",
   },
 ];
 
@@ -144,7 +144,8 @@ export const DOCS: CrewDoc[] = [
     id: "load-schedule",
     title: "Load-In & Load-Out Schedule",
     category: "Logistics",
-    summary: "General timing — exact hours will be confirmed closer to the festival.",
+    summary:
+      "General timing — exact hours will be confirmed closer to the festival.",
     body: [
       "If you aren't scheduled for any load-in or build but would like to help in any way, feel free to come early to help",
       "Exact load-in/load-out times are TBD and will be posted here once confirmed with organizers",
@@ -168,18 +169,87 @@ export const DOCS: CrewDoc[] = [
   },
 ];
 
+/** The festival runs Friday–Sunday; "TBD" is for anything not yet placed. */
+export type ActivationDay = "Friday" | "Saturday" | "Sunday" | "TBD";
+
+export const ACTIVATION_DAYS: ActivationDay[] = [
+  "Friday",
+  "Saturday",
+  "Sunday",
+  "TBD",
+];
+
 export interface Activation {
   id: string;
   title: string;
-  date: string;
+  day: ActivationDay;
+  /** Clock window as crew should read it, e.g. "6:00 PM – 8:00 PM". */
+  time: string;
+  /** A named guest running it, where it isn't WHOA crew. */
+  by?: string;
+  /**
+   * What a worker needs to know that the time alone doesn't tell them —
+   * usually which main-stage sets it runs against, since that's what
+   * decides how busy the booth will be.
+   */
+  note?: string;
 }
 
-// Extra activations happening at SSBD, beyond the booth itself — dates
-// and times TBD until confirmed with organizers.
+// Everything WHOA is running at SSBD beyond the booth itself, in the order
+// it happens. Authored per day rather than as one flat list because that's
+// how crew actually read it — "what am I working around on Saturday" — and
+// grouping in the UI then needs no date parsing.
+//
+// Times that cross midnight are written as they're said out loud
+// ("11:15 PM – 1:15 AM"), not normalised to a 24-hour range: this is a
+// run-of-show for people on their feet, not a scheduling API.
 export const ACTIVATIONS: Activation[] = [
-  { id: "silent-discwhoa", title: "SILENT DISCWHOA", date: "TBD" },
-  { id: "whoalypics", title: "WHOALYPICS", date: "TBD" },
-  { id: "chill-pill-runway-show", title: "CHILL PILL RUNWAY SHOW", date: "TBD" },
+  {
+    id: "opening-gallery-soiree",
+    title: "Opening Gallery Soirée: A Cheese & Jazz Experience",
+    day: "Friday",
+    time: "6:00 PM – 8:00 PM",
+    by: "Julien Cantlem",
+  },
+  {
+    id: "silent-discwhoa-friday",
+    title: "Silent DiscWHOA",
+    day: "Friday",
+    time: "11:00 PM – 1:00 AM",
+    note: "Runs during Effin & Of The Trees.",
+  },
+  {
+    id: "ecstatic-paint-party",
+    title: "Ecstatic Paint Party",
+    day: "Saturday",
+    time: "2:00 PM – 3:00 PM",
+  },
+  {
+    id: "wasani-whoa",
+    title: "Wasani WHOA",
+    day: "Saturday",
+    time: "10:20 PM – 11:10 PM",
+  },
+  {
+    id: "silent-discwhoa-saturday",
+    title: "Silent DiscWHOA",
+    day: "Saturday",
+    time: "11:15 PM – 1:15 AM",
+    note: "Runs during Gramatik & LSDREAM.",
+  },
+  {
+    id: "whoalympics",
+    title: "WHOALYMPICS",
+    day: "Sunday",
+    time: "4:00 PM – 5:00 PM",
+  },
+  {
+    id: "chill-pill-runway-show",
+    title: "Chill Pill Runway Show",
+    day: "TBD",
+    time: "TBD",
+    note: "Happening at Creation Station / WHOA OASIS — day and time still being worked out.",
+  },
 ];
 
 // One schedule, two areas — WHOADEGA and WHOA OASIS share the same
@@ -194,21 +264,68 @@ export const SCHEDULE_AREAS: ScheduleArea[] = [
     id: "whoa-oasis",
     label: "WHOA OASIS",
     shifts: [
-      { name: "Derek", friday: "10 AM – 6 PM", saturday: "10 AM – 6 PM", sunday: "10 AM – 6 PM" },
-      { name: "Mike", friday: "2 PM – 10 PM", saturday: "2 PM – 10 PM", sunday: "2 PM – 10 PM" },
-      { name: "Ali", friday: "10 AM – 6 PM", saturday: "2 PM – 10 PM", sunday: "2 PM – 10 PM" },
-      { name: "Dylan", friday: "6 PM – 2 AM", saturday: "10 PM – 6 AM", sunday: "8 PM – 4 AM" },
-      { name: "Julianna", friday: "10 PM – 6 AM", saturday: "10 PM – 6 AM", sunday: "10 PM – 4 AM" },
-      { name: "Bryce", friday: "10 PM – 6 AM", saturday: "10 PM – 6 AM", sunday: "6 PM – 2 AM" },
-      { name: "James", friday: "10 PM – 6 AM", saturday: "6 PM – 2 AM", sunday: "10 PM – 4 AM" },
+      {
+        name: "Derek",
+        friday: "10 AM – 6 PM",
+        saturday: "10 AM – 6 PM",
+        sunday: "10 AM – 6 PM",
+      },
+      {
+        name: "Mike",
+        friday: "2 PM – 10 PM",
+        saturday: "2 PM – 10 PM",
+        sunday: "2 PM – 10 PM",
+      },
+      {
+        name: "Ali",
+        friday: "10 AM – 6 PM",
+        saturday: "2 PM – 10 PM",
+        sunday: "2 PM – 10 PM",
+      },
+      {
+        name: "Dylan",
+        friday: "6 PM – 2 AM",
+        saturday: "10 PM – 6 AM",
+        sunday: "8 PM – 4 AM",
+      },
+      {
+        name: "Julianna",
+        friday: "10 PM – 6 AM",
+        saturday: "10 PM – 6 AM",
+        sunday: "10 PM – 4 AM",
+      },
+      {
+        name: "Bryce",
+        friday: "10 PM – 6 AM",
+        saturday: "10 PM – 6 AM",
+        sunday: "6 PM – 2 AM",
+      },
+      {
+        name: "James",
+        friday: "10 PM – 6 AM",
+        saturday: "6 PM – 2 AM",
+        sunday: "10 PM – 4 AM",
+      },
     ],
   },
 ];
 
 export const TEAM_CONTACTS: TeamContact[] = [
-  { role: "Whoa / Creation Station Operations", name: "Wasani", contact: "949-690-3690" },
-  { role: "Whoadega / Whoa Oasis Director", name: "Nick", contact: "704-280-4148" },
-  { role: "Whoadega / Whoa Oasis Director", name: "Vee", contact: "702-715-8031" },
+  {
+    role: "Whoa / Creation Station Operations",
+    name: "Wasani",
+    contact: "949-690-3690",
+  },
+  {
+    role: "Whoadega / Whoa Oasis Director",
+    name: "Nick",
+    contact: "704-280-4148",
+  },
+  {
+    role: "Whoadega / Whoa Oasis Director",
+    name: "Vee",
+    contact: "702-715-8031",
+  },
   { role: "WHOA OS Tech Support", name: "Jan", contact: "786-554-5865" },
   { role: "Creation Station Organizers", name: "Sam/Aymé", contact: "N/A" },
   { role: "General Questions", contact: "info@wearewhoa.com" },
