@@ -67,7 +67,7 @@ export const ANNOUNCEMENTS: Announcement[] = [
     title: "Chill Pill Runway Show",
     date: "During SSBD — Sept 25–27, 2026",
     tag: "Update",
-    body: "There's a runway show happening at SSBD, produced by Lily Flores of Chill Pill. It's happening at Creation Station / WHOA OASIS — the day and time are still being worked out, so check back here.",
+    body: "There's a runway show happening at SSBD, produced by Lily Flores of Chill Pill. Exact time and location within the festival to come — check back here.",
   },
 ];
 
