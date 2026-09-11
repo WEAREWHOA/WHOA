@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { LockIcon } from "@/components/LockedBadge";
+import { COMING_SOON_LABEL, isLockedRoute } from "@/lib/lockedRoutes";
 import { useLoggedIn } from "@/lib/useLoggedIn";
 
 function EventsIcon() {
@@ -53,12 +55,56 @@ function AboutIcon() {
   );
 }
 
+interface Tab {
+  href: string;
+  label: string;
+  icon: ReactNode;
+  active: boolean;
+}
+
+/**
+ * One dock tab, as a link or as a locked label.
+ *
+ * The dock is five columns on a 390px phone, so a locked tab can't carry
+ * the full badge and its own icon as well — the padlock *becomes* the icon,
+ * and the words sit under the label on their own line. Same signal, in the
+ * room actually available.
+ */
+function DockTab({ tab }: { tab: Tab }) {
+  const shared = "flex flex-col items-center gap-1 py-2.5 text-[0.65rem] font-semibold tracking-wide uppercase";
+
+  if (isLockedRoute(tab.href)) {
+    return (
+      <span
+        aria-disabled="true"
+        aria-label={`${tab.label} — coming soon`}
+        className={`${shared} cursor-default text-muted/60 select-none`}
+      >
+        <LockIcon className="h-5 w-5" />
+        {tab.label}
+        <span className="text-[0.45rem] leading-none tracking-[0.08em]">{COMING_SOON_LABEL}</span>
+      </span>
+    );
+  }
+
+  return (
+    <Link
+      href={tab.href}
+      aria-current={tab.active ? "page" : undefined}
+      className={`${shared} transition-colors ${tab.active ? "text-flame-2" : "text-muted hover:text-foreground"}`}
+    >
+      {tab.icon}
+      {tab.label}
+    </Link>
+  );
+}
+
 export default function BottomNav() {
   const loggedIn = useLoggedIn();
   const pathname = usePathname() ?? "";
   const shopActive = pathname.startsWith("/shop") || pathname.startsWith("/cart");
 
-  const sideTabs: { href: string; label: string; icon: ReactNode; active: boolean }[] = [
+  const sideTabs: Tab[] = [
     { href: "/events", label: "Events", icon: <EventsIcon />, active: pathname.startsWith("/events") },
     { href: "/join", label: "Join", icon: <JoinIcon />, active: pathname.startsWith("/join") },
     {
@@ -78,17 +124,7 @@ export default function BottomNav() {
     >
       <div className="relative grid grid-cols-5">
         {sideTabs.slice(0, 2).map((tab) => (
-          <Link
-            key={tab.label}
-            href={tab.href}
-            aria-current={tab.active ? "page" : undefined}
-            className={`flex flex-col items-center gap-1 py-2.5 text-[0.65rem] font-semibold tracking-wide uppercase transition-colors ${
-              tab.active ? "text-flame-2" : "text-muted hover:text-foreground"
-            }`}
-          >
-            {tab.icon}
-            {tab.label}
-          </Link>
+          <DockTab key={tab.label} tab={tab} />
         ))}
 
         {/* Shop — raised above the bar, Etsy/native-app "primary action" style. */}
@@ -111,17 +147,7 @@ export default function BottomNav() {
         </div>
 
         {sideTabs.slice(2).map((tab) => (
-          <Link
-            key={tab.label}
-            href={tab.href}
-            aria-current={tab.active ? "page" : undefined}
-            className={`flex flex-col items-center gap-1 py-2.5 text-[0.65rem] font-semibold tracking-wide uppercase transition-colors ${
-              tab.active ? "text-flame-2" : "text-muted hover:text-foreground"
-            }`}
-          >
-            {tab.icon}
-            {tab.label}
-          </Link>
+          <DockTab key={tab.label} tab={tab} />
         ))}
       </div>
     </nav>

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
+import ComingSoonBadge from "@/components/LockedBadge";
+import { isLockedRoute } from "@/lib/lockedRoutes";
 
 export const metadata: Metadata = {
   title: "Join",
@@ -64,30 +66,59 @@ export default function JoinPage() {
       </div>
 
       <div className="relative z-10 mt-14 grid w-full max-w-4xl gap-6 sm:grid-cols-2">
-        {TILES.map((tile, i) => (
-          <Link
-            key={tile.href}
-            href={tile.href}
-            className={`group relative overflow-hidden rounded-2xl border border-white/15 p-8 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.8)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_25px_65px_-15px_rgba(255,122,0,0.35)] ${
-              i === TILES.length - 1 && TILES.length % 2 === 1 ? "sm:col-span-2" : ""
-            }`}
-            style={{ background: tile.gradient }}
-          >
-            <div aria-hidden className="event-card-noise absolute inset-0" />
-            <div className="relative z-10">
-              <h2 className="font-display text-2xl tracking-wide text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)] sm:text-3xl">
-                {tile.title}
-              </h2>
-              <p className="mt-2 max-w-sm text-sm text-white/85">{tile.description}</p>
-              <span className="mt-5 inline-flex items-center gap-1 text-xs font-semibold tracking-wide text-white uppercase">
-                Explore
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" className="transition-transform group-hover:translate-x-1">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 6l6 6-6 6" />
-                </svg>
-              </span>
-            </div>
-          </Link>
-        ))}
+        {TILES.map((tile, i) => {
+          const locked = isLockedRoute(tile.href);
+          const span = i === TILES.length - 1 && TILES.length % 2 === 1 ? "sm:col-span-2" : "";
+
+          const inner = (
+            <>
+              <div aria-hidden className="event-card-noise absolute inset-0" />
+              <div className="relative z-10">
+                <h2 className="font-display text-2xl tracking-wide text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)] sm:text-3xl">
+                  {tile.title}
+                </h2>
+                <p className="mt-2 max-w-sm text-sm text-white/85">{tile.description}</p>
+                {locked ? (
+                  // Sits exactly where "Explore" would, so a locked tile
+                  // answers the same question the others do in the same
+                  // place — just with a different answer.
+                  <ComingSoonBadge className="mt-5 text-sm text-white/80" />
+                ) : (
+                  <span className="mt-5 inline-flex items-center gap-1 text-xs font-semibold tracking-wide text-white uppercase">
+                    Explore
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" className="transition-transform group-hover:translate-x-1">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 6l6 6-6 6" />
+                    </svg>
+                  </span>
+                )}
+              </div>
+            </>
+          );
+
+          if (locked) {
+            return (
+              <div
+                key={tile.href}
+                aria-disabled="true"
+                className={`relative overflow-hidden rounded-2xl border border-white/10 p-8 opacity-70 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.8)] select-none ${span}`}
+                style={{ background: tile.gradient }}
+              >
+                {inner}
+              </div>
+            );
+          }
+
+          return (
+            <Link
+              key={tile.href}
+              href={tile.href}
+              className={`group relative overflow-hidden rounded-2xl border border-white/15 p-8 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.8)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_25px_65px_-15px_rgba(255,122,0,0.35)] ${span}`}
+              style={{ background: tile.gradient }}
+            >
+              {inner}
+            </Link>
+          );
+        })}
       </div>
     </section>
   );

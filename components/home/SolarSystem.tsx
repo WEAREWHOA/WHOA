@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useRef } from "react";
+import ComingSoonBadge from "@/components/LockedBadge";
+import { isLockedRoute } from "@/lib/lockedRoutes";
 
 interface Planet {
   label: string;
@@ -55,7 +57,10 @@ function metrics(width: number) {
     // outermost orbit leaves so a label centred under its planet still
     // lands inside the viewport instead of running off the edge.
     labelMarginX: compact ? 56 : 120,
-    labelMarginY: compact ? 60 : 78,
+    // Room for the label plus, on a locked planet, the "Coming Soon!" badge
+    // that sits under it — sized for the taller of the two so a locked
+    // planet at the bottom of its orbit doesn't push its badge off-screen.
+    labelMarginY: compact ? 76 : 94,
     // Enough that a label sitting between its planet and the sun still
     // clears the sun's outer glow, not just its disc. A phone gets a
     // smaller gap because 195px of half-screen has to hold the sun, the
@@ -86,6 +91,82 @@ function orbitRadii(size: { width: number; height: number }, sunRadius: number, 
     radiusX: innermost + ((maxX - innermost) * i) / last,
     radiusY: innermost + ((maxY - innermost) * i) / last,
   }));
+}
+
+/**
+ * One planet: its disc and its label, as a link or as a locked label.
+ *
+ * A locked planet keeps its place in the formation and its full size — it's
+ * still one of the six things WHOA is, it just isn't open yet — but it stops
+ * being a tap target and says so under its name. Dimmed rather than removed
+ * on purpose: "this exists, come back" reads very differently from an orrery
+ * with gaps in it.
+ */
+function PlanetBody({ planet }: { planet: Planet }) {
+  const locked = isLockedRoute(planet.href);
+
+  const disc = (
+    <span
+      className={`block h-full w-full rounded-full transition-transform duration-300 ${locked ? "opacity-60" : "group-hover:scale-110"}`}
+      style={{
+        background: `radial-gradient(circle at 32% 28%, #ffffff, ${planet.accent} 58%, ${planet.accent}44)`,
+        boxShadow: locked
+          ? `0 0 18px -6px ${planet.accent}`
+          : `0 0 30px -2px ${planet.accent}, 0 0 60px -10px ${planet.accent}`,
+      }}
+      aria-hidden
+    />
+  );
+
+  // Wraps to two narrow lines on a phone and runs on one line from `sm` up
+  // — a long label like "MUSIC COLLECTIVE" would otherwise need more
+  // horizontal room than a 390px screen has to spare at the outer edge of
+  // its orbit.
+  const label = (
+    <span className="absolute top-full left-1/2 mt-2 flex w-[104px] -translate-x-1/2 flex-col items-center sm:w-auto">
+      <span
+        className="font-display block text-center text-[0.8rem] leading-[1.15] tracking-[0.12em] sm:text-xl sm:whitespace-nowrap"
+        style={{
+          color: planet.accent,
+          textShadow: "0 2px 12px rgba(0,0,0,0.95)",
+          opacity: locked ? 0.75 : 1,
+        }}
+      >
+        {planet.label}
+      </span>
+      {/* The same drop shadow the label carries — without it the badge
+          washes out over the brighter parts of the nebula behind it. */}
+      {locked && (
+        <ComingSoonBadge
+          className="mt-1 text-white/75"
+          style={{ textShadow: "0 2px 12px rgba(0,0,0,0.95)" }}
+        />
+      )}
+    </span>
+  );
+
+  if (locked) {
+    return (
+      <span
+        aria-disabled="true"
+        aria-label={`${planet.label} — coming soon`}
+        className="pointer-events-auto relative block aspect-square w-full cursor-default rounded-full select-none"
+      >
+        {disc}
+        {label}
+      </span>
+    );
+  }
+
+  return (
+    <Link
+      href={planet.href}
+      className="pointer-events-auto group relative block aspect-square w-full rounded-full focus-visible:outline-2 focus-visible:outline-offset-8 focus-visible:outline-white"
+    >
+      {disc}
+      {label}
+    </Link>
+  );
 }
 
 export default function SolarSystem() {
@@ -217,30 +298,7 @@ export default function SolarSystem() {
               exactly on its orbit ring; the label hangs off it absolutely,
               still inside the <a> and so still part of the same tap target,
               without pulling the body off the ring to make room for itself. */}
-          <Link
-            href={planet.href}
-            className="pointer-events-auto group relative block aspect-square w-full rounded-full focus-visible:outline-2 focus-visible:outline-offset-8 focus-visible:outline-white"
-          >
-            <span
-              className="block h-full w-full rounded-full transition-transform duration-300 group-hover:scale-110"
-              style={{
-                background: `radial-gradient(circle at 32% 28%, #ffffff, ${planet.accent} 58%, ${planet.accent}44)`,
-                boxShadow: `0 0 30px -2px ${planet.accent}, 0 0 60px -10px ${planet.accent}`,
-              }}
-              aria-hidden
-            />
-
-            {/* Wraps to two narrow lines on a phone and runs on one line from
-                `sm` up — a long label like "MUSIC COLLECTIVE" would otherwise
-                need more horizontal room than a 390px screen has to spare at
-                the outer edge of its orbit. */}
-            <span
-              className="font-display absolute top-full left-1/2 mt-2 block w-[104px] -translate-x-1/2 text-center text-[0.8rem] leading-[1.15] tracking-[0.12em] sm:w-auto sm:text-xl sm:whitespace-nowrap"
-              style={{ color: planet.accent, textShadow: "0 2px 12px rgba(0,0,0,0.95)" }}
-            >
-              {planet.label}
-            </span>
-          </Link>
+          <PlanetBody planet={planet} />
         </div>
       ))}
     </div>
