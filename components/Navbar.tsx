@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import CartLink from "@/components/CartLink";
+import ComingSoonBadge from "@/components/LockedBadge";
+import { isLockedRoute } from "@/lib/lockedRoutes";
 import { useLoggedIn } from "@/lib/useLoggedIn";
 
 // The same 5 destinations as BottomNav, for desktop — primary navigation
@@ -27,11 +29,26 @@ export default function Navbar() {
         </Link>
 
         <nav className="hidden items-center gap-8 text-sm font-semibold tracking-wide text-muted uppercase md:flex">
-          {links.map((link) => (
-            <Link key={link.href} href={link.href} className="transition-colors hover:text-foreground">
-              {link.label}
-            </Link>
-          ))}
+          {links.map((link) =>
+            // A locked destination stays in the nav rather than vanishing
+            // from it — it's still part of what WHOA is, and a nav that
+            // quietly loses an item teaches a returning visitor nothing.
+            isLockedRoute(link.href) ? (
+              <span
+                key={link.href}
+                aria-disabled="true"
+                aria-label={`${link.label} — coming soon`}
+                className="flex cursor-default flex-col items-center gap-0.5 leading-none text-muted/60 select-none"
+              >
+                {link.label}
+                <ComingSoonBadge className="text-[0.5rem] tracking-[0.1em]" />
+              </span>
+            ) : (
+              <Link key={link.href} href={link.href} className="transition-colors hover:text-foreground">
+                {link.label}
+              </Link>
+            ),
+          )}
         </nav>
 
         <div className="flex items-center gap-3">

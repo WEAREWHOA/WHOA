@@ -18,6 +18,42 @@ Super Admin has granted them. See
   bio," "TikTok video 1") that all share the same discount code but track
   clicks separately, so they can see which channel actually converts.
 
+## Locked areas ("Coming Soon!")
+
+`lib/lockedRoutes.ts` is the single list of areas that aren't open to the
+public yet — currently `/join`, `/art-collective` and `/music-collective`.
+Everything that would otherwise link to one of them asks `isLockedRoute()`
+and renders a padlock plus **Coming Soon!**
+(`components/LockedBadge.tsx`) instead of a clickable link.
+
+One list, because "locked" has to be told the same way everywhere: the
+homepage orrery, the desktop nav, the mobile dock, the Join tiles, a
+mention in an About paragraph, the `/site-concept` journey diagram. A
+visitor who finds one unlocked entrance has found the thing unlocked.
+Opening an area back up is deleting a line from that file — the components
+need no changes.
+
+What locking does **not** do is take the pages down: `/art-collective` and
+friends still render at their URLs, so an artist mid-application and staff
+checking their own work aren't cut off. This governs what the public site
+invites you to click. Links *inside* a locked section (an artist page's
+"back to the collective", an apply flow's thank-you CTA) stay live too —
+stranding someone already in there helps nobody.
+
+Per-surface treatment, since the room available differs:
+
+- **Homepage planets** (`SolarSystem.tsx`) — the planet keeps its size and
+  its orbit but dims, stops being a tap target, and carries the badge under
+  its label. `metrics()`'s `labelMarginY` includes the badge's height, so a
+  locked planet at the bottom of its orbit can't push its badge off-screen.
+- **Desktop nav** — the item stays in place, greyed, with the badge on a
+  second line under the label.
+- **Mobile dock** — five columns on a 390px phone leaves no room for both
+  an icon and a full badge, so the padlock *becomes* the tab icon and the
+  words sit under the label.
+- **Join tiles** — the badge replaces "Explore", in the same spot, so a
+  locked tile answers the same question in the same place.
+
 ## App layout & navigation
 
 An Etsy-app-inspired shell: a persistent 5-tab nav (Events / Join / Shop /

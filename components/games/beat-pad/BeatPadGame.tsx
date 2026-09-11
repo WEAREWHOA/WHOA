@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import ComingSoonBadge from "@/components/LockedBadge";
 import { PADS, playSound } from "@/lib/games/beatPad";
 
 const KEY_MAP = ["1", "2", "3", "4", "q", "w", "e", "r", "a", "s", "d", "f", "z", "x", "c", "v"];
@@ -54,9 +54,12 @@ export default function BeatPadGame() {
         (1234 / qwer / asdf / zxcv).
       </p>
 
-      <Link href="/music-collective" className="text-flame-2 mt-4 text-xs font-semibold uppercase hover:underline">
-        Hear the real thing → Music Collective
-      </Link>
+      {/* The Music Collective isn't open to the public yet, so this points
+          at it without pretending it's somewhere you can go. */}
+      <span className="mt-4 flex flex-col items-center gap-1 text-xs font-semibold text-muted uppercase select-none">
+        Hear the real thing — Music Collective
+        <ComingSoonBadge />
+      </span>
     </div>
   );
 }

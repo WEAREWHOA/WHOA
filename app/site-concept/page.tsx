@@ -1,4 +1,6 @@
 import Link from "next/link";
+import ComingSoonBadge from "@/components/LockedBadge";
+import { isLockedRoute } from "@/lib/lockedRoutes";
 import type { Metadata } from "next";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 
@@ -215,7 +217,10 @@ function JourneyCard({ journey }: { journey: Journey }) {
                 →
               </span>
             )}
-            {step.href ? (
+            {/* A step pointing somewhere locked is drawn like a step with
+                nowhere to go — the diagram still shows the journey, it just
+                doesn't offer a door that isn't open yet. */}
+            {step.href && !isLockedRoute(step.href) ? (
               <Link
                 href={step.href}
                 className="flex flex-col justify-center rounded-xl border px-3 py-2 transition-colors hover:border-flame-2/60"
@@ -231,6 +236,9 @@ function JourneyCard({ journey }: { journey: Journey }) {
               >
                 <span className="text-sm font-semibold text-foreground">{step.label}</span>
                 {step.note && <span className="text-[0.7rem] text-muted">{step.note}</span>}
+                {step.href && isLockedRoute(step.href) && (
+                  <ComingSoonBadge className="mt-1 text-muted" />
+                )}
               </span>
             )}
           </li>

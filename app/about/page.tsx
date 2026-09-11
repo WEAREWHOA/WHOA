@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ComingSoonBadge from "@/components/LockedBadge";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -67,15 +68,9 @@ export default function AboutPage() {
             >
               Children International
             </a>
-            . We also partner directly with independent artists and musicians — see the{" "}
-            <Link href="/art-collective" className="text-flame font-medium hover:underline">
-              Art Collective
-            </Link>{" "}
-            and{" "}
-            <Link href="/music-collective" className="text-flame font-medium hover:underline">
-              Music Collective
-            </Link>
-            .
+            . We also partner directly with independent artists and musicians through the Art
+            Collective and the Music Collective — both opening soon.{" "}
+            <ComingSoonBadge className="align-middle text-muted" />
           </p>
         </div>
       </div>
