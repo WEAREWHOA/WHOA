@@ -18,18 +18,23 @@ import {
 export default function EventDetails({ code }: { code: string }) {
   return (
     <div className="text-left">
-      <Link href={`/portal/${code}`} className="text-sm text-muted hover:text-foreground">
+      <Link
+        href={`/portal/${code}`}
+        className="text-sm text-muted hover:text-foreground"
+      >
         ← Back to your dashboard
       </Link>
 
       <header className="mt-6">
-        <span className="text-xs font-semibold tracking-[0.3em] text-muted uppercase">Event Details</span>
+        <span className="text-xs font-semibold tracking-[0.3em] text-muted uppercase">
+          Event Details
+        </span>
         <h1 className="text-psychedelic font-display mt-2 text-4xl tracking-wide sm:text-5xl">
           Same Same But Different
         </h1>
         <p className="mt-3 max-w-2xl text-sm text-muted">
-          Everything the WHOADEGA crew needs to build, sell, and work the booth at Same Same But
-          Different — September 25–27, 2026, Lake Perris, CA.
+          Everything the WHOADEGA crew needs to build, sell, and work the booth
+          at Same Same But Different — September 25–27, 2026, Lake Perris, CA.
         </p>
       </header>
 
@@ -66,7 +71,10 @@ export default function EventDetails({ code }: { code: string }) {
                 {content}
               </Link>
             ) : (
-              <div key={a.id} className="card-surface rounded-2xl border border-border p-5">
+              <div
+                key={a.id}
+                className="card-surface rounded-2xl border border-border p-5"
+              >
                 {content}
               </div>
             );
@@ -75,11 +83,16 @@ export default function EventDetails({ code }: { code: string }) {
       </section>
 
       <section id="training-calendar" className="mt-12">
-        <h2 className="font-display text-2xl tracking-wide">Training Calendar</h2>
+        <h2 className="font-display text-2xl tracking-wide">
+          Training Calendar
+        </h2>
         <p className="mt-2 text-sm text-muted">{TRAINING_POLICY.attendance}</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {TRAINING_SESSIONS.map((session) => (
-            <div key={session.id} className="card-surface rounded-2xl border border-border p-5">
+            <div
+              key={session.id}
+              className="card-surface rounded-2xl border border-border p-5"
+            >
               <h3 className="font-display text-lg">{session.title}</h3>
               <p className="text-xs text-muted">
                 {session.date} · {session.time}
@@ -98,10 +111,15 @@ export default function EventDetails({ code }: { code: string }) {
       </section>
 
       <section className="mt-12">
-        <h2 className="font-display text-2xl tracking-wide">Documents & Resources</h2>
+        <h2 className="font-display text-2xl tracking-wide">
+          Documents & Resources
+        </h2>
         <div className="mt-4 space-y-3">
           {DOCS.map((doc) => (
-            <details key={doc.id} className="card-surface group rounded-2xl border border-border p-5">
+            <details
+              key={doc.id}
+              className="card-surface group rounded-2xl border border-border p-5"
+            >
               <summary className="flex cursor-pointer list-none items-start justify-between gap-3">
                 <div>
                   <span className="text-flame-2 text-[0.65rem] font-semibold tracking-wide uppercase">
@@ -125,15 +143,29 @@ export default function EventDetails({ code }: { code: string }) {
       </section>
 
       <section className="mt-12">
-        <h2 className="font-display text-2xl tracking-wide">Activations Schedule</h2>
+        <h2 className="font-display text-2xl tracking-wide">
+          Activations Schedule
+        </h2>
         <p className="mt-2 text-sm text-muted">
-          Extra activations happening at SSBD, beyond the booth — dates and times TBD.
+          Everything WHOA is running at SSBD beyond the booth. Times are when
+          the activation itself runs — check your own shift below for when
+          you&apos;re on.
         </p>
-        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {ACTIVATIONS.map((a) => (
-            <div key={a.id} className="card-surface rounded-2xl border border-border p-5">
-              <h3 className="font-display text-lg uppercase">{a.title}</h3>
-              <p className="mt-1 text-xs text-muted">{a.date}</p>
+            <div
+              key={a.id}
+              className="card-surface rounded-2xl border border-border p-5"
+            >
+              <span className="text-flame-2 text-xs font-semibold tracking-[0.2em] uppercase">
+                {a.day === "TBD" ? "Day TBD" : a.day}
+              </span>
+              <h3 className="font-display mt-2 text-lg uppercase">{a.title}</h3>
+              <p className="mt-1 text-sm text-muted">{a.time}</p>
+              {a.by && <p className="mt-1 text-sm text-muted">with {a.by}</p>}
+              {a.note && (
+                <p className="mt-2 text-sm text-foreground/80">{a.note}</p>
+              )}
             </div>
           ))}
         </div>
@@ -142,12 +174,15 @@ export default function EventDetails({ code }: { code: string }) {
       <section className="mt-12">
         <h2 className="font-display text-2xl tracking-wide">Shift Schedule</h2>
         <p className="mt-2 text-sm text-muted">
-          One schedule, two areas — WHOADEGA and WHOA OASIS. Talk to your team lead if your shift
-          needs to change.
+          One schedule, two areas — WHOADEGA and WHOA OASIS. Talk to your team
+          lead if your shift needs to change.
         </p>
         <div className="mt-4 space-y-6">
           {SCHEDULE_AREAS.map((area) => (
-            <div key={area.id} className="card-surface rounded-2xl border border-border p-5">
+            <div
+              key={area.id}
+              className="card-surface rounded-2xl border border-border p-5"
+            >
               <h3 className="font-display text-lg">{area.label}</h3>
               {area.shifts ? (
                 <div className="mt-4 overflow-x-auto">
@@ -163,17 +198,27 @@ export default function EventDetails({ code }: { code: string }) {
                     <tbody className="divide-y divide-border">
                       {area.shifts.map((shift) => (
                         <tr key={shift.name}>
-                          <td className="py-2 pr-4 font-semibold">{shift.name}</td>
-                          <td className="py-2 pr-4 text-foreground/80">{shift.friday}</td>
-                          <td className="py-2 pr-4 text-foreground/80">{shift.saturday}</td>
-                          <td className="py-2 text-foreground/80">{shift.sunday}</td>
+                          <td className="py-2 pr-4 font-semibold">
+                            {shift.name}
+                          </td>
+                          <td className="py-2 pr-4 text-foreground/80">
+                            {shift.friday}
+                          </td>
+                          <td className="py-2 pr-4 text-foreground/80">
+                            {shift.saturday}
+                          </td>
+                          <td className="py-2 text-foreground/80">
+                            {shift.sunday}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               ) : (
-                <p className="mt-2 text-sm text-muted">Schedule coming soon — check back here.</p>
+                <p className="mt-2 text-sm text-muted">
+                  Schedule coming soon — check back here.
+                </p>
               )}
             </div>
           ))}
@@ -188,9 +233,13 @@ export default function EventDetails({ code }: { code: string }) {
               key={`${c.role}-${c.name ?? c.contact}`}
               className="card-surface rounded-2xl border border-border p-5"
             >
-              <p className="text-flame-2 text-xs font-semibold tracking-wide uppercase">{c.role}</p>
+              <p className="text-flame-2 text-xs font-semibold tracking-wide uppercase">
+                {c.role}
+              </p>
               {c.name && <p className="font-display mt-1 text-lg">{c.name}</p>}
-              <p className={`text-sm text-muted ${c.name ? "" : "mt-1"}`}>{c.contact}</p>
+              <p className={`text-sm text-muted ${c.name ? "" : "mt-1"}`}>
+                {c.contact}
+              </p>
             </div>
           ))}
         </div>

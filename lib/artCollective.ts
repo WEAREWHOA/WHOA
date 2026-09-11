@@ -4,6 +4,26 @@ import { uploadMedia } from "./media";
 import { getSquare, getSquareLocationId } from "./square";
 import { getOnlineStoreChannelId, getOrCreateArtCollectiveCategoryId, getOrCreateArtistCategoryId } from "./catalog";
 import { matchesArtistName } from "./vendorMatch";
+import { getMusicianProfile } from "./musicianProfiles";
+import { getByCode } from "./store";
+import { sendProductDecisionNotification } from "./email";
+import { SITE_URL } from "./siteUrl";
+import type { AccountPermissions } from "./types";
+
+/**
+ * Who may put a product into the shop.
+ *
+ * Started as an Art Collective feature and stayed one for a while, but the
+ * pipeline was never actually about art: it's "someone with a stall here
+ * has something to sell". Vendors and musicians have exactly the same need
+ * — a rack of hats, a run of vinyl — and building them a second pipeline
+ * would mean a second review queue and a second way for a product to reach
+ * Square. So they share this one, and this is the single place that says
+ * who's in.
+ */
+export function canSubmitProducts(permissions: AccountPermissions): boolean {
+  return permissions.art || permissions.vendor || permissions.music;
+}
 
 export interface ArtLink {
   label: string;
@@ -338,6 +358,98 @@ export async function getPendingArtBatches(): Promise<PendingArtBatch[]> {
   return Array.from(batches.values());
 }
 
+/**
+ * The name a seller's products go out under.
+ *
+ * Products no longer come only from Art Collective artists — a vendor or a
+ * musician can submit through the same pipeline — so the name can't just be
+ * read off art_profiles any more. Falls through the profiles a seller might
+ * have, then the name on their account, and only reaches the raw code if
+ * they somehow have neither.
+ *
+ * It matters beyond the label: buildSquareItemName puts this in the Square
+ * item's title, and matchArtCollectiveCode reads it back out to attribute
+ * sales. A seller whose name resolved differently on the way in and the way
+ * out would sell things and never see the money on their dashboard.
+ */
+export async function getSellerName(code: string): Promise<string> {
+  const artProfile = await getArtProfile(code);
+  if (artProfile?.artistName?.trim()) return artProfile.artistName.trim();
+
+  const musicianProfile = await getMusicianProfile(code);
+  if (musicianProfile?.artistName?.trim()) return musicianProfile.artistName.trim();
+
+  const account = await getByCode(code);
+  if (account?.name?.trim()) return account.name.trim();
+
+  return code.trim().toUpperCase();
+}
+
+/**
+ * Every name that can own a product, for attributing Square items back to
+ * an account.
+ *
+ * getAllArtProfileNames covers artists; this adds the vendors and musicians
+ * who've submitted something, so their sales attribute too. Deliberately
+ * limited to accounts with at least one product rather than every account
+ * on the platform: matchesArtistName matches a Square title ending in
+ * "- <Name>", and throwing every account name into that pool would let a
+ * common one claim listings it has nothing to do with.
+ */
+export async function getAllSellerNames(): Promise<{ code: string; artistName: string }[]> {
+  const byCode = new Map<string, string>();
+  for (const profile of await getAllArtProfileNames()) {
+    if (profile.artistName?.trim()) byCode.set(profile.code.toUpperCase(), profile.artistName.trim());
+  }
+
+  const { data, error } = await getSupabase().from("art_products").select("ambassador_code");
+  if (error) throw new Error(`Failed to load product owners: ${error.message}`);
+
+  const missing = [...new Set((data ?? []).map((row) => String(row.ambassador_code).toUpperCase()))].filter(
+    (code) => !byCode.has(code),
+  );
+
+  for (const code of missing) {
+    const name = await getSellerName(code);
+    // getSellerName falls back to the code itself, which would match
+    // nothing useful and could match a title that happens to end in it.
+    if (name.toUpperCase() !== code) byCode.set(code, name);
+  }
+
+  return [...byCode].map(([code, artistName]) => ({ code, artistName }));
+}
+
+/**
+ * Tells a seller what we decided about one of their products.
+ *
+ * Best-effort by design, and always called after the decision has already
+ * been recorded: an approval that reached Square must not be undone because
+ * Resend was having a bad minute.
+ */
+async function notifySellerOfDecision(
+  product: ArtProduct,
+  decision: "approved" | "declined",
+  request: "submission" | "edit" | "removal",
+  note?: string | null,
+): Promise<void> {
+  try {
+    const account = await getByCode(product.ambassadorCode);
+    if (!account?.email) return;
+
+    await sendProductDecisionNotification({
+      email: account.email,
+      sellerName: await getSellerName(product.ambassadorCode),
+      productName: product.name,
+      decision,
+      request,
+      note,
+      portalUrl: `${SITE_URL}/portal/${product.ambassadorCode}`,
+    });
+  } catch (err) {
+    console.error(`Failed to email decision for product ${product.id}:`, err);
+  }
+}
+
 function buildSquareItemName(product: ArtProduct, artistName: string): string {
   return `${product.name} - ${artistName}`;
 }
@@ -477,28 +589,35 @@ async function pushArtProductToSquare(product: ArtProduct, artistName: string): 
 }
 
 export async function reviewArtProduct(id: string, decision: "approved" | "declined"): Promise<void> {
+  // Read first so the decision email has a product to describe. Only
+  // approving actually needs the row — declining stays a no-op on an id
+  // that's already gone, the way a double-clicked Decline link always was.
+  const product = await getArtProductById(id);
+
   if (decision === "declined") {
     const { error } = await getSupabase()
       .from("art_products")
       .update({ status: "declined", reviewed_at: new Date().toISOString() })
       .eq("id", id);
     if (error) throw new Error(`Failed to decline product: ${error.message}`);
+    if (product) await notifySellerOfDecision(product, "declined", "submission");
     return;
   }
 
-  const product = await getArtProductById(id);
   if (!product) throw new Error("Product not found");
 
-  const profile = await getArtProfile(product.ambassadorCode);
-  const artistName = profile?.artistName ?? product.ambassadorCode;
-
-  const squareCatalogObjectId = await pushArtProductToSquare(product, artistName);
+  const squareCatalogObjectId = await pushArtProductToSquare(
+    product,
+    await getSellerName(product.ambassadorCode),
+  );
 
   const { error } = await getSupabase()
     .from("art_products")
     .update({ status: "approved", reviewed_at: new Date().toISOString(), square_catalog_object_id: squareCatalogObjectId })
     .eq("id", id);
   if (error) throw new Error(`Failed to mark product approved: ${error.message}`);
+
+  await notifySellerOfDecision(product, "approved", "submission");
 }
 
 // Approves or declines every still-pending product in a batch — the "one
@@ -680,8 +799,8 @@ export async function getPendingArtProductRequests(): Promise<
   const products = (data ?? []).map((row) => mapProduct(row as ArtProductRow));
   if (products.length === 0) return [];
 
-  // One lookup for every artist involved rather than one per product.
-  const names = await getAllArtProfileNames();
+  // One lookup for every seller involved rather than one per product.
+  const names = await getAllSellerNames();
   const byCode = new Map(names.map((n) => [n.code.toUpperCase(), n.artistName]));
 
   return products.map((product) => ({
@@ -779,6 +898,7 @@ export async function reviewArtProductRequest(
   if (decision === "declined") {
     const { error } = await getSupabase().from("art_products").update(cleared).eq("id", productId);
     if (error) throw new Error(`Failed to decline that request: ${error.message}`);
+    await notifySellerOfDecision(product, "declined", product.pendingAction, product.pendingNote);
     return;
   }
 
@@ -798,6 +918,7 @@ export async function reviewArtProductRequest(
       .update({ ...cleared, status: "removed", reviewed_at: new Date().toISOString() })
       .eq("id", productId);
     if (error) throw new Error(`Failed to mark product removed: ${error.message}`);
+    await notifySellerOfDecision(product, "approved", "removal", product.pendingNote);
     return;
   }
 
@@ -813,8 +934,7 @@ export async function reviewArtProductRequest(
     details: changes.details ?? product.details,
   };
 
-  const profile = await getArtProfile(product.ambassadorCode);
-  await updateArtProductInSquare(updated, profile?.artistName ?? product.ambassadorCode);
+  await updateArtProductInSquare(updated, await getSellerName(product.ambassadorCode));
 
   const { error } = await getSupabase()
     .from("art_products")
@@ -829,4 +949,7 @@ export async function reviewArtProductRequest(
     })
     .eq("id", productId);
   if (error) throw new Error(`Failed to apply that edit: ${error.message}`);
+
+  // The updated name, so the email names what the listing is called now.
+  await notifySellerOfDecision(updated, "approved", "edit", product.pendingNote);
 }

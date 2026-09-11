@@ -402,14 +402,19 @@ readability.
   session's own account both in the action and the query).
 - **Artist/Vendor** (`perm_vendor`) — sales/inventory scoped to whichever
   artist `vendor_slug` points at (see [migration 0004](#data-layer--auth)).
-  Needs both the permission and a vendor slug set to show real data.
-  Managing the artist's own listings (editing/uploading their catalog
-  items, links, etc.) from this tab is a planned follow-up, not yet built
-  — today it's read-only sales/inventory.
+  Needs both the permission and a vendor slug set to show real *sales*
+  data. **Submitting products does not** — the pipeline is gated on the
+  permission alone, so a vendor approved five minutes ago can list
+  something before anything of theirs exists in Square (see
+  [Art Collective](#art-collective)). Editing an already-live listing goes
+  through the same request-and-approve flow as an artist's; direct
+  self-service editing of the Square catalog from this tab is still a
+  planned follow-up.
 - **Music** (`perm_music`) — granted by approving a
   [Music Collective](#music-collective) application. Unlocks a self-editing
   artist profile (name, genre, tagline, bio, links) in `MusicTab.tsx`,
-  backed by `musician_profiles`.
+  backed by `musician_profiles`, plus submitting products (vinyl, tapes,
+  merch) through the shared pipeline — see [Art Collective](#art-collective).
 - **SSBD** (`perm_ssbd`) — Same Same But Different crew submissions tab.
 - **Events Admin** (`perm_events_admin`) — the EVENTS ADMIN tab: KPIs
   (total guests, revenue, events with signups, most-requested artists), a
@@ -424,7 +429,10 @@ readability.
 - **Art Collective** (`perm_art`) — granted by approving an
   [Art Collective](#art-collective) application. Unlocks the ART tab: a
   self-editing artist profile (name, medium, tagline, bio, profile photo,
-  links) plus submitting products, up to 5 at a time, for review.
+  links) plus submitting products, up to 5 at a time, for review. The
+  profile is `perm_art`-only; **submitting is not** — `perm_vendor` and
+  `perm_music` reach the same pipeline from their own tabs
+  (`canSubmitProducts`, see [Art Collective](#art-collective)).
 - **Art Admin** (`perm_art_admin`) — the ART ADMIN tab: approve or decline
   submitted products, individually or as a whole batch. Distinct from
   `perm_art` — an artist doesn't get to approve their own submissions.
@@ -612,7 +620,32 @@ system, which stays as-is for already-curated artists.
   the existing Vendor tab uses, just scoped directly by the artist's own
   ambassador code instead of a separate static vendor slug
   (`getArtStats`/`getArtInventory`, `lib/artCollective.ts`).
-- **Submitting products**: the ART tab's form (`ArtProductSubmitForm.tsx`,
+- **Submitting products is not art-only.** The pipeline started in the ART
+  tab but was never really about art — it is "someone with a stall here has
+  something to sell" — so **vendors (`perm_vendor`) and musicians
+  (`perm_music`) submit through exactly the same one**, from their own tab.
+  `ProductPipeline.tsx` (`components/dashboard/`) is the shared block: the
+  submit form plus "your submissions" with its edit/removal requests,
+  rendered by ArtTab, VendorTab and MusicTab alike with nothing different
+  but the blurb. There is deliberately **one** route into the shop — one
+  `art_products` table, one review queue, one Square write on approval —
+  rather than three parallel ones. `canSubmitProducts`
+  (`lib/artCollective.ts`) is the single place that says who's in, and both
+  `submitArtProductsAction` and `requestArtProductChangeAction` gate on it.
+  (`saveArtProfileAction` still requires `perm_art`: that edits the *Art
+  Collective* profile, which a vendor doesn't have.)
+- Because a submitter may have no `art_profiles` row, the name a product
+  goes out under is resolved by **`getSellerName`**: art profile → musician
+  profile → the name on the account → the code. That name matters twice —
+  `buildSquareItemName` puts it in the Square item's title, and
+  `matchArtCollectiveCode` reads it back out to attribute sales — so
+  `getAllSellerNames` (used by `lib/squareSync.ts` in place of
+  `getAllArtProfileNames`) feeds the same resolution into the matcher. It
+  covers art profiles plus any account that has actually submitted
+  something, deliberately **not** every account on the platform: the
+  matcher matches a title ending in `- <Name>`, and a pool that big would
+  let a common name claim listings it has nothing to do with.
+- **Submitting products**: the form (`ArtProductSubmitForm.tsx`,
   a client component so "add another product" can grow the form) accepts
   up to 5 products in one batch, each with a name, price, optional
   size/description/details, and photos uploaded straight from the
@@ -629,6 +662,18 @@ system, which stays as-is for already-curated artists.
   migration `0019_art_collective.sql`) via `uploadArtPhoto`
   (`lib/artCollective.ts`), used for both product photos and the profile
   picture.
+- **The seller is emailed the decision**, both ways and for every kind of
+  ask: approved/declined on the original submission, and approved/declined
+  on a later request to edit or pull a listing
+  (`sendProductDecisionNotification`, `lib/email.ts`, called from
+  `reviewArtProduct` and `reviewArtProductRequest`). The portal has always
+  said "we'll email you once it's reviewed"; until this existed, nothing
+  did, and a decision only surfaced if the seller happened to reopen their
+  dashboard. Their own note on a request is echoed back so the email makes
+  sense on its own, and reply-to is the staff inbox rather than the
+  recipient. Best-effort and always sent *after* the decision is recorded:
+  an approval that already reached Square must not be undone because Resend
+  had a bad minute.
 - Submitting sends **one notification email per product** (not per batch)
   to info@wearewhoa.com, each with its own Approve/Decline buttons, plus
   an entry in the **ART ADMIN** tab (`ArtAdminTab.tsx`) grouped by
