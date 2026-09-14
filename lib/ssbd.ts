@@ -28,6 +28,10 @@ export interface ScheduleArea {
   // null means the schedule for this area hasn't been shared yet —
   // rendered as "coming soon" rather than faked.
   shifts: AreaShift[] | null;
+  // Listed separately where an area runs managers on their own rota, as
+  // WHOA OASIS does — crew need to know who's the lead on their shift, and
+  // folding them into the same table loses that.
+  managers?: AreaShift[];
 }
 
 export interface TeamContact {
@@ -238,59 +242,51 @@ export const ACTIVATIONS: Activation[] = [
   },
 ];
 
-// One schedule, two areas — WHOADEGA and WHOA OASIS share the same
-// Friday/Saturday/Sunday grid but run their own crew and shift times.
+// Two areas — the ART GALLERY and WHOA OASIS — sharing the same
+// Friday/Saturday/Sunday grid but running their own crew and shift times.
 export const SCHEDULE_AREAS: ScheduleArea[] = [
   {
-    id: "whoadega",
-    label: "WHOADEGA",
-    shifts: null,
+    id: "art-gallery",
+    label: "ART GALLERY",
+    shifts: [
+      { name: "Derek", friday: "10 AM – 6 PM", saturday: "10 AM – 6 PM", sunday: "10 AM – 6 PM" },
+      { name: "Mike", friday: "2 PM – 10 PM", saturday: "2 PM – 10 PM", sunday: "2 PM – 10 PM" },
+      { name: "Ali", friday: "10 AM – 6 PM", saturday: "2 PM – 10 PM", sunday: "2 PM – 10 PM" },
+      { name: "Dylan", friday: "6 PM – 2 AM", saturday: "10 PM – 6 AM", sunday: "8 PM – 4 AM" },
+      { name: "Julianna", friday: "10 PM – 6 AM", saturday: "10 PM – 6 AM", sunday: "10 PM – 4 AM" },
+      { name: "Bryce", friday: "10 PM – 6 AM", saturday: "10 PM – 6 AM", sunday: "6 PM – 2 AM" },
+      { name: "James", friday: "10 PM – 6 AM", saturday: "6 PM – 2 AM", sunday: "10 PM – 4 AM" },
+    ],
   },
   {
     id: "whoa-oasis",
     label: "WHOA OASIS",
     shifts: [
+      { name: "Michele", friday: "10 AM – 4 PM", saturday: "10 AM – 4 PM", sunday: "10 AM – 4 PM" },
+      { name: "Vee", friday: "10 AM – 6 PM", saturday: "10 AM – 6 PM", sunday: "10 AM – 6 PM" },
+      { name: "Lily", friday: "2 – 10 PM", saturday: "2 – 10 PM", sunday: "2 – 10 PM" },
+      { name: "Nate", friday: "2 – 10 PM", saturday: "2 – 10 PM", sunday: "2 – 10 PM" },
+      { name: "Bryce", friday: "6 PM – 2 AM", saturday: "6 PM – 2 AM", sunday: "6 PM – 2 AM" },
+      { name: "Charlotte", friday: "8 PM – 4 AM", saturday: "6 PM – 2 AM", sunday: "6 PM – 2 AM" },
+      { name: "Marc Hazelhoff", friday: "10 PM – 6 AM", saturday: "10 PM – 6 AM", sunday: "8 PM – 4 AM" },
+      // OFF is a real entry, not a blank: a crew member reading their row
+      // needs to see the day accounted for, not wonder if it's missing.
+      { name: "Rome", friday: "OFF", saturday: "12 – 6 AM", sunday: "10 PM – 4 AM" },
+      { name: "Kyle (Coastal Hook)", friday: "OFF", saturday: "10 AM – 4 PM", sunday: "10 PM – 4 AM" },
+      { name: "Maggie", friday: "OFF", saturday: "10 AM – 4 PM", sunday: "10 PM – 4 AM" },
+    ],
+    managers: [
       {
-        name: "Derek",
+        name: "Veronica (Vee) — Operations Manager",
         friday: "10 AM – 6 PM",
         saturday: "10 AM – 6 PM",
         sunday: "10 AM – 6 PM",
       },
       {
-        name: "Mike",
-        friday: "2 PM – 10 PM",
-        saturday: "2 PM – 10 PM",
-        sunday: "2 PM – 10 PM",
-      },
-      {
-        name: "Ali",
-        friday: "10 AM – 6 PM",
-        saturday: "2 PM – 10 PM",
-        sunday: "2 PM – 10 PM",
-      },
-      {
-        name: "Dylan",
-        friday: "6 PM – 2 AM",
-        saturday: "10 PM – 6 AM",
-        sunday: "8 PM – 4 AM",
-      },
-      {
-        name: "Julianna",
-        friday: "10 PM – 6 AM",
-        saturday: "10 PM – 6 AM",
-        sunday: "10 PM – 4 AM",
-      },
-      {
-        name: "Bryce",
-        friday: "10 PM – 6 AM",
-        saturday: "10 PM – 6 AM",
-        sunday: "6 PM – 2 AM",
-      },
-      {
-        name: "James",
-        friday: "10 PM – 6 AM",
-        saturday: "6 PM – 2 AM",
-        sunday: "10 PM – 4 AM",
+        name: "Kyle — Radiant Robes / Manager",
+        friday: "5 PM – 1 AM",
+        saturday: "5 PM – 1 AM",
+        sunday: "5 PM – 1 AM",
       },
     ],
   },
