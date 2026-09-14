@@ -7,7 +7,43 @@ import {
   TEAM_CONTACTS,
   TRAINING_POLICY,
   TRAINING_SESSIONS,
+  type AreaShift,
 } from "@/lib/ssbd";
+
+/**
+ * One Friday/Saturday/Sunday rota.
+ *
+ * Shared by an area's crew and its managers rather than written twice: they
+ * are the same three columns, and the only thing that differs is who's in
+ * the first one. Scrolls inside itself on a phone — four columns of times
+ * won't fit 390px, and the page itself must not scroll sideways.
+ */
+function ShiftTable({ heading, shifts }: { heading: string; shifts: AreaShift[] }) {
+  return (
+    <div className="mt-4 overflow-x-auto">
+      <table className="w-full min-w-[480px] text-left text-sm">
+        <thead>
+          <tr className="text-flame-2 text-xs font-semibold tracking-wide uppercase">
+            <th className="pb-2 pr-4">{heading}</th>
+            <th className="pb-2 pr-4">Friday</th>
+            <th className="pb-2 pr-4">Saturday</th>
+            <th className="pb-2">Sunday</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {shifts.map((shift) => (
+            <tr key={shift.name}>
+              <td className="py-2 pr-4 font-semibold">{shift.name}</td>
+              <td className="py-2 pr-4 text-foreground/80">{shift.friday}</td>
+              <td className="py-2 pr-4 text-foreground/80">{shift.saturday}</td>
+              <td className="py-2 text-foreground/80">{shift.sunday}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 // The concrete example of what an "Event Details" page looks like once an
 // account is approved to work an event — see EventSalesTab.tsx, which links
@@ -174,8 +210,8 @@ export default function EventDetails({ code }: { code: string }) {
       <section className="mt-12">
         <h2 className="font-display text-2xl tracking-wide">Shift Schedule</h2>
         <p className="mt-2 text-sm text-muted">
-          One schedule, two areas — WHOADEGA and WHOA OASIS. Talk to your team
-          lead if your shift needs to change.
+          One schedule, two areas — the ART GALLERY and WHOA OASIS. Talk to your
+          team lead if your shift needs to change.
         </p>
         <div className="mt-4 space-y-6">
           {SCHEDULE_AREAS.map((area) => (
@@ -185,36 +221,12 @@ export default function EventDetails({ code }: { code: string }) {
             >
               <h3 className="font-display text-lg">{area.label}</h3>
               {area.shifts ? (
-                <div className="mt-4 overflow-x-auto">
-                  <table className="w-full min-w-[480px] text-left text-sm">
-                    <thead>
-                      <tr className="text-flame-2 text-xs font-semibold tracking-wide uppercase">
-                        <th className="pb-2 pr-4">Crew</th>
-                        <th className="pb-2 pr-4">Friday</th>
-                        <th className="pb-2 pr-4">Saturday</th>
-                        <th className="pb-2">Sunday</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {area.shifts.map((shift) => (
-                        <tr key={shift.name}>
-                          <td className="py-2 pr-4 font-semibold">
-                            {shift.name}
-                          </td>
-                          <td className="py-2 pr-4 text-foreground/80">
-                            {shift.friday}
-                          </td>
-                          <td className="py-2 pr-4 text-foreground/80">
-                            {shift.saturday}
-                          </td>
-                          <td className="py-2 text-foreground/80">
-                            {shift.sunday}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <>
+                  <ShiftTable heading="Crew" shifts={area.shifts} />
+                  {area.managers && (
+                    <ShiftTable heading="Managers" shifts={area.managers} />
+                  )}
+                </>
               ) : (
                 <p className="mt-2 text-sm text-muted">
                   Schedule coming soon — check back here.

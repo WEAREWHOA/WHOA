@@ -276,6 +276,7 @@ npm run build
 | `SQUARE_ADMIN_SECRET`           | —          | Shared secret gating the one-time `/api/admin/square/*` setup endpoints — pick any long random string |
 | `NEXT_PUBLIC_SITE_URL`          | `http://localhost:3000` | Production domain, used for `metadataBase`, `sitemap.xml`, and `robots.txt` — set once the real domain is known |
 | `SQUARE_ONLINE_CHANNEL_NAME`    | `Online Store` | Name of the Square sales channel that marks an item for `/shop` — set to `WHOA` for this account (see [Square ↔ Supabase sync](#square--supabase-sync)) |
+| `SSBD_CREW_CODE`                | —          | Optional shared passcode for the [`/ssbd` crew invite](#ssbd-crew-invite-ssbd). Unset, the link alone is enough (the default, and the intent). Set it and every form on that page requires a matching "Crew code" — the way to close the link without a code change |
 | `RESEND_API_KEY`                | —          | Resend API key — sends order confirmation and event RSVP/ticket confirmation emails, plus info@wearewhoa.com staff notifications on every `/apply`, `/contact`, and Custom Design submission. `wearewhoa.art` must be a verified sending domain in Resend (see `lib/email.ts`) |
 | `MAILCHIMP_API_KEY`             | —          | Mailchimp API key (Account → Extras → API keys). Its `-<datacenter>` suffix (e.g. `-us21`) is required and is parsed to build the API host — see `lib/mailchimp.ts` |
 | `MAILCHIMP_AUDIENCE_ID`         | —          | The Mailchimp Audience/List ID (Audience → Settings → Audience name and defaults) that the `/events` newsletter signup subscribes into |
@@ -509,6 +510,36 @@ account before doing anything:
   click stat, and event RSVP tied to that account stays exactly as it was
   — "delete my account" means "delete my login," not "erase my history."
   The session is destroyed immediately after, same as a normal logout.
+
+## SSBD crew invite (`/ssbd`)
+
+A one-step door for crew working Same Same But Different, replacing four:
+apply at `/sell-for-us`, wait for a Super Admin to grant `perm_event_sales`,
+sign up to work the event, wait for that to be approved. Whoever is handed
+this link *is* the crew — the deciding already happened offline — so the
+page does all four at once.
+
+- `app/ssbd/page.tsx` shows the event, then one of three things: a signup
+  form, a login form, or (already signed in) a single button. Already on
+  the crew, it just points at the crew hub.
+- `app/ssbd/actions.ts` — every path ends in the same `onboard()`: grant
+  `perm_event_sales`, then `grantEventWorkSignup` for `ssbd-2026`. Both
+  together, because the permission alone gives them a tab with nothing in
+  it and the signup alone gives them no tab to see it from. They land on
+  `/event-sales/ssbd-2026`.
+- `grantEventWorkSignup` (`lib/eventSales.ts`) is the approved-by-default
+  counterpart to `requestEventWorkSignup`. Re-using the link is idempotent,
+  a `pending` row is promoted, and a **`declined` row is left alone** — that
+  was a real decision by a real person, and a link must not overturn it.
+- Name is required at signup, unlike the site's plain email+password
+  signup: this list becomes a crew roster and a shift schedule staff read.
+
+**The link is the credential.** Anyone who has it gets the EVENT SALES tab
+and the crew hub, which carries staff phone numbers and load-in details.
+That's the intent — it's handed to crew — but set **`SSBD_CREW_CODE`** in
+the environment to require a shared passcode as well, and the page grows a
+"Crew code" field on every form. Unset (the default) there's no passcode
+and no field.
 
 ## Sell For Us & Event Sales
 

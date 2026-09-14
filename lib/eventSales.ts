@@ -81,6 +81,49 @@ export async function requestEventWorkSignup(
   return { ok: true, id: data.id };
 }
 
+/**
+ * Puts an account straight onto an event's crew, already approved.
+ *
+ * The normal path is requestEventWorkSignup — they ask, staff decide. This
+ * is the shortcut behind a crew invite link (see app/ssbd), where the
+ * deciding already happened offline: whoever was handed the link is the
+ * crew, and making them apply and then wait for an approval someone has
+ * already given is three steps of theatre.
+ *
+ * An existing `declined` row is left exactly as it is. That was a real
+ * decision by a real person, and a link should not be able to quietly
+ * overturn it.
+ */
+export async function grantEventWorkSignup(ambassadorCode: string, eventId: string): Promise<void> {
+  const supabase = getSupabase();
+  const code = ambassadorCode.trim().toUpperCase();
+  const reviewedAt = new Date().toISOString();
+
+  const { error } = await supabase
+    .from("event_sales_signups")
+    .insert({ ambassador_code: code, event_id: eventId, status: "approved", reviewed_at: reviewedAt });
+
+  if (!error) return;
+
+  // 23505 is the (ambassador_code, event_id) unique constraint — they
+  // already have a row, so promote it rather than failing. Anyone
+  // re-opening the link they used yesterday lands here.
+  if (error.code !== "23505") {
+    throw new Error(`Failed to add them to the event crew: ${error.message}`);
+  }
+
+  const { error: updateError } = await supabase
+    .from("event_sales_signups")
+    .update({ status: "approved", reviewed_at: reviewedAt })
+    .eq("ambassador_code", code)
+    .eq("event_id", eventId)
+    .neq("status", "declined");
+
+  if (updateError) {
+    throw new Error(`Failed to add them to the event crew: ${updateError.message}`);
+  }
+}
+
 // Powers the EVENT SALES tab — this account's own signup for every event,
 // so the tab can show the right state (sign-up button, pending, approved,
 // declined) per event.
