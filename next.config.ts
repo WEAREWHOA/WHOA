@@ -1,6 +1,60 @@
 import type { NextConfig } from "next";
 
+/**
+ * Permanent redirects for URLs from the two shops that came before this one.
+ *
+ * Both are still indexed and still linked from the outside, so every one of
+ * these is a live 404 until it's mapped. Ordering matters: Next matches
+ * these top to bottom *before* filesystem routing, so a pattern that's too
+ * greedy here silently shadows a real page.
+ *
+ * 301 rather than Next's default `permanent: true` (which emits 308). The
+ * two are equivalent to Google, but 301 is what every older crawler,
+ * link-checker and bookmark sync understands without argument, and these
+ * links are old by definition.
+ *
+ * Old product URLs all land on /shop rather than a specific item: the ids
+ * in them are the previous platforms' catalog ids, which have no
+ * relationship to the Square ids this site uses. Guessing a mapping would
+ * send someone confidently to the wrong product, which is worse than
+ * landing them in the shop.
+ */
+const legacyRedirects = [
+  // --- Square Online ---------------------------------------------------
+  // Square Online serves its whole store under /s/. The explicit /s/shop
+  // comes first for clarity; the catch-all covers /s/order, /s/cart and
+  // anything else in that namespace.
+  { source: "/s/shop", destination: "/shop", statusCode: 301 },
+  { source: "/s/:path*", destination: "/shop", statusCode: 301 },
+
+  // Square Online category pages: /shop/<category>/<catalog-id>.
+  //
+  // Written as two named segments, NOT /shop/:path*, because this site's
+  // own product pages live at /shop/<itemId> — one segment. A greedy
+  // pattern here would 301 every real product page into the shop index and
+  // take the entire storefront down. Three segments only.
+  { source: "/shop/:category/:legacyId", destination: "/shop", statusCode: 301 },
+
+  // Square Online product pages: /product/<slug>/<catalog-id>. Both a
+  // two-segment and a one-segment form appeared, so cover the bare slug too.
+  { source: "/product/:slug/:legacyId", destination: "/shop", statusCode: 301 },
+  { source: "/product/:slug", destination: "/shop", statusCode: 301 },
+
+  // --- Wix (the original site) -----------------------------------------
+  { source: "/product-page/:slug", destination: "/shop", statusCode: 301 },
+
+  // --- Old content pages -----------------------------------------------
+  // /about and /events kept their paths, so they need nothing. These two
+  // moved or went away.
+  { source: "/music", destination: "/music-collective", statusCode: 301 },
+  { source: "/podcast", destination: "/", statusCode: 301 },
+];
+
 const nextConfig: NextConfig = {
+  async redirects() {
+    return legacyRedirects;
+  },
+
   experimental: {
     serverActions: {
       // Every upload on this site goes through a Server Action, and the
