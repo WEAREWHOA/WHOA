@@ -20,6 +20,7 @@ export async function updateAccountPermissionsAction(formData: FormData) {
       eventSales: formData.get("perm_event_sales") === "on",
       art: formData.get("perm_art") === "on",
       artAdmin: formData.get("perm_art_admin") === "on",
+      rsvpAdmin: formData.get("perm_rsvp_admin") === "on",
     },
     isSuperAdmin: formData.get("is_super_admin") === "on",
     vendorSlug: String(formData.get("vendor_slug") || "").trim(),

@@ -94,6 +94,7 @@ function buildEventHtml(input: {
   eventDateLabel: string;
   eventVenue: string;
   priceCents: number;
+  ticketUrl?: string;
 }): string {
   const isTicket = input.priceCents > 0;
   return wrapEmail(`
@@ -111,6 +112,28 @@ function buildEventHtml(input: {
                 <tr>
                   <td style="padding:12px 0 0;color:#f7f0e6;font-size:15px;font-weight:600;">Total paid</td>
                   <td style="padding:12px 0 0;color:#f7f0e6;font-size:15px;font-weight:600;text-align:right;">${formatCents(input.priceCents)}</td>
+                </tr>
+              </table>`
+            : ""
+        }
+        ${
+          input.ticketUrl
+            ? `<table style="width:100%;border-collapse:collapse;border-top:1px solid #2a231b;margin-top:20px;">
+                <tr>
+                  <td style="padding:20px 0 0;text-align:center;">
+                    <p style="margin:0 0 12px;color:#ff7a00;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;font-weight:600;">Your ticket</p>
+                    <!-- cid: — the image travels with the email as an
+                         attachment. A data: URI here would be stripped by
+                         Gmail and most clients, leaving a broken box where
+                         the thing they need at the door should be. -->
+                    <img src="cid:ticket-qr" alt="Ticket QR code" width="220" height="220" style="display:block;margin:0 auto;border-radius:12px;background:#ffffff;padding:10px;" />
+                    <p style="margin:12px 0 0;color:#b8ada0;font-size:13px;line-height:1.5;">
+                      Show this at the door. It only works once, so don't share it.
+                    </p>
+                    <p style="margin:8px 0 0;font-size:12px;">
+                      <a href="${input.ticketUrl}" style="color:#ff7a00;">Open your ticket</a>
+                    </p>
+                  </td>
                 </tr>
               </table>`
             : ""
@@ -156,9 +179,22 @@ export async function sendEventConfirmationEmail(input: {
   eventDateLabel: string;
   eventVenue: string;
   priceCents: number;
+  /** The /checkin/<id> link the QR encodes. Omitted, no ticket block. */
+  ticketUrl?: string;
+  /** The QR as a data: URL, converted to a real attachment below. */
+  ticketQrDataUrl?: string;
 }): Promise<void> {
   const resend = getResend();
   const isTicket = input.priceCents > 0;
+
+  // Until this existed, the QR only lived on the confirmation screen and
+  // in the portal — so a guest who checked out without an account and
+  // closed the tab had no ticket at all. Attached rather than inlined as a
+  // data: URI because Gmail and most clients strip those.
+  const base64 = input.ticketQrDataUrl?.split(",")[1];
+  const attachments = base64
+    ? [{ filename: "whoa-ticket.png", content: base64, contentId: "ticket-qr" }]
+    : undefined;
 
   const { error } = await resend.emails.send({
     from: FROM_ADDRESS,
@@ -166,6 +202,7 @@ export async function sendEventConfirmationEmail(input: {
     replyTo: REPLY_TO,
     subject: isTicket ? `Your ticket for ${input.eventTitle} is confirmed` : `You're RSVP'd for ${input.eventTitle}`,
     html: buildEventHtml(input),
+    attachments,
   });
 
   if (error) {

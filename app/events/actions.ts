@@ -178,6 +178,23 @@ export async function eventRsvpAction(input: {
     }
   }
 
+  // The QR is just a shortcut to /checkin/[rsvpId] — generated server-side
+  // (same approach as the scavenger hunt's print sheet) so the client needs
+  // no QR library of its own. Best-effort: a generation hiccup shouldn't
+  // undo an RSVP/ticket that already saved successfully.
+  //
+  // Generated *before* the email, not after, so the email can carry it.
+  // Without that, the only copies of a guest's ticket were the confirmation
+  // screen and the portal — no use to someone who checked out as a guest
+  // and closed the tab.
+  const ticketUrl = rsvpId ? `${SITE_URL}/checkin/${rsvpId}` : undefined;
+  const qrDataUrl = ticketUrl
+    ? await QRCode.toDataURL(ticketUrl, { margin: 1, width: 320 }).catch((err) => {
+        console.error("Failed to generate ticket QR code:", err);
+        return undefined;
+      })
+    : undefined;
+
   await sendEventConfirmationEmail({
     to: email,
     name,
@@ -185,20 +202,11 @@ export async function eventRsvpAction(input: {
     eventDateLabel: `${event.dateLabel} · ${event.timeLabel}`,
     eventVenue: event.venue,
     priceCents,
+    ticketUrl,
+    ticketQrDataUrl: qrDataUrl,
   }).catch((err) => {
     console.error("Failed to send event confirmation email:", err);
   });
-
-  // The QR is just a shortcut to /checkin/[rsvpId] — generated server-side
-  // (same approach as the scavenger hunt's print sheet) so the client needs
-  // no QR library of its own. Best-effort: a generation hiccup shouldn't
-  // undo an RSVP/ticket that already saved successfully.
-  const qrDataUrl = rsvpId
-    ? await QRCode.toDataURL(`${SITE_URL}/checkin/${rsvpId}`, { margin: 1, width: 320 }).catch((err) => {
-        console.error("Failed to generate ticket QR code:", err);
-        return undefined;
-      })
-    : undefined;
 
   return {
     ok: true,
