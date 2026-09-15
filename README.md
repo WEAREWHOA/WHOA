@@ -162,6 +162,40 @@ black shows through them — an earlier pass used radii near half the screen
 at high alpha, which lit every pixel and made the page read as a colour
 gradient rather than as space.
 
+## Legacy redirects
+
+Two shops came before this one — a Wix site, then Square Online — and both
+are still indexed and still linked to from the outside. `legacyRedirects`
+in `next.config.ts` maps every pattern of theirs onto this site with a
+**301**:
+
+| Old (Wix / Square Online) | Now |
+| --- | --- |
+| `/s/shop`, and anything else under `/s/` | `/shop` |
+| `/shop/<category>/<catalog-id>` | `/shop` |
+| `/product/<slug>/<catalog-id>`, `/product/<slug>` | `/shop` |
+| `/product-page/<slug>` (Wix) | `/shop` |
+| `/music` | `/music-collective` |
+| `/podcast` | `/` |
+
+`/about` and `/events` kept their paths across all three sites, so they
+need nothing.
+
+Three things worth knowing before editing that list:
+
+- **`/shop/:category/:legacyId` is written as exactly two named segments,
+  never `/shop/:path*`.** This site's own product pages are `/shop/<itemId>`
+  — one segment — and `redirects()` runs *before* filesystem routing, so a
+  greedy pattern there would 301 every real product page into the shop index
+  and take the whole storefront down.
+- **301, not Next's `permanent: true`** (which emits 308). Equivalent to
+  Google, but 301 is what every older crawler, link-checker and bookmark
+  sync understands without argument — and these links are old by definition.
+- **Old product URLs deliberately land on `/shop`, not on a product.** The
+  ids in them are the previous platforms' catalog ids and have no
+  relationship to the Square ids this site uses; guessing a mapping would
+  send someone confidently to the wrong item.
+
 ## Routes
 
 **Storefront**
