@@ -21,7 +21,7 @@ Super Admin has granted them. See
 ## Locked areas ("Coming Soon!")
 
 `lib/lockedRoutes.ts` is the single list of areas that aren't open to the
-public yet — currently `/join`, `/art-collective` and `/music-collective`.
+public yet — currently `/art-collective` and `/music-collective`.
 Everything that would otherwise link to one of them asks `isLockedRoute()`
 and renders a padlock plus **Coming Soon!**
 (`components/LockedBadge.tsx`) instead of a clickable link.
@@ -83,11 +83,10 @@ except the full-bleed home page and `/pos`.
   (not `useState`+`useEffect`, which would either violate
   `react-hooks/set-state-in-effect` or cause a hydration mismatch reading
   `document.cookie` directly in a lazy initializer).
-- `/join` — hub page, 5 big clickable tiles (Brand Ambassador Program,
-  Events & Festivals, Art Collective, Music Collective, Pop Ups & Retail)
-  linking to the real corresponding pages. "Pop Ups & Retail" links to
-  `/events?category=whoadega`, pre-filtering to the real WHOADEGA
-  category rather than needing content of its own.
+- `/join` — hub page, 4 big tiles: Brand Ambassador Program, Art
+  Collective, Music Collective, Sell For Us. The two collectives render
+  locked (see [Locked areas](#locked-areas-coming-soon)) so nobody can
+  apply to them yet; the other two link through.
 - `/about` — hub consolidating Our Story, Partnerships (the real
   charitable donations), Contact, and links to FAQ/Shipping/Return/
   Privacy/Terms — the nav-level landing spot for "everything About-ish."
@@ -187,7 +186,7 @@ gradient rather than as space.
   WHOADEGA, Events, Art Collective, Music Collective, Join, About. The sun
   itself links to `/shop`. See [Home page](#home-page).
 - `/join` — "Join the Community" hub tying together the ambassador
-  program, events, the art/music collectives, and pop ups/retail
+  program, the art/music collectives, and selling at events
 - `/about` — hub: story, mission, partnerships, contact, and legal/info
   pages, all in one place; `/about/story` is the full brand-story page
 - `/apply` — creates a password-protected account with Brand Ambassador
