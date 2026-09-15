@@ -25,6 +25,7 @@ interface AmbassadorRow {
   perm_event_sales: boolean;
   perm_art: boolean;
   perm_art_admin: boolean;
+  perm_rsvp_admin: boolean;
   is_super_admin: boolean;
   square_customer_id: string | null;
   orders?: OrderRow[];
@@ -53,7 +54,7 @@ interface LinkRow {
 const AMBASSADOR_PUBLIC_SELECT =
   "code, name, email, instagram, created_at, payout_method, payout_destination, vendor_slug, " +
   "perm_ambassador, perm_vendor, perm_music, perm_ssbd, perm_events_admin, perm_event_sales, " +
-  "perm_art, perm_art_admin, is_super_admin, square_customer_id, orders(*), links(*)";
+  "perm_art, perm_art_admin, perm_rsvp_admin, is_super_admin, square_customer_id, orders(*), links(*)";
 
 function mapOrder(row: OrderRow): Order {
   return {
@@ -98,6 +99,7 @@ function mapAmbassador(row: AmbassadorRow): Ambassador {
       eventSales: row.perm_event_sales,
       art: row.perm_art,
       artAdmin: row.perm_art_admin,
+      rsvpAdmin: row.perm_rsvp_admin,
     },
     isSuperAdmin: row.is_super_admin,
     squareCustomerId: row.square_customer_id ?? undefined,
@@ -214,6 +216,7 @@ export async function createAmbassador(input: {
     perm_event_sales: input.permissions?.eventSales ?? false,
     perm_art: input.permissions?.art ?? false,
     perm_art_admin: input.permissions?.artAdmin ?? false,
+    perm_rsvp_admin: input.permissions?.rsvpAdmin ?? false,
   });
 
   if (ambassadorError) {
@@ -334,6 +337,7 @@ export async function updatePermissions(
   if (updates.permissions?.eventSales !== undefined) patch.perm_event_sales = updates.permissions.eventSales;
   if (updates.permissions?.art !== undefined) patch.perm_art = updates.permissions.art;
   if (updates.permissions?.artAdmin !== undefined) patch.perm_art_admin = updates.permissions.artAdmin;
+  if (updates.permissions?.rsvpAdmin !== undefined) patch.perm_rsvp_admin = updates.permissions.rsvpAdmin;
   if (updates.isSuperAdmin !== undefined) patch.is_super_admin = updates.isSuperAdmin;
   if (updates.vendorSlug !== undefined) patch.vendor_slug = updates.vendorSlug || null;
   // Clearing this makes the next portal load re-derive it from the

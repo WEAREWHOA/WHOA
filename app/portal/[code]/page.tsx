@@ -10,6 +10,7 @@ import { allowedKinds, listMedia, type MediaItem } from "@/lib/media";
 import MediaLibrary from "@/components/portal/MediaLibrary";
 import { getEventHistoryForAccount } from "@/lib/eventRsvps";
 import { getEventsAdminOverview } from "@/lib/eventsAdmin";
+import { getDoorEvents } from "@/lib/door";
 import { getScheduleForAccount, getSignupsForAccount } from "@/lib/eventSales";
 import { getMusicianProfile } from "@/lib/musicianProfiles";
 import {
@@ -32,6 +33,7 @@ import ArtTab from "@/components/dashboard/tabs/ArtTab";
 import MusicTab from "@/components/dashboard/tabs/MusicTab";
 import SsbdTab from "@/components/dashboard/tabs/SsbdTab";
 import EventsAdminTab from "@/components/dashboard/tabs/EventsAdminTab";
+import RsvpAdminTab from "@/components/dashboard/tabs/RsvpAdminTab";
 import EventSalesTab from "@/components/dashboard/tabs/EventSalesTab";
 import ArtAdminTab from "@/components/dashboard/tabs/ArtAdminTab";
 import SettingsTab from "@/components/dashboard/tabs/SettingsTab";
@@ -80,6 +82,14 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
   // page's RSC payload.
   const canAccessEventsAdmin = account.isSuperAdmin || account.permissions.eventsAdmin;
   const eventsAdminOverview = canAccessEventsAdmin ? await getEventsAdminOverview() : undefined;
+
+  // Same reasoning as events admin above: the door list carries every
+  // guest's name and email, so it must not be fetched for someone who
+  // can't work a door. Events admins and Super Admins keep the door too —
+  // nobody who could admit guests before this tab existed loses that.
+  const canAccessRsvpAdmin =
+    account.isSuperAdmin || account.permissions.rsvpAdmin || account.permissions.eventsAdmin;
+  const doorEvents = canAccessRsvpAdmin ? await getDoorEvents() : [];
 
   const canAccessEventSales = account.permissions.eventSales;
   const [eventSalesSignups, eventSalesSchedule] = canAccessEventSales
@@ -319,6 +329,7 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
         }
         ssbd={<SsbdTab />}
         eventsAdmin={eventsAdminOverview ? <EventsAdminTab data={eventsAdminOverview} /> : null}
+        rsvpAdmin={canAccessRsvpAdmin ? <RsvpAdminTab events={doorEvents} /> : null}
         eventSales={
           canAccessEventSales ? (
             <>
@@ -360,6 +371,7 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
           music: account.permissions.music,
           ssbd: account.permissions.ssbd,
           eventsAdmin: canAccessEventsAdmin,
+          rsvpAdmin: canAccessRsvpAdmin,
           eventSales: canAccessEventSales,
           artAdmin: canAccessArtAdmin,
         }}

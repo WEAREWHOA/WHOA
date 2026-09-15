@@ -18,6 +18,11 @@ export interface EventRsvpRecord {
   // When the guest agreed to the damage-responsibility waiver — null if the
   // event didn't require one (see lib/events.ts's requiresDamageWaiver).
   waiverAgreedAt: string | null;
+  // When they were admitted at the door, and by whom. Null means they
+  // haven't arrived — and is also the lock that makes a ticket
+  // single-use (see checkInRsvp).
+  checkedInAt: string | null;
+  checkedInBy: string | null;
   createdAt: string;
 }
 
@@ -33,6 +38,8 @@ interface EventRsvpRow {
   square_payment_id: string | null;
   selected_artist: string | null;
   waiver_agreed_at: string | null;
+  checked_in_at: string | null;
+  checked_in_by: string | null;
   created_at: string;
 }
 
@@ -49,6 +56,8 @@ function mapRow(row: EventRsvpRow): EventRsvpRecord {
     squarePaymentId: row.square_payment_id,
     selectedArtist: row.selected_artist,
     waiverAgreedAt: row.waiver_agreed_at,
+    checkedInAt: row.checked_in_at,
+    checkedInBy: row.checked_in_by,
     createdAt: row.created_at,
   };
 }
@@ -180,4 +189,114 @@ export async function getEventHistoryForAccount(
     console.error("getEventHistoryForAccount failed:", err);
     return { upcoming: [], past: [] };
   }
+}
+
+/** Every ticket/RSVP for one event, newest arrivals last — the door list. */
+export async function getRsvpsForEvent(eventId: string): Promise<EventRsvpRecord[]> {
+  const { data, error } = await getSupabase()
+    .from("event_rsvps")
+    .select("*")
+    .eq("event_id", eventId)
+    .order("name", { ascending: true });
+
+  if (error) throw new Error(`Failed to load the guest list: ${error.message}`);
+  return (data ?? []).map((row) => mapRow(row as EventRsvpRow));
+}
+
+export type CheckInOutcome =
+  /** Admitted. This is the only outcome that lets someone through the door. */
+  | { status: "admitted"; rsvp: EventRsvpRecord }
+  /** Refused: this ticket was already spent. Carries when, and by whom. */
+  | { status: "already-used"; rsvp: EventRsvpRecord }
+  /** Refused: no such ticket — a fake QR, or one from another system. */
+  | { status: "not-found" }
+  /** Refused: a real ticket, but not for the event being worked tonight. */
+  | { status: "wrong-event"; rsvp: EventRsvpRecord };
+
+/**
+ * Spends a ticket at the door.
+ *
+ * A used ticket is refused outright, which is the whole point: without
+ * this, one screenshot admits a queue. The refusal has to be *atomic*,
+ * not a read-then-write — two staff scanning the same code at the same
+ * moment would both read "not checked in" and both wave their guest
+ * through. So the null check lives in the UPDATE's own WHERE clause:
+ * exactly one of them updates a row, and the other matches nothing and
+ * gets "already-used".
+ *
+ * `expectedEventId` guards the other mistake a door makes — last month's
+ * ticket, or a ticket for the other room — by refusing anything that
+ * isn't tonight rather than silently admitting it.
+ */
+export async function checkInRsvp(
+  rsvpId: string,
+  byCode: string,
+  expectedEventId?: string,
+): Promise<CheckInOutcome> {
+  const supabase = getSupabase();
+
+  const existing = await getRsvpById(rsvpId);
+  if (!existing) return { status: "not-found" };
+  if (expectedEventId && existing.eventId !== expectedEventId) {
+    return { status: "wrong-event", rsvp: existing };
+  }
+  // Cheap pre-check so the common refusal doesn't need a write at all.
+  // Not the real guard — the UPDATE below is.
+  if (existing.checkedInAt) return { status: "already-used", rsvp: existing };
+
+  const { data, error } = await supabase
+    .from("event_rsvps")
+    .update({ checked_in_at: new Date().toISOString(), checked_in_by: byCode.trim().toUpperCase() })
+    .eq("id", rsvpId)
+    .is("checked_in_at", null)
+    .select("*");
+
+  if (error) throw new Error(`Failed to check that ticket in: ${error.message}`);
+
+  const updated = (data ?? [])[0];
+  if (!updated) {
+    // Nothing matched, and we know the row exists: somebody else spent it
+    // between the read above and this write. Re-read so the refusal can
+    // say who and when.
+    const now = await getRsvpById(rsvpId);
+    return now ? { status: "already-used", rsvp: now } : { status: "not-found" };
+  }
+
+  return { status: "admitted", rsvp: mapRow(updated as EventRsvpRow) };
+}
+
+/**
+ * Undoes a check-in.
+ *
+ * Refusing a used ticket means a mis-scan locks a real guest out, so the
+ * door needs a way back. Deliberately not "toggle": staff choose to undo,
+ * which is hard to do by accident on a phone in the dark.
+ */
+export async function undoCheckIn(rsvpId: string): Promise<boolean> {
+  const { data, error } = await getSupabase()
+    .from("event_rsvps")
+    .update({ checked_in_at: null, checked_in_by: null })
+    .eq("id", rsvpId)
+    .not("checked_in_at", "is", null)
+    .select("id");
+
+  if (error) throw new Error(`Failed to undo that check-in: ${error.message}`);
+  return (data ?? []).length > 0;
+}
+
+/**
+ * Pulls a ticket id out of whatever the scanner read.
+ *
+ * The QR encodes a full `/checkin/<id>` URL, but a camera in a dark room
+ * also picks up partial reads and the odd hand-typed id, so this accepts
+ * either the URL or a bare id rather than failing on a technicality.
+ * Returns undefined for anything that isn't shaped like one of ours —
+ * a Wi-Fi QR on the wall behind the queue shouldn't reach the database.
+ */
+export function parseTicketId(scanned: string): string | undefined {
+  const text = scanned.trim();
+  if (!text) return undefined;
+
+  const match = text.match(/rsvp_[0-9a-fA-F-]{36}/);
+  return match ? match[0] : undefined;
 }

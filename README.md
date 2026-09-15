@@ -540,6 +540,56 @@ the environment to require a shared passcode as well, and the page grows a
 "Crew code" field on every form. Unset (the default) there's no passcode
 and no field.
 
+## Door check-in (RSVP ADMIN)
+
+A ticket is now something that can be *spent*. Buying one already produced
+a QR encoding `/checkin/<rsvpId>`; this is the half that makes it mean
+something at the door.
+
+**A used ticket is refused.** `checked_in_at` (migration 0024) is both the
+record and the lock: `checkInRsvp` puts the null check inside the UPDATE's
+own WHERE clause rather than reading first and writing after, so two staff
+scanning the same code at the same instant can't both admit their guest —
+one updates a row, the other matches nothing and gets `already-used`. A
+ticket for a different event is refused as `wrong-event` rather than
+quietly admitted, and anything that isn't shaped like one of our ids never
+reaches the database (`parseTicketId`).
+
+Every refusal is distinct, because "no" and "no, they came in at 9:42,
+scanned by WHOA-VEE" are different conversations to have with someone
+standing in front of you. **Undo** exists for the same reason: refusing a
+used ticket means a mis-scan locks out a real guest, so there has to be a
+way back.
+
+- **RSVP ADMIN tab** (`RsvpAdminTab.tsx`) — event picker, live
+  inside/outside counts, the camera scanner, and a searchable guest list
+  with per-guest check-in. The list is not a fallback bolted on: phones
+  die, screenshots get deleted, and someone always turns up having bought
+  on a friend's account.
+- **The scanner** (`TicketScanner.tsx`) decodes on-device with `jsqr`
+  against frames pulled off the video — no image leaves the phone, and it
+  behaves the same on iOS as on Android (Safari still has no
+  `BarcodeDetector`, so the platform API would have meant shipping this
+  fallback anyway). The camera starts on a tap and stops on unmount. A
+  verdict holds for 2.5s before scanning resumes, or a ticket held in frame
+  would re-scan every frame and the door would refuse the person it just
+  admitted.
+- **`/checkin/<rsvpId>`** stays public and readable by whoever holds the
+  link (it's a ticket), but for signed-in door staff it also grows a check
+  in / undo button. This is the page a phone's *own* camera lands on, so
+  scanning works even without opening the tab.
+- **`perm_rsvp_admin`** gates all of it, deliberately separate from
+  `perm_events_admin`: the people scanning wristbands at 11pm aren't
+  necessarily the people who should see every guest list and revenue figure
+  for every event ever held. Events Admins and Super Admins pass too, and
+  migration 0024 backfills existing events admins so nobody loses access.
+  Checked server-side on every scan — the action is a POST endpoint like
+  any other, and hiding a tab is not a permission.
+- **The QR is now attached to the confirmation email** as a real
+  `cid:` attachment (a `data:` URI would be stripped by Gmail). Until then
+  the only copies were the confirmation screen and the portal, which is no
+  use to someone who checked out as a guest and closed the tab.
+
 ## Sell For Us & Event Sales
 
 `/sell-for-us` (`app/sell-for-us/`) — a public application for the event

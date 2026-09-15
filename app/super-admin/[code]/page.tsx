@@ -53,6 +53,12 @@ const PERMISSION_ROWS = [
     label: "Event Sales",
     hint: "EVENT SALES tab — sign up to work events. Approves a Sell For Us application.",
   },
+  {
+    field: "perm_rsvp_admin",
+    permission: "rsvpAdmin",
+    label: "RSVP Admin",
+    hint: "RSVP ADMIN tab — scan tickets and admit guests at the door. Events Admins and Super Admins already have this.",
+  },
 ] as const;
 
 export default async function SuperAdminAccountPage(props: PageProps<"/super-admin/[code]">) {

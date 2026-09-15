@@ -11,6 +11,7 @@ const ALL_TABS = [
   { id: "music", label: "MUSIC" },
   { id: "ssbd", label: "SSBD" },
   { id: "eventsAdmin", label: "EVENTS ADMIN" },
+  { id: "rsvpAdmin", label: "RSVP ADMIN" },
   { id: "eventSales", label: "EVENT SALES" },
   { id: "artAdmin", label: "ART ADMIN" },
   { id: "settings", label: "SETTINGS" },
@@ -29,6 +30,7 @@ export default function DashboardTabs({
   music,
   ssbd,
   eventsAdmin,
+  rsvpAdmin,
   eventSales,
   artAdmin,
   settings,
@@ -42,6 +44,7 @@ export default function DashboardTabs({
   music: ReactNode;
   ssbd: ReactNode;
   eventsAdmin: ReactNode;
+  rsvpAdmin: ReactNode;
   eventSales: ReactNode;
   artAdmin: ReactNode;
   settings: ReactNode;
@@ -55,6 +58,7 @@ export default function DashboardTabs({
     music: boolean;
     ssbd: boolean;
     eventsAdmin: boolean;
+    rsvpAdmin: boolean;
     eventSales: boolean;
     artAdmin: boolean;
   };
@@ -68,6 +72,7 @@ export default function DashboardTabs({
     music,
     ssbd,
     eventsAdmin,
+    rsvpAdmin,
     eventSales,
     artAdmin,
     settings,

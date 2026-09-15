@@ -43,6 +43,11 @@ export interface AccountPermissions {
   // Reviews art-collective product submissions (ART ADMIN tab). An artist
   // doesn't get to approve their own submissions just by having `art`.
   artAdmin: boolean;
+  // Works the door (RSVP ADMIN tab): scans tickets and admits guests.
+  // Separate from `eventsAdmin` on purpose — the people scanning
+  // wristbands at 11pm aren't necessarily the people who should see every
+  // guest list and revenue figure for every event ever held.
+  rsvpAdmin: boolean;
 }
 
 // Despite the name, this now represents any backend-portal account, not
