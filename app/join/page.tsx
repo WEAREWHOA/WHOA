@@ -6,7 +6,7 @@ import { isLockedRoute } from "@/lib/lockedRoutes";
 
 export const metadata: Metadata = {
   title: "Join",
-  description: "Join the WHOA community — the ambassador program, events, the art and music collectives, and pop ups.",
+  description: "Join the WHOA community — the ambassador program, the art and music collectives, and the crew that sells at our events.",
 };
 
 const TILES = [
@@ -15,12 +15,6 @@ const TILES = [
     title: "Brand Ambassador Program",
     description: "Give your people 15% off and earn 10% commission on every sale.",
     gradient: "linear-gradient(160deg, #3a0a05, #8a2a15 55%, #ff2f1a)",
-  },
-  {
-    href: "/events",
-    title: "Events & Festivals",
-    description: "WHOA Wednesday at the WHOADEGA, shows, and festivals — find us and RSVP.",
-    gradient: "linear-gradient(160deg, #0a2a1f, #1a6b4a 55%, #29e6ff)",
   },
   {
     href: "/art-collective",
@@ -33,12 +27,6 @@ const TILES = [
     title: "Music Collective",
     description: "The DJs and producers behind WHOA Wednesday and the WHOADEGA speaker stack.",
     gradient: "linear-gradient(160deg, #3a3a0a, #8a8a1a 55%, #fff229)",
-  },
-  {
-    href: "/events?category=whoadega",
-    title: "Pop Ups & Retail",
-    description: "Find WHOA in person — the WHOADEGA and pop-up retail dates.",
-    gradient: "linear-gradient(160deg, #0d3b3b, #1a8a6b 55%, #baff29)",
   },
   {
     href: "/sell-for-us",
@@ -61,7 +49,7 @@ export default function JoinPage() {
           Join the Community
         </h1>
         <p className="mt-3 max-w-md text-sm text-white/60">
-          Pick a lane — ambassadors, events, art, music, or find us in person.
+          Pick a lane — ambassadors, art, music, or selling with us.
         </p>
       </div>
 

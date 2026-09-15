@@ -11,7 +11,7 @@
  * musicians already mid-application, and staff checking their own work,
  * still need them. This governs what the public site invites you to click.
  */
-export const LOCKED_ROUTES: readonly string[] = ["/join", "/art-collective", "/music-collective"];
+export const LOCKED_ROUTES: readonly string[] = ["/art-collective", "/music-collective"];
 
 /** The words shown next to the padlock, in one place so they never drift. */
 export const COMING_SOON_LABEL = "Coming Soon!";
