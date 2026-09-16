@@ -262,7 +262,10 @@ export const SCHEDULE_AREAS: ScheduleArea[] = [
     id: "whoa-oasis",
     label: "WHOA OASIS",
     shifts: [
-      { name: "Michele", friday: "10 AM – 4 PM", saturday: "10 AM – 4 PM", sunday: "10 AM – 4 PM" },
+      // Two windows on Sunday — the day shift, then the overnight. Both in
+      // the one cell rather than a second Michele row, so nobody reads the
+      // list and thinks there are two of her.
+      { name: "Michele", friday: "10 AM – 7 PM", saturday: "10 AM – 7 PM", sunday: "10 AM – 7 PM · 1 AM – 4 AM" },
       { name: "Vee", friday: "10 AM – 6 PM", saturday: "10 AM – 6 PM", sunday: "10 AM – 6 PM" },
       { name: "Lily", friday: "2 – 10 PM", saturday: "2 – 10 PM", sunday: "2 – 10 PM" },
       { name: "Nate", friday: "2 – 10 PM", saturday: "2 – 10 PM", sunday: "2 – 10 PM" },
