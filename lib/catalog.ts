@@ -1,3 +1,5 @@
+import { cache } from "react";
+import { buildSlugIndex, looksLikeSquareId, slugify } from "./productSlug";
 import { randomUUID } from "crypto";
 import { SquareError, type Square } from "square";
 import { getSquare, getSquareLocationId } from "./square";
@@ -256,7 +258,17 @@ export async function listProducts(options?: { onlineOnly?: boolean }): Promise<
       variations,
       categories,
       options,
+      slug: "",
+      updatedAt: item.updatedAt ?? null,
     });
+  }
+
+  // Slugs are assigned here, over the finished set, because uniqueness is
+  // a property of the catalog rather than of any one item: two products
+  // called "Tie Dye Hoodie" can't share a URL.
+  const { slugById } = buildSlugIndex(products);
+  for (const product of products) {
+    product.slug = slugById.get(product.id) ?? product.id.toLowerCase();
   }
 
   return products;
@@ -362,6 +374,12 @@ export async function getProduct(itemId: string): Promise<Product | undefined> {
     variations,
     categories,
     options,
+    // Best-effort: a single fetch can't see the rest of the catalog, so it
+    // can't know about a name collision. Routing goes through
+    // resolveProduct (which uses the full list), so this is only ever a
+    // display convenience.
+    slug: slugify(data.name ?? "") || item.id.toLowerCase(),
+    updatedAt: item.updatedAt ?? null,
   };
 }
 
@@ -564,4 +582,72 @@ export async function getArtCollectiveProductIds(productIds: string[]): Promise<
   }
 
   return result;
+}
+
+/**
+ * The catalog's slug index, built once per request.
+ *
+ * React's cache() means a page that resolves a product and then renders
+ * something else needing the catalog pays for one Square round trip, not
+ * two. Across requests the page's own `revalidate` does the caching.
+ */
+const slugIndex = cache(async () => {
+  const products = await listProducts({ onlineOnly: true });
+  return { products, index: buildSlugIndex(products) };
+});
+
+/** The canonical `/shop/<slug>` path for a product. */
+export function productPath(product: Product): string {
+  return `/shop/${product.slug || product.id}`;
+}
+
+/**
+ * The canonical path for a product known only by its Square id.
+ *
+ * For pages whose product data comes from somewhere other than the catalog
+ * (the Supabase-synced vendor listings, say) and so has no slug of its
+ * own. Falls back to the id — which still resolves and 301s — rather than
+ * failing, so a link is never broken by a catalog hiccup.
+ */
+export async function productPathById(id: string): Promise<string> {
+  try {
+    const { index } = await slugIndex();
+    const slug = index.slugById.get(id);
+    return `/shop/${slug ?? id}`;
+  } catch {
+    return `/shop/${id}`;
+  }
+}
+
+export type ProductResolution =
+  /** The URL is already canonical. Render it. */
+  | { kind: "canonical"; product: Product }
+  /** A Square id — still valid forever, but 301 it to the slug. */
+  | { kind: "legacy-id"; product: Product; slug: string };
+
+/**
+ * Turns a `/shop/<segment>` URL into a product.
+ *
+ * Slugs win over ids, always: the index is checked first, so a product
+ * whose name happens to slugify into something id-shaped can never be
+ * shadowed by a catalog lookup. Only a segment that matches no slug *and*
+ * looks like a Square id is worth asking the catalog about — a miss there
+ * costs nothing, since the answer either way is a 404.
+ *
+ * Old id URLs keep resolving rather than being retired. They're printed on
+ * cards, pasted into DMs, and sitting in Google's index; the 301 moves the
+ * ranking to the slug while the original link keeps working forever.
+ */
+export async function resolveProduct(segment: string): Promise<ProductResolution | undefined> {
+  const { products, index } = await slugIndex();
+
+  const bySlug = index.bySlug.get(segment);
+  if (bySlug) return { kind: "canonical", product: bySlug };
+
+  if (!looksLikeSquareId(segment)) return undefined;
+
+  const byId = products.find((product) => product.id === segment);
+  if (!byId) return undefined;
+
+  return { kind: "legacy-id", product: byId, slug: byId.slug };
 }

@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
-import { getProduct } from "@/lib/catalog";
+import { productPath, resolveProduct } from "@/lib/catalog";
 import AddToCart from "@/components/shop/AddToCart";
 import ProductGallery from "@/components/shop/ProductGallery";
 import { formatCents } from "@/lib/money";
@@ -14,7 +14,7 @@ export const revalidate = 60;
 // in search results instead of a plain link. JSON.stringify's output is
 // escaped (</script> in a Square-sourced name/description could otherwise
 // terminate the tag early) before being injected as raw HTML.
-function buildProductJsonLd(product: Product): string {
+function buildProductJsonLd(product: Product, canonicalPath: string): string {
   const prices = product.variations.map((v) => v.priceCents);
   const lowPrice = prices.length > 0 ? Math.min(...prices) : 0;
   const highPrice = prices.length > 0 ? Math.max(...prices) : 0;
@@ -27,7 +27,7 @@ function buildProductJsonLd(product: Product): string {
     name: product.name,
     description: product.description || undefined,
     image: product.imageUrls.length > 0 ? product.imageUrls : undefined,
-    url: `${SITE_URL}/shop/${product.id}`,
+    url: `${SITE_URL}${canonicalPath}`,
     offers: {
       "@type": "AggregateOffer",
       priceCurrency: "USD",
@@ -43,22 +43,26 @@ function buildProductJsonLd(product: Product): string {
 
 export async function generateMetadata(props: PageProps<"/shop/[itemId]">): Promise<Metadata> {
   const { itemId } = await props.params;
-  const product = await getProduct(itemId).catch(() => undefined);
-  if (!product) return {};
+  const resolved = await resolveProduct(itemId).catch(() => undefined);
+  if (!resolved) return {};
 
+  const { product } = resolved;
   return {
     title: product.name,
     description: product.description || `Shop ${product.name} on WHOA.`,
     openGraph: product.imageUrl ? { images: [product.imageUrl] } : undefined,
+    // Points at the slug even when reached by an old id URL, so the two
+    // never compete as duplicates in the index.
+    alternates: { canonical: `/shop/${resolved.kind === "legacy-id" ? resolved.slug : itemId}` },
   };
 }
 
 export default async function ProductPage(props: PageProps<"/shop/[itemId]">) {
   const { itemId } = await props.params;
 
-  let product: Awaited<ReturnType<typeof getProduct>>;
+  let resolved: Awaited<ReturnType<typeof resolveProduct>>;
   try {
-    product = await getProduct(itemId);
+    resolved = await resolveProduct(itemId);
   } catch (err) {
     console.error(`Failed to load product ${itemId} for /shop/[itemId]:`, err);
     return (
@@ -70,7 +74,16 @@ export default async function ProductPage(props: PageProps<"/shop/[itemId]">) {
     );
   }
 
-  if (!product) notFound();
+  if (!resolved) notFound();
+
+  // Reached by a Square id — the old URL shape, still linked from Google
+  // and from anything printed before slugs existed. Send it on to the
+  // readable one so the ranking follows and there's only ever one URL per
+  // product in the index.
+  if (resolved.kind === "legacy-id") permanentRedirect(`/shop/${resolved.slug}`);
+
+  const { product } = resolved;
+  const canonicalPath = productPath(product);
 
   const prices = product.variations.map((v) => v.priceCents);
   const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
@@ -81,7 +94,7 @@ export default async function ProductPage(props: PageProps<"/shop/[itemId]">) {
           and a Google result showing price/availability directly. */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: buildProductJsonLd(product) }}
+        dangerouslySetInnerHTML={{ __html: buildProductJsonLd(product, canonicalPath) }}
       />
 
       <ProductGallery name={product.name} imageUrls={product.imageUrls} />

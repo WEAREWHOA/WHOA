@@ -92,7 +92,7 @@ export default function ProductCard({ product, delay = 0 }: { product: Product; 
   return (
     <Link
       ref={ref}
-      href={`/shop/${product.id}`}
+      href={`/shop/${product.slug || product.id}`}
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
       style={
