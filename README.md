@@ -645,6 +645,43 @@ the environment to require a shared passcode as well, and the page grows a
 "Crew code" field on every form. Unset (the default) there's no passcode
 and no field.
 
+## ROLODEX — the contact book
+
+A small CRM for everyone WHOA does business with: retailers, venues,
+suppliers, press, bookers. **Deliberately standalone** — `rolodex_contacts`
+(migration 0025) shares no keys with ambassadors, artists or Square
+customers, because the people in it mostly aren't any of those, and forcing
+them through the accounts table would mean inventing logins for people who
+will never see this site.
+
+Three sections, top to bottom: **search**, **add a contact**, then
+**browse and filter**.
+
+- **`perm_rolodex`**, granted one account at a time from Super Admin and
+  **off by default for everyone** — unlike the RSVP permission, nobody is
+  backfilled into it. This holds people's personal phone numbers. Super
+  Admins have it implicitly. Re-checked server-side on every write, since
+  the actions are POST endpoints whether or not the tab rendered.
+- **Fields**: name (the only required one), company, phone, email, website,
+  Instagram, city, category, type of partnership, status, last contacted,
+  notes. Half of these start life as a name and a handle scribbled at an
+  event, so everything but the name is optional.
+- **Categories are free text** with a seeded set (RETAILER, EVENT, SALES,
+  ARTIST, MUSICIAN, VENUE, SUPPLIER, PRESS, CREATOR, SPONSOR, OTHER). The
+  form offers whatever is already in use alongside a "new category" box, so
+  a kind of relationship nobody anticipated can be filed the moment it
+  exists rather than forced into OTHER. Stored uppercased so a hand-typed
+  "retailer" joins the existing bucket instead of quietly starting a second
+  one.
+- **Search covers notes**, not just names — "the guy from the Oakland
+  pop-up" is often all anyone remembers, and it'll be in there. Filtering
+  happens in the browser against the whole list: a contact book is hundreds
+  of rows, and instant results are most of what makes one usable instead of
+  a spreadsheet nobody opens. Past a few thousand, move `searchContacts`
+  server-side.
+- Phone and email render as `tel:`/`mailto:` links, because the point of
+  having a number in your pocket is not retyping it.
+
 ## Door check-in (RSVP ADMIN)
 
 A ticket is now something that can be *spent*. Buying one already produced

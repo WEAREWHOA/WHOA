@@ -54,6 +54,12 @@ const PERMISSION_ROWS = [
     hint: "EVENT SALES tab — sign up to work events. Approves a Sell For Us application.",
   },
   {
+    field: "perm_rolodex",
+    permission: "rolodex",
+    label: "Rolodex",
+    hint: "ROLODEX tab — the business contact book (retailers, venues, suppliers, press). Holds personal phone numbers, so grant it deliberately. Super Admins already have this.",
+  },
+  {
     field: "perm_rsvp_admin",
     permission: "rsvpAdmin",
     label: "RSVP Admin",

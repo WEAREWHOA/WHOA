@@ -30,14 +30,11 @@ export default function Footer() {
           <Link href="/terms-of-service" className="transition-colors hover:text-foreground">
             Terms
           </Link>
-          <Link href="/apply" className="transition-colors hover:text-foreground">
+          <Link href="/join" className="transition-colors hover:text-foreground">
             Apply
           </Link>
           <Link href="/site-concept" className="transition-colors hover:text-foreground">
             Site Concept
-          </Link>
-          <Link href="/login" className="transition-colors hover:text-foreground">
-            Ambassador login
           </Link>
         </nav>
       </div>

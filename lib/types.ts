@@ -43,6 +43,9 @@ export interface AccountPermissions {
   // Reviews art-collective product submissions (ART ADMIN tab). An artist
   // doesn't get to approve their own submissions just by having `art`.
   artAdmin: boolean;
+  // ROLODEX tab: the business contact book. Off by default and granted
+  // one account at a time — it holds people's personal phone numbers.
+  rolodex: boolean;
   // Works the door (RSVP ADMIN tab): scans tickets and admits guests.
   // Separate from `eventsAdmin` on purpose — the people scanning
   // wristbands at 11pm aren't necessarily the people who should see every

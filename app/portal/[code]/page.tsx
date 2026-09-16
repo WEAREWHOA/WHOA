@@ -11,6 +11,7 @@ import MediaLibrary from "@/components/portal/MediaLibrary";
 import { getEventHistoryForAccount } from "@/lib/eventRsvps";
 import { getEventsAdminOverview } from "@/lib/eventsAdmin";
 import { getDoorEvents } from "@/lib/door";
+import { listContacts } from "@/lib/rolodex";
 import { getScheduleForAccount, getSignupsForAccount } from "@/lib/eventSales";
 import { getMusicianProfile } from "@/lib/musicianProfiles";
 import {
@@ -34,6 +35,7 @@ import MusicTab from "@/components/dashboard/tabs/MusicTab";
 import SsbdTab from "@/components/dashboard/tabs/SsbdTab";
 import EventsAdminTab from "@/components/dashboard/tabs/EventsAdminTab";
 import RsvpAdminTab from "@/components/dashboard/tabs/RsvpAdminTab";
+import RolodexTab from "@/components/dashboard/tabs/RolodexTab";
 import EventSalesTab from "@/components/dashboard/tabs/EventSalesTab";
 import ArtAdminTab from "@/components/dashboard/tabs/ArtAdminTab";
 import SettingsTab from "@/components/dashboard/tabs/SettingsTab";
@@ -90,6 +92,13 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
   const canAccessRsvpAdmin =
     account.isSuperAdmin || account.permissions.rsvpAdmin || account.permissions.eventsAdmin;
   const doorEvents = canAccessRsvpAdmin ? await getDoorEvents() : [];
+
+  // Same reasoning as the other admin tabs: the contact book holds real
+  // people's personal phone numbers, so it must not be fetched at all for
+  // an account that can't open it — hiding a tab client-side would still
+  // ship every number in the page's RSC payload.
+  const canAccessRolodex = account.isSuperAdmin || account.permissions.rolodex;
+  const rolodexContacts = canAccessRolodex ? await listContacts().catch(() => []) : [];
 
   const canAccessEventSales = account.permissions.eventSales;
   const [eventSalesSignups, eventSalesSchedule] = canAccessEventSales
@@ -330,6 +339,7 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
         ssbd={<SsbdTab />}
         eventsAdmin={eventsAdminOverview ? <EventsAdminTab data={eventsAdminOverview} /> : null}
         rsvpAdmin={canAccessRsvpAdmin ? <RsvpAdminTab events={doorEvents} /> : null}
+        rolodex={canAccessRolodex ? <RolodexTab contacts={rolodexContacts} /> : null}
         eventSales={
           canAccessEventSales ? (
             <>
@@ -372,6 +382,7 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
           ssbd: account.permissions.ssbd,
           eventsAdmin: canAccessEventsAdmin,
           rsvpAdmin: canAccessRsvpAdmin,
+          rolodex: canAccessRolodex,
           eventSales: canAccessEventSales,
           artAdmin: canAccessArtAdmin,
         }}
