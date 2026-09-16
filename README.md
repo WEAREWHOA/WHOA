@@ -162,6 +162,37 @@ black shows through them — an earlier pass used radii near half the screen
 at high alpha, which lit every pixel and made the page read as a colour
 gradient rather than as space.
 
+## The podcast (on About)
+
+The old site had a `/podcast` page — a few embedded YouTube conversations
+and a line about what they were. It's back as the third of four boxes on
+`/about` rather than a route of its own: a handful of episodes doesn't
+carry a whole page, and next to the story and the partnerships is where
+someone reading about WHOA would look for them. `/podcast` 301s there.
+
+Episodes live in `lib/podcast.ts` as data, so **adding one is pasting a
+link into `PODCAST_EPISODES`** — no JSX, no embed codes, no malformed
+iframes. `youTubeId` accepts whatever YouTube's Share button hands you:
+
+```ts
+export const PODCAST_EPISODES: PodcastEpisode[] = [
+  { youtube: "https://youtu.be/AbCdEfGhIjK", title: "Episode One — HuntHux",
+    blurb: "On making records between shifts." },
+];
+```
+
+watch URLs (with any extra params), `youtu.be` links, `/embed/`,
+`/shorts/`, `/live/` and bare 11-character ids all resolve. A link it
+*can't* read is skipped with a console warning rather than rendered as an
+iframe pointing at nothing — a typo costs you one missing episode, not a
+broken page.
+
+Embeds go through `youtube-nocookie.com` (no tracking cookie until someone
+presses play), are `loading="lazy"` (several players is a lot to load for
+someone who came to read), and sit in an `aspect-video` frame so they hold
+16:9 from a phone to a desktop. The box is `sm:col-span-2` because a 16:9
+video in half a column is a postage stamp.
+
 ## Legacy redirects
 
 Two shops came before this one — a Wix site, then Square Online — and both
@@ -176,7 +207,7 @@ in `next.config.ts` maps every pattern of theirs onto this site with a
 | `/product/<slug>/<catalog-id>`, `/product/<slug>` | `/shop` |
 | `/product-page/<slug>` (Wix) | `/shop` |
 | `/music` | `/music-collective` |
-| `/podcast` | `/` |
+| `/podcast` | `/about` (the podcast box) |
 
 `/about` and `/events` kept their paths across all three sites, so they
 need nothing.
