@@ -1,55 +1,32 @@
-import { PODCAST_INTRO, playableEpisodes, youTubeEmbedUrl } from "@/lib/podcast";
+import Link from "next/link";
+import { PODCAST_INTRO, playableEpisodes } from "@/lib/podcast";
 
 /**
- * The podcast, back from the old site's /podcast page: the conversations,
- * embedded, with a line about what they are.
+ * The podcast's entry on the About page: a summary card in the same shape as
+ * the Story and Contact cards next to it, opening onto /podcast where the
+ * episodes actually live.
  *
- * Lives on About rather than a page of its own — a handful of episodes
- * doesn't carry a whole route, and putting them next to the story and the
- * partnerships is where someone reading about WHOA would look for them.
- *
- * Full width because a 16:9 video in half a column on a laptop is a
- * postage stamp.
+ * A summary rather than the episodes themselves because six lazy-loaded
+ * YouTube players is a lot of page for someone who came to read about WHOA —
+ * and because the old site's /podcast URL is still linked from the outside,
+ * so the episodes deserve a page that URL can point at.
  */
 export default function PodcastBox() {
-  const episodes = playableEpisodes();
+  const count = playableEpisodes().length;
 
   return (
-    <div className="card-surface rounded-2xl border border-border p-6 sm:col-span-2">
+    <Link
+      href="/podcast"
+      className="card-surface group rounded-2xl border border-border p-6 transition-colors hover:border-flame-2/50"
+    >
       <h2 className="font-display text-2xl">The WHOA Podcast</h2>
-      <p className="mt-2 max-w-2xl text-sm text-muted">{PODCAST_INTRO}</p>
-
-      {episodes.length === 0 ? (
-        <p className="mt-4 rounded-xl border border-border px-4 py-3 text-sm text-muted">
-          Episodes are on their way back — check here soon.
-        </p>
-      ) : (
-        <div className="mt-5 grid gap-6 md:grid-cols-2">
-          {episodes.map((episode, index) => (
-            <div key={episode.videoId}>
-              {/* aspect-video rather than a fixed height, so the frame keeps
-                  16:9 from a phone to a desktop instead of letterboxing.
-                  Lazy — several embeds on one page is a lot of player to
-                  load for someone who came here to read the story. */}
-              <div className="aspect-video overflow-hidden rounded-xl border border-border-strong bg-black">
-                <iframe
-                  src={youTubeEmbedUrl(episode.videoId)}
-                  // A real title when there is one; otherwise something
-                  // that still tells a screen reader what this frame is.
-                  title={episode.title ?? `WHOA Podcast episode ${index + 1}`}
-                  loading="lazy"
-                  allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  allowFullScreen
-                  className="h-full w-full"
-                />
-              </div>
-              {episode.title && <h3 className="font-display mt-3 text-lg">{episode.title}</h3>}
-              {episode.blurb && <p className="mt-1 text-sm text-muted">{episode.blurb}</p>}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+      <p className="mt-2 text-sm text-muted">{PODCAST_INTRO}</p>
+      <span className="text-flame mt-4 inline-block text-xs font-semibold tracking-wide uppercase">
+        {/* The count comes from the episode list, so it can't drift out of
+            date the way a hand-written "six episodes" would. Silent when
+            there's nothing to count rather than promising "0 episodes". */}
+        {count > 0 ? `Watch all ${count} episodes →` : "Watch the episodes →"}
+      </span>
+    </Link>
   );
 }

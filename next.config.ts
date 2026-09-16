@@ -44,11 +44,12 @@ const legacyRedirects = [
   { source: "/product-page/:slug", destination: "/shop", statusCode: 301 },
 
   // --- Old content pages -----------------------------------------------
-  // /about and /events kept their paths, so they need nothing. These two
-  // moved or went away.
+  // /about, /events and /podcast kept their paths, so they need nothing.
+  // Only /music moved.
   { source: "/music", destination: "/music-collective", statusCode: 301 },
-  // The podcast lives on the About page now (components/about/PodcastBox).
-  { source: "/podcast", destination: "/about", statusCode: 301 },
+  // /podcast is a real page again (app/podcast), so it needs no redirect —
+  // adding one back would shadow the page, since redirects run before
+  // filesystem routing.
 ];
 
 const nextConfig: NextConfig = {
