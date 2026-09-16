@@ -25,7 +25,7 @@ export default function PodcastBox() {
         </p>
       ) : (
         <div className="mt-5 grid gap-6 md:grid-cols-2">
-          {episodes.map((episode) => (
+          {episodes.map((episode, index) => (
             <div key={episode.videoId}>
               {/* aspect-video rather than a fixed height, so the frame keeps
                   16:9 from a phone to a desktop instead of letterboxing.
@@ -34,7 +34,9 @@ export default function PodcastBox() {
               <div className="aspect-video overflow-hidden rounded-xl border border-border-strong bg-black">
                 <iframe
                   src={youTubeEmbedUrl(episode.videoId)}
-                  title={episode.title}
+                  // A real title when there is one; otherwise something
+                  // that still tells a screen reader what this frame is.
+                  title={episode.title ?? `WHOA Podcast episode ${index + 1}`}
                   loading="lazy"
                   allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   referrerPolicy="strict-origin-when-cross-origin"
@@ -42,7 +44,7 @@ export default function PodcastBox() {
                   className="h-full w-full"
                 />
               </div>
-              <h3 className="font-display mt-3 text-lg">{episode.title}</h3>
+              {episode.title && <h3 className="font-display mt-3 text-lg">{episode.title}</h3>}
               {episode.blurb && <p className="mt-1 text-sm text-muted">{episode.blurb}</p>}
             </div>
           ))}
