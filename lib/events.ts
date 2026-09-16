@@ -862,17 +862,26 @@ export const EVENTS: EventInfo[] = [
   {
     id: "whoa-wed-sep16",
     imageUrl: "/events/whoa-wed-sep16.webp",
-    title: "WHOA Wednesday — Spooky Secret Lineup",
+    title: "WHOA Wednesday — Open Decks Contest",
     dateLabel: "September 16",
-    timeLabel: "7PM – Midnight",
+    // 11PM, not "Midnight". Beyond matching the flyer, the word midnight
+    // has no hour in it for parseClosingHour to read, so the only time it
+    // could find was the 7PM opening — and ticket sales were closing the
+    // moment doors opened. See getTicketingCloseDate.
+    timeLabel: "7PM – 11PM",
     venue: "The WHOAdega × SH!FT Gallery",
     location: "4847 Newport Ave, San Diego",
     category: "whoadega",
     startDate: "2026-09-16",
-    details: ["Spooky Secret DJ Lineup", "RSVP for 1 free NA drink"],
+    details: [
+      "Hosted by Wasani, featuring Zerkamania Productions",
+      "Open decks contest for NIGHTFALL — Oct 30 & 31, secret location, 21+",
+      "RSVP for 1 free NA drink",
+    ],
     tags: ["$10 Early Bird", "$15 General Admission"],
-    accent: "#ff5e1a",
-    gradient: ["#1a0a2e", "#8a2be2", "#ff5e1a"],
+    // Matched to the new flyer: magenta and purple with the orange drip.
+    accent: "#ff2fb0",
+    gradient: ["#2a0a3a", "#a021d6", "#ff5e1a"],
     rotate: -3,
     // General admission at the door, day-of; $10 any day before.
     priceCents: 1500,
