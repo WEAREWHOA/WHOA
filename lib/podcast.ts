@@ -11,7 +11,12 @@
 export interface PodcastEpisode {
   /** Any YouTube URL, or the bare 11-character video id. */
   youtube: string;
-  title: string;
+  /**
+   * Optional. Without one the card is just the player, which already
+   * shows YouTube's own title — better than a made-up one, and better
+   * than a row of "Episode 1, Episode 2".
+   */
+  title?: string;
   /** One line on who's in it and what it's about. Optional. */
   blurb?: string;
 }
@@ -19,7 +24,18 @@ export interface PodcastEpisode {
 export const PODCAST_INTRO =
   "Conversations with the artists, musicians and makers in the WHOA world — how they got here, what they're building, and what they're making next.";
 
-export const PODCAST_EPISODES: PodcastEpisode[] = [];
+export const PODCAST_EPISODES: PodcastEpisode[] = [
+  // Titles and blurbs can be filled in any time — add `title: "..."` to a
+  // line and it appears under that player. The timestamps some of these
+  // links carried (&t=1007s) are dropped on purpose: an episode listing
+  // should start an episode at the beginning.
+  { youtube: "https://www.youtube.com/watch?v=UltX0q0yUIA" },
+  { youtube: "https://www.youtube.com/watch?v=fC7DCycgkw4&t=1007s" },
+  { youtube: "https://www.youtube.com/watch?v=qb3_-c1DTpc&t=1s" },
+  { youtube: "https://www.youtube.com/watch?v=AFXJaH6yj1I" },
+  { youtube: "https://www.youtube.com/watch?v=mAe10CCJmjs" },
+  { youtube: "https://www.youtube.com/watch?v=BpcKNoaz7XE" },
+];
 
 /**
  * Pulls the video id out of any shape of YouTube link.

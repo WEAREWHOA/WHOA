@@ -172,7 +172,10 @@ someone reading about WHOA would look for them. `/podcast` 301s there.
 
 Episodes live in `lib/podcast.ts` as data, so **adding one is pasting a
 link into `PODCAST_EPISODES`** — no JSX, no embed codes, no malformed
-iframes. `youTubeId` accepts whatever YouTube's Share button hands you:
+iframes. `title` and `blurb` are optional: without a title the card is just
+the player, which already shows YouTube's own, and that beats a made-up
+title or a row of "Episode 1, Episode 2". `youTubeId` accepts whatever
+YouTube's Share button hands you:
 
 ```ts
 export const PODCAST_EPISODES: PodcastEpisode[] = [
@@ -181,7 +184,9 @@ export const PODCAST_EPISODES: PodcastEpisode[] = [
 ];
 ```
 
-watch URLs (with any extra params), `youtu.be` links, `/embed/`,
+Timestamps in a pasted link (`&t=1007s`) are dropped on purpose — an
+episode listing should start an episode at the beginning. watch URLs (with
+any extra params), `youtu.be` links, `/embed/`,
 `/shorts/`, `/live/` and bare 11-character ids all resolve. A link it
 *can't* read is skipped with a console warning rather than rendered as an
 iframe pointing at nothing — a typo costs you one missing episode, not a
