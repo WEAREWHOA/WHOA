@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { productPathById } from "@/lib/catalog";
 import { ARTISTS, getArtist } from "@/lib/artists";
 import { getVendorProducts } from "@/lib/vendor";
 import { formatCents } from "@/lib/money";
@@ -35,6 +36,13 @@ export default async function ArtistPage(props: PageProps<"/art-collective/[slug
   if (!artist) notFound();
 
   const products = await getVendorProducts(slug).catch(() => []);
+  // Link straight to each product's slug rather than its Square id, so an
+  // internal link doesn't take a 301 hop it doesn't need to.
+  const productHrefs = new Map(
+    await Promise.all(
+      products.map(async (product) => [product.id, await productPathById(product.id)] as const),
+    ),
+  );
   const [c1, c2, c3] = artist.gradient;
 
   return (
@@ -98,7 +106,7 @@ export default async function ArtistPage(props: PageProps<"/art-collective/[slug
             return (
               <Link
                 key={product.id}
-                href={`/shop/${product.id}`}
+                href={productHrefs.get(product.id) ?? `/shop/${product.id}`}
                 className="card-surface group overflow-hidden rounded-2xl border border-border transition-colors hover:border-flame-2/50"
               >
                 <div className="relative h-40 w-full overflow-hidden" aria-hidden>

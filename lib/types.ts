@@ -124,6 +124,14 @@ export interface Product {
   // this item's own variations, in Square's own dimension order — empty
   // for an item that just names each variation as one combined string.
   options: ProductOption[];
+  // The readable URL segment this product is served at: /shop/<slug>.
+  // Assigned across the whole catalog by listProducts so it's unique even
+  // when two items share a name — see lib/productSlug.ts.
+  slug: string;
+  // Square's own last-modified timestamp (ISO). Feeds <lastmod> in the
+  // sitemap so search engines re-crawl a product whose price or photos
+  // actually changed instead of guessing. Null when Square omits it.
+  updatedAt: string | null;
 }
 
 // US-only for now — international shipping isn't supported yet.

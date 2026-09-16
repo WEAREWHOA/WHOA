@@ -193,6 +193,46 @@ someone who came to read), and sit in an `aspect-video` frame so they hold
 16:9 from a phone to a desktop. The box is `sm:col-span-2` because a 16:9
 video in half a column is a postage stamp.
 
+## Product URLs & the sitemap
+
+**Products are served at `/shop/<slug>`** — `/shop/whoa-flow-sweatpants`,
+not `/shop/IT2ZAR44JDOXVAKDVDV3CDBG`. Google shows the URL in results, so
+one reads as a product and the other as a database error.
+
+Square's catalog id stays the permanent handle underneath:
+
+- `listProducts` assigns each product a `slug` across the **whole**
+  catalog, because uniqueness is a property of the set — two items called
+  "Tie Dye Hoodie" can't share a URL. The loser of a collision keeps its
+  name and gains a short piece of its own id.
+- Products are sorted by id before assignment, so which one owns the clean
+  slug is **stable**. Square doesn't promise catalog order, and without
+  this two items could swap URLs between requests — the one thing a slug
+  must never do.
+- **Old id URLs keep working forever.** `resolveProduct` checks slugs
+  first (so a name that slugifies to something id-shaped can't be
+  shadowed), then falls back to a catalog lookup, and `/shop/<id>` 301s to
+  the slug. Nothing indexed, printed, or pasted into a DM ever 404s, and
+  the ranking follows the redirect.
+- `generateMetadata` sets `alternates.canonical` to the slug even when
+  reached by an id, so the two never compete as duplicates.
+
+**The sitemap** (`app/sitemap.ts`) carries **no `<priority>` or
+`<changefreq>`** — Google [announced in 2023](https://developers.google.com/search/blog/2023/06/sitemaps-lastmod-ping)
+that it ignores both, so they were bytes doing nothing. What it does read
+is what's there now:
+
+- **`<lastmod>` from Square's own `updated_at`**, so a product whose price
+  or photos changed last week is re-crawled ahead of one untouched for a
+  year. Deliberately *omitted* rather than faked with "now" when Square
+  gives us nothing: a lastmod that always says today teaches Google to
+  stop trusting it.
+- **`<image:image>` entries** for every product photo. For a brand whose
+  products are the photographs, Google Images is a real traffic channel.
+
+Nothing is pruned from the sitemap — the Art and Music Collective apply
+pages stay listed even while those areas are locked.
+
 ## Legacy redirects
 
 Two shops came before this one — a Wix site, then Square Online — and both
