@@ -47,7 +47,8 @@ const legacyRedirects = [
   // /about and /events kept their paths, so they need nothing. These two
   // moved or went away.
   { source: "/music", destination: "/music-collective", statusCode: 301 },
-  { source: "/podcast", destination: "/", statusCode: 301 },
+  // The podcast lives on the About page now (components/about/PodcastBox).
+  { source: "/podcast", destination: "/about", statusCode: 301 },
 ];
 
 const nextConfig: NextConfig = {

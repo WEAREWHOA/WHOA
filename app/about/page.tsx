@@ -1,10 +1,11 @@
 import Link from "next/link";
 import ComingSoonBadge from "@/components/LockedBadge";
+import PodcastBox from "@/components/about/PodcastBox";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "About",
-  description: "WHOA's story, mission, partnerships, and how to get in touch.",
+  description: "WHOA's story, mission, the podcast, partnerships, and how to get in touch.",
 };
 
 export default function AboutPage() {
@@ -44,6 +45,8 @@ export default function AboutPage() {
             Get in touch →
           </span>
         </Link>
+
+        <PodcastBox />
 
         <div className="card-surface rounded-2xl border border-border p-6 sm:col-span-2">
           <h2 className="font-display text-2xl">Partnerships</h2>
