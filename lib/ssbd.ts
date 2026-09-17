@@ -66,13 +66,6 @@ export const ANNOUNCEMENTS: Announcement[] = [
     body: "Merch & POS Training, then a Merch Refresher + Load-In/Exodus Expectations session. Can't make it live? You must watch the recording and DM us to confirm you watched it — we will ask questions. Dates, topics, and the full policy are in the Training Calendar below.",
     href: "/event-sales/ssbd-2026#training-calendar",
   },
-  {
-    id: "runway-show",
-    title: "Chill Pill Runway Show",
-    date: "During SSBD — Sept 25–27, 2026",
-    tag: "Update",
-    body: "There's a runway show happening at SSBD, produced by Lily Flores of Chill Pill. Exact time and location within the festival to come — check back here.",
-  },
 ];
 
 export interface TrainingSession {
@@ -232,13 +225,6 @@ export const ACTIVATIONS: Activation[] = [
     title: "WHOALYMPICS",
     day: "Sunday",
     time: "4–5 PM",
-  },
-  {
-    id: "chill-pill-runway-show",
-    title: "Chill Pill Runway Show",
-    day: "TBD",
-    time: "TBD",
-    note: "At Creation Station / WHOA OASIS — day and time still being worked out.",
   },
 ];
 
