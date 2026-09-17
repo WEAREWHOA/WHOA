@@ -7,35 +7,20 @@ import { formatCents } from "@/lib/money";
 import { eventRsvpAction } from "@/app/events/actions";
 import { accountSignOutAction, getAccountAction } from "@/app/account/actions";
 import { markRsvped } from "@/components/events/useRsvp";
-
-interface SquareCard {
-  attach: (selector: string) => Promise<void>;
-  tokenize: () => Promise<{ status: string; token?: string; errors?: { message: string }[] }>;
-  destroy: () => Promise<void>;
-}
-
-interface SquarePayments {
-  card: () => Promise<SquareCard>;
-}
-
-declare global {
-  interface Window {
-    Square?: {
-      payments: (appId: string, locationId: string) => Promise<SquarePayments>;
-    };
-  }
-}
-
-const APPLICATION_ID = process.env.NEXT_PUBLIC_SQUARE_APPLICATION_ID ?? "";
-const LOCATION_ID = process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID ?? "";
-const SQUARE_JS_SRC =
-  process.env.NEXT_PUBLIC_SQUARE_ENVIRONMENT === "production"
-    ? "https://web.squarecdn.com/v1/square.js"
-    : "https://sandbox.web.squarecdn.com/v1/square.js";
+import WalletButtons from "@/components/checkout/WalletButtons";
+import { eventCheckoutDraft, newReferenceId, type EventCheckoutDraft } from "@/lib/checkoutDrafts";
+import {
+  SQUARE_APPLICATION_ID as APPLICATION_ID,
+  SQUARE_CARD_STYLE,
+  SQUARE_JS_SRC,
+  SQUARE_LOCATION_ID as LOCATION_ID,
+  type SquareCard,
+} from "@/lib/squareWeb";
 
 export default function EventCheckoutModal({
   event,
   waiverAgreed,
+  restored,
   onClose,
 }: {
   event: EventInfo;
@@ -43,12 +28,18 @@ export default function EventCheckoutModal({
   // the modal shown before this one — see EventsGrid.tsx. Only relevant for
   // events requiresDamageWaiver flags; ignored otherwise.
   waiverAgreed?: boolean;
+  // A ticket form parked before a Cash App Pay redirect, handed back by
+  // EventsGrid when the customer lands here again — see
+  // lib/checkoutDrafts.ts.
+  restored?: EventCheckoutDraft;
   onClose: () => void;
 }) {
   const priceCents = getCurrentPriceCents(event);
   const isPaid = priceCents > 0;
 
   const cardRef = useRef<SquareCard | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [referenceId] = useState(() => restored?.referenceId || newReferenceId("ticket"));
   const [scriptReady, setScriptReady] = useState(false);
   const [scriptFailed, setScriptFailed] = useState(false);
   const [cardReady, setCardReady] = useState(!isPaid);
@@ -58,10 +49,10 @@ export default function EventCheckoutModal({
   const [done, setDone] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [selectedArtist, setSelectedArtist] = useState("");
+  const [name, setName] = useState(restored?.name ?? "");
+  const [email, setEmail] = useState(restored?.email ?? "");
+  const [phone, setPhone] = useState(restored?.phone ?? "");
+  const [selectedArtist, setSelectedArtist] = useState(restored?.selectedArtist ?? "");
   const [password, setPassword] = useState("");
   const [account, setAccount] = useState<{ name: string; email: string } | null>(null);
   const [accountChecked, setAccountChecked] = useState(false);
@@ -149,7 +140,7 @@ export default function EventCheckoutModal({
     (async () => {
       try {
         const payments = await window.Square!.payments(APPLICATION_ID, LOCATION_ID);
-        const card = await payments.card();
+        const card = await payments.card({ style: SQUARE_CARD_STYLE });
         await card.attach("#event-card-container");
         if (cancelled) {
           await card.destroy();
@@ -180,25 +171,24 @@ export default function EventCheckoutModal({
     return () => clearTimeout(timer);
   }, [isPaid]);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  function saveDraft() {
+    eventCheckoutDraft.save({
+      eventId: event.id,
+      name,
+      email,
+      phone,
+      selectedArtist,
+      waiverAgreed: waiverAgreed === true,
+      referenceId,
+    });
+  }
+
+  // Square's sourceId is the same field whether the token came from the
+  // card field or from Apple Pay / Google Pay / Cash App Pay, so the
+  // server action below doesn't need to know which one it was.
+  async function submitWithToken(token: string | undefined) {
     setSubmitting(true);
     setError(null);
-
-    let token: string | undefined;
-    if (isPaid) {
-      if (!cardRef.current) {
-        setSubmitting(false);
-        return;
-      }
-      const tokenResult = await cardRef.current.tokenize();
-      if (tokenResult.status !== "OK" || !tokenResult.token) {
-        setError(tokenResult.errors?.[0]?.message ?? "Card details couldn't be verified.");
-        setSubmitting(false);
-        return;
-      }
-      token = tokenResult.token;
-    }
 
     const outcome = await eventRsvpAction({
       eventId: event.id,
@@ -217,10 +207,34 @@ export default function EventCheckoutModal({
       return;
     }
 
+    eventCheckoutDraft.clear();
     markRsvped(event.id);
     setQrDataUrl(outcome.qrDataUrl ?? null);
     setDone(true);
     setSubmitting(false);
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+
+    if (!isPaid) {
+      await submitWithToken(undefined);
+      return;
+    }
+
+    if (!cardRef.current) return;
+
+    setSubmitting(true);
+    setError(null);
+
+    const tokenResult = await cardRef.current.tokenize();
+    if (tokenResult.status !== "OK" || !tokenResult.token) {
+      setError(tokenResult.errors?.[0]?.message ?? "Card details couldn't be verified.");
+      setSubmitting(false);
+      return;
+    }
+
+    await submitWithToken(tokenResult.token);
   }
 
   return (
@@ -277,7 +291,7 @@ export default function EventCheckoutModal({
                 {event.dateLabel} · {event.timeLabel}
               </p>
   
-              <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+              <form ref={formRef} onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
                 <div>
                   <label htmlFor="rsvp-name" className="text-sm font-medium">
                     Name
@@ -378,6 +392,19 @@ export default function EventCheckoutModal({
                 )}
   
                 {isPaid && (
+                  <WalletButtons
+                    squareReady={scriptReady && !scriptFailed}
+                    amountCents={priceCents}
+                    label={event.title}
+                    referenceId={referenceId}
+                    formRef={formRef}
+                    onToken={submitWithToken}
+                    onBeforeRedirect={saveDraft}
+                    busy={submitting}
+                  />
+                )}
+  
+                {isPaid && (
                   <div>
                     <span className="text-sm font-medium">Card</span>
                     {scriptFailed ? (
@@ -394,10 +421,7 @@ export default function EventCheckoutModal({
                         .
                       </div>
                     ) : (
-                      <div
-                        id="event-card-container"
-                        className="mt-2 rounded-lg border border-border-strong bg-surface-raised px-4 py-3"
-                      />
+                      <div id="event-card-container" className="mt-2" />
                     )}
                   </div>
                 )}

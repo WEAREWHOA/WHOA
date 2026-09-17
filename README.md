@@ -279,10 +279,11 @@ Three things worth knowing before editing that list:
 - `/shop` — product grid, pulled live from Square's Catalog + Inventory APIs
 - `/shop/[itemId]` — product detail with a variation picker and add-to-cart
 - `/cart` — cart (client-side, persisted to `localStorage`)
-- `/checkout` — name/email + a Square Web Payments SDK card form; the 15%
-  ambassador discount and referral attribution apply automatically if the
-  visitor arrived via a `/r/[slug]` link — except anything in Square's
-  "Art Collective" category, which never discounts (see below)
+- `/checkout` — name/email + Apple Pay / Google Pay / Cash App Pay and a
+  Square Web Payments SDK card form (see [Wallet payments](#wallet-payments));
+  the 15% ambassador discount and referral attribution apply automatically
+  if the visitor arrived via a `/r/[slug]` link — except anything in
+  Square's "Art Collective" category, which never discounts (see below)
 - `/order-confirmed` — confirmation after a successful payment
 - `/pos` — staff point-of-sale register: PIN-gated (showcase-grade, not real
   access control — see [Staff POS](#staff-pos) below), tap-to-add products,
@@ -356,6 +357,37 @@ Three things worth knowing before editing that list:
 
 A seeded demo ambassador is available for exploring a populated portal:
 **code `DEMOAMBASSADOR`, password `whoa-demo-2026`**.
+
+### Wallet payments
+
+The shop checkout and the event ticket modal offer Apple Pay, Google Pay and
+Cash App Pay above the card field. Square's `sourceId` is the same field
+whichever one produced the token, so the server actions behind them never
+learn which was used and nothing about an order changes.
+
+Everything in `components/checkout/WalletButtons.tsx` is additive and
+fail-soft: each wallet is set up behind its own `try`/`catch` and simply
+doesn't render if Square says it isn't available — wrong browser, domain not
+registered, not enabled on the account. **The card field is the guaranteed
+path and is never gated on any of this.**
+
+Two things to know about the setup:
+
+- **Apple Pay needs the domain registered with Square** before Safari will
+  offer it — Square Developer Dashboard → your application → *Apple Pay* →
+  add `wearewhoa.art` (and `www.wearewhoa.art` if that's also served). Until
+  that's done the button just doesn't appear; nothing else is affected.
+  Google Pay and Cash App Pay need no domain step.
+- **Cash App Pay can navigate away.** On a phone it hands the customer to
+  the Cash App and reloads this site on the way back, so the form is parked
+  in session storage first (`lib/checkoutDrafts.ts`) and restored — for a
+  ticket, `EventsGrid` reopens the modal that was holding it, which is what
+  gives Square's SDK a live checkout to return the token to.
+
+The card field itself is themed to match the site through
+`SQUARE_CARD_STYLE` in `lib/squareWeb.ts`. Square renders those fields in a
+cross-origin iframe, so the colors there have to be literal values kept in
+step with `app/globals.css` by hand — CSS variables don't reach inside it.
 
 ## Getting started
 
