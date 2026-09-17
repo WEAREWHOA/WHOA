@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Script from "next/script";
-import { getCurrentPriceCents, type EventInfo } from "@/lib/events";
+import { getCurrentPriceCents, MAX_TICKETS_PER_ORDER, type EventInfo } from "@/lib/events";
 import { formatCents } from "@/lib/money";
 import { eventRsvpAction } from "@/app/events/actions";
 import { accountSignOutAction, getAccountAction } from "@/app/account/actions";
@@ -34,8 +34,8 @@ export default function EventCheckoutModal({
   restored?: EventCheckoutDraft;
   onClose: () => void;
 }) {
-  const priceCents = getCurrentPriceCents(event);
-  const isPaid = priceCents > 0;
+  const unitPriceCents = getCurrentPriceCents(event);
+  const isPaid = unitPriceCents > 0;
 
   const cardRef = useRef<SquareCard | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -50,7 +50,12 @@ export default function EventCheckoutModal({
   // Where the ticket was actually sent — with a wallet that can be the
   // email Apple Pay supplied, not whatever is sitting in the form field.
   const [sentTo, setSentTo] = useState("");
+  const [admits, setAdmits] = useState(1);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+
+  // Only meaningful for a paid ticket — a free RSVP is always one person.
+  const [quantity, setQuantity] = useState(restored?.quantity ?? 1);
+  const priceCents = unitPriceCents * quantity;
 
   const [name, setName] = useState(restored?.name ?? "");
   const [email, setEmail] = useState(restored?.email ?? "");
@@ -187,6 +192,7 @@ export default function EventCheckoutModal({
       name,
       email,
       phone,
+      quantity,
       selectedArtist,
       waiverAgreed: waiverAgreed === true,
       referenceId,
@@ -214,6 +220,7 @@ export default function EventCheckoutModal({
       eventId: event.id,
       name: buyerName,
       email: buyerEmail,
+      quantity,
       phone: buyer?.phone?.trim() || phone || undefined,
       selectedArtist: selectedArtist || undefined,
       password: account ? undefined : password || undefined,
@@ -228,6 +235,9 @@ export default function EventCheckoutModal({
     }
 
     eventCheckoutDraft.clear();
+    // What the server actually sold, after its own clamp — not what the
+    // picker asked for.
+    setAdmits(outcome.quantity ?? quantity);
     setSentTo(buyerEmail);
     markRsvped(event.id);
     setQrDataUrl(outcome.qrDataUrl ?? null);
@@ -282,6 +292,11 @@ export default function EventCheckoutModal({
                 {isPaid ? "Ticket confirmed" : "RSVP confirmed"}
               </p>
               <h3 className="font-display mt-3 text-3xl">You&apos;re in!</h3>
+              {admits > 1 && (
+                <p className="text-flame-3 mt-2 text-sm font-semibold">
+                  This one code admits {admits}
+                </p>
+              )}
               <p className="mt-3 text-sm text-muted">
                 {event.title} — {event.dateLabel}. A confirmation is on its way to {sentTo || email}.
               </p>
@@ -294,7 +309,11 @@ export default function EventCheckoutModal({
                     alt="Ticket QR code"
                     className="mt-6 h-44 w-44 rounded-xl border border-border-strong bg-white p-2"
                   />
-                  <p className="mt-3 text-xs text-muted">Present this at the door — it&apos;s also saved to your portal.</p>
+                  <p className="mt-3 text-xs text-muted">
+                    {admits > 1
+                      ? `Present this at the door for all ${admits} of you — it's also saved to your portal.`
+                      : "Present this at the door — it's also saved to your portal."}
+                  </p>
                 </>
               )}
   
@@ -313,6 +332,35 @@ export default function EventCheckoutModal({
               </p>
   
               <form ref={formRef} onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+                {isPaid && (
+                  <div>
+                    <label htmlFor="rsvp-quantity" className="text-sm font-medium">
+                      Tickets
+                    </label>
+                    <div className="mt-2 flex items-center gap-3">
+                      <select
+                        id="rsvp-quantity"
+                        value={quantity}
+                        onChange={(e) => setQuantity(Number(e.target.value))}
+                        className="w-24 rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
+                      >
+                        {Array.from({ length: MAX_TICKETS_PER_ORDER }, (_, i) => i + 1).map((n) => (
+                          <option key={n} value={n}>
+                            {n}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="text-sm text-muted">
+                        {quantity} × {formatCents(unitPriceCents)} ={" "}
+                        <span className="text-foreground font-semibold">{formatCents(priceCents)}</span>
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs text-muted">
+                      One QR code for the group — everyone comes in together.
+                    </p>
+                  </div>
+                )}
+
                 {isPaid && (
                   <WalletButtons
                     squareReady={scriptReady && !scriptFailed}

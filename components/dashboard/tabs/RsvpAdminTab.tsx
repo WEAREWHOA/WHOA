@@ -11,6 +11,8 @@ export interface DoorGuest {
   name: string;
   email: string;
   priceCents: number;
+  /** How many people this one booking admits. */
+  quantity: number;
   checkedInAt: string | null;
   checkedInBy: string | null;
 }
@@ -35,9 +37,12 @@ function GuestRow({ guest, eventId }: { guest: DoorGuest; eventId: string }) {
       <div className="min-w-0">
         <p className={`text-sm font-semibold ${inside ? "text-muted line-through" : ""}`}>
           {guest.name}
+          {guest.quantity > 1 && (
+            <span className="text-flame-3 ml-2 text-xs font-semibold">×{guest.quantity}</span>
+          )}
         </p>
         <p className="truncate text-xs text-muted">
-          {guest.priceCents > 0 ? formatCents(guest.priceCents) : "Free RSVP"}
+          {guest.priceCents > 0 ? formatCents(guest.priceCents * guest.quantity) : "Free RSVP"}
           {inside && guest.checkedInAt ? ` · in at ${timeOnly(guest.checkedInAt)}` : ""}
           {inside && guest.checkedInBy ? ` · ${guest.checkedInBy}` : ""}
         </p>
@@ -157,7 +162,7 @@ export default function RsvpAdminTab({ events }: { events: DoorEvent[] }) {
         <div className="card-surface rounded-xl border border-border p-5">
           <p className="text-xs text-muted uppercase">Paid tickets</p>
           <p className="font-display mt-1 text-3xl">
-            {active.guests.filter((g) => g.priceCents > 0).length}
+            {active.guests.filter((g) => g.priceCents > 0).reduce((sum, g) => sum + g.quantity, 0)}
           </p>
         </div>
       </div>

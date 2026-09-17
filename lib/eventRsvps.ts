@@ -9,7 +9,12 @@ export interface EventRsvpRecord {
   name: string;
   email: string;
   phone: string | null;
+  // The price of ONE ticket. What was paid is priceCents * quantity.
   priceCents: number;
+  // How many people this single QR code admits, 1..MAX_TICKETS_PER_ORDER.
+  // Checking in spends the whole booking at once — the group arrives
+  // together, which is the point of buying them together.
+  quantity: number;
   squareOrderId: string | null;
   squarePaymentId: string | null;
   // Which lineup artist the guest said they're there for — optional, picked
@@ -34,6 +39,7 @@ interface EventRsvpRow {
   email: string;
   phone: string | null;
   price_cents: number;
+  quantity: number;
   square_order_id: string | null;
   square_payment_id: string | null;
   selected_artist: string | null;
@@ -52,6 +58,9 @@ function mapRow(row: EventRsvpRow): EventRsvpRecord {
     email: row.email,
     phone: row.phone,
     priceCents: row.price_cents,
+    // Rows written before tickets could be bought in batches have no
+    // quantity; every one of those admitted exactly one person.
+    quantity: row.quantity ?? 1,
     squareOrderId: row.square_order_id,
     squarePaymentId: row.square_payment_id,
     selectedArtist: row.selected_artist,
@@ -71,6 +80,7 @@ export async function createRsvpRecord(input: {
   email: string;
   phone: string | null;
   priceCents: number;
+  quantity: number;
   squareOrderId?: string | null;
   squarePaymentId?: string | null;
   selectedArtist?: string | null;
@@ -87,6 +97,7 @@ export async function createRsvpRecord(input: {
       email: input.email,
       phone: input.phone,
       price_cents: input.priceCents,
+      quantity: input.quantity,
       square_order_id: input.squareOrderId ?? null,
       square_payment_id: input.squarePaymentId ?? null,
       selected_artist: input.selectedArtist ?? null,

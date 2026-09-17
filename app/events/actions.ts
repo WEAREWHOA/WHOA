@@ -8,7 +8,13 @@ import { setSquareCustomerId } from "@/lib/store";
 import { findOrCreateSquareCustomerId } from "@/lib/squareCustomers";
 import { createRsvpRecord } from "@/lib/eventRsvps";
 import { sendEventConfirmationEmail } from "@/lib/email";
-import { EVENTS, getCurrentPriceCents, isTicketingOpen, requiresDamageWaiver } from "@/lib/events";
+import {
+  clampTicketQuantity,
+  EVENTS,
+  getCurrentPriceCents,
+  isTicketingOpen,
+  requiresDamageWaiver,
+} from "@/lib/events";
 import { SITE_URL } from "@/lib/site";
 import { subscribeToNewsletter } from "@/lib/mailchimp";
 
@@ -22,6 +28,10 @@ export interface EventRsvpResult {
   // A data: URL PNG — the presentable "ticket". Omitted (not a failure) if
   // the RSVP itself couldn't be saved, or if QR generation hiccups.
   qrDataUrl?: string;
+  // How many people that one QR admits, after the server's own clamp — so
+  // the confirmation screen states what was actually sold rather than what
+  // the form asked for.
+  quantity?: number;
 }
 
 export async function eventRsvpAction(input: {
@@ -39,6 +49,10 @@ export async function eventRsvpAction(input: {
   // when the event has a lineup. Validated against the event's own lineup
   // so a tampered request can't inject an arbitrary string into reports.
   selectedArtist?: string;
+  // How many tickets on this one booking, 1..MAX_TICKETS_PER_ORDER. Clamped
+  // rather than rejected — a request carrying 0, 99 or "three" is a broken
+  // client, not a reason to lose the sale. Free RSVPs are always 1.
+  quantity?: number;
   // Whether the guest clicked "Agree" on the damage-responsibility waiver.
   // Required (and re-checked here, never trusted from the client alone)
   // for any event at the WHOAdega/SH!FT Gallery — see requiresDamageWaiver.
@@ -75,6 +89,9 @@ export async function eventRsvpAction(input: {
   // discount actually enforce its cutoff instead of being a display-only
   // label a client could ignore.
   const priceCents = getCurrentPriceCents(event);
+  // A free RSVP is one person. Batching only makes sense for something
+  // being paid for.
+  const quantity = priceCents > 0 ? clampTicketQuantity(input.quantity ?? 1) : 1;
   if (priceCents > 0 && !input.token) {
     return { ok: false, error: "Card details are required for a paid ticket." };
   }
@@ -116,7 +133,7 @@ export async function eventRsvpAction(input: {
           lineItems: [
             {
               name: `Ticket — ${event.title}`,
-              quantity: "1",
+              quantity: String(quantity),
               basePriceMoney: { amount: BigInt(priceCents), currency: "USD" },
             },
           ],
@@ -163,6 +180,7 @@ export async function eventRsvpAction(input: {
       email,
       phone: input.phone?.trim() || null,
       priceCents,
+      quantity,
       squareOrderId,
       squarePaymentId,
       selectedArtist,
@@ -202,6 +220,7 @@ export async function eventRsvpAction(input: {
     eventDateLabel: `${event.dateLabel} · ${event.timeLabel}`,
     eventVenue: event.venue,
     priceCents,
+    quantity,
     ticketUrl,
     ticketQrDataUrl: qrDataUrl,
   }).catch((err) => {
@@ -213,6 +232,7 @@ export async function eventRsvpAction(input: {
     accountCreated: account.accountCreated || undefined,
     signedIn: account.signedIn || undefined,
     qrDataUrl,
+    quantity,
   };
 }
 
