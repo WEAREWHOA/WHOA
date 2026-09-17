@@ -278,3 +278,165 @@ body {
   -apple-pay-button-type: buy;
   -apple-pay-button-style: white;
 }
+
+/* ── OASIS CATALOGUE ──────────────────────────────────────────────────
+   Its own palette, scoped under .oasis-root so none of it can reach the
+   rest of the site. Deliberately cooler and sandier than WHOA's flame
+   colours — walking in should feel like a different place. */
+.oasis-root {
+  --oasis-bg: #0d0b09;
+  --oasis-surface: #15120e;
+  --oasis-line: rgba(247, 240, 230, 0.1);
+  --oasis-gold: #e8a33d;
+  --oasis-text: #f2ece3;
+  --oasis-dim: #c9b8a4;
+
+  background:
+    radial-gradient(120% 80% at 50% 0%, #241a12 0%, var(--oasis-bg) 55%),
+    var(--oasis-bg);
+  color: var(--oasis-text);
+}
+
+.oasis-header {
+  background: rgba(13, 11, 9, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--oasis-line);
+}
+
+.oasis-card {
+  background: var(--oasis-surface);
+  border: 1px solid var(--oasis-line);
+  transition:
+    border-color 0.3s ease,
+    transform 0.3s ease;
+}
+.oasis-card:hover {
+  border-color: rgba(232, 163, 61, 0.45);
+  transform: translateY(-2px);
+}
+
+.oasis-card-art {
+  background: linear-gradient(150deg, #2a1f16 0%, #171209 100%);
+}
+
+.oasis-chip {
+  border: 1px solid rgba(232, 163, 61, 0.5);
+  background: rgba(13, 11, 9, 0.7);
+  color: var(--oasis-gold);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.oasis-size {
+  border: 1px solid var(--oasis-line);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--oasis-dim);
+  transition: all 0.2s ease;
+}
+.oasis-size:hover {
+  border-color: rgba(232, 163, 61, 0.5);
+}
+.oasis-size-on {
+  border-color: var(--oasis-gold);
+  background: rgba(232, 163, 61, 0.12);
+  color: var(--oasis-text);
+}
+
+.oasis-filter {
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--oasis-dim);
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+.oasis-filter:hover {
+  color: var(--oasis-text);
+}
+.oasis-filter-on {
+  border-color: var(--oasis-gold);
+  color: var(--oasis-gold);
+}
+
+.oasis-btn,
+.oasis-btn-lg {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 999px;
+  background: var(--oasis-gold);
+  color: #17120b;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  transition: filter 0.2s ease;
+}
+.oasis-btn {
+  padding: 8px 18px;
+  font-size: 13px;
+}
+.oasis-btn-lg {
+  padding: 14px 24px;
+  font-size: 15px;
+}
+.oasis-btn:hover,
+.oasis-btn-lg:hover {
+  filter: brightness(1.1);
+}
+.oasis-btn-lg:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.oasis-count {
+  display: inline-flex;
+  min-width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #17120b;
+  color: var(--oasis-gold);
+  font-size: 11px;
+}
+
+.oasis-panel {
+  background: var(--oasis-surface);
+  border-left: 1px solid var(--oasis-line);
+  color: var(--oasis-text);
+}
+
+.oasis-input {
+  border-radius: 10px;
+  border: 1px solid var(--oasis-line);
+  background: #0d0b09;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: var(--oasis-text);
+  outline: none;
+}
+.oasis-input:focus {
+  border-color: var(--oasis-gold);
+}
+
+.oasis-sticky-bar {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  left: 16px;
+  z-index: 40;
+  border-radius: 999px;
+  background: var(--oasis-gold);
+  padding: 16px;
+  font-weight: 700;
+  color: #17120b;
+}
