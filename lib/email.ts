@@ -293,6 +293,19 @@ async function sendAdminNotification(input: {
   }
 }
 
+/**
+ * The generic admin notification, for a sender that doesn't warrant its own
+ * typed helper below. Goes to info@wearewhoa.com like all the rest.
+ */
+export async function sendAdminNotificationRows(input: {
+  subject: string;
+  heading: string;
+  rows: { label: string; value: string }[];
+  replyTo?: string;
+}): Promise<void> {
+  await sendAdminNotification(input);
+}
+
 // Shared by every notification below that offers one-click Approve/Decline
 // buttons — builds the magic-link pair for a given approval_tokens row.
 async function buildApprovalActions(

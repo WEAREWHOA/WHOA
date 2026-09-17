@@ -290,6 +290,29 @@ Three things worth knowing before editing that list:
   running ticket, and a real Square charge via the same Web Payments SDK
   flow as `/checkout`
 
+**Oasis Catalogue** (`/oasis`)
+
+A pre-order catalogue of special pieces, and deliberately its own place:
+entered from the footer, rendered with no WHOA nav or footer around it
+(`SiteChrome` treats it as immersive, the same as `/pos`), and styled from
+its own palette scoped under `.oasis-root`.
+
+**Nothing here touches Square.** Its items live in `oasis_catalogue_items`,
+have no Square catalog object, no inventory and no charge at checkout — an
+order is a pre-order *request* that staff follow up on, recorded in
+`oasis_preorders` and emailed to info@wearewhoa.com. The order in progress
+is its own store with its own storage key (`whoa_oasis_order`), sharing
+nothing with the shop's cart: the two must never merge, since one gets
+charged and the other doesn't.
+
+The one thing shared with the rest of the site is **who you are** — a
+signed-in account prefills the request and is recorded against it.
+
+Until migration `0027` has run, the catalogue falls back to twelve
+built-in placeholder items and says so on the page. A table that exists
+and is genuinely empty shows as empty, because that's the truth; only a
+table that can't be read at all falls back.
+
 **Backend Portal**
 
 - `/` — the home page: a solar system (`components/home/SolarSystem.tsx`)

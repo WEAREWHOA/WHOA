@@ -36,6 +36,9 @@ export default function Footer() {
           <Link href="/site-concept" className="transition-colors hover:text-foreground">
             Site Concept
           </Link>
+          <Link href="/oasis" className="text-flame-3 transition-colors hover:text-foreground">
+            Oasis Catalogue
+          </Link>
         </nav>
       </div>
       <div className="border-t border-border py-4 text-center text-xs text-muted">
