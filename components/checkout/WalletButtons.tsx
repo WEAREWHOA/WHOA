@@ -5,7 +5,6 @@ import {
   SQUARE_APPLICATION_ID,
   SQUARE_LOCATION_ID,
   squareAmount,
-  type SquareCashAppPay,
   type SquarePayments,
   type SquareWallet,
 } from "@/lib/squareWeb";
@@ -66,6 +65,16 @@ export default function WalletButtons({
   const applePayRef = useRef<SquareWallet | null>(null);
   const googlePayRef = useRef<SquareWallet | null>(null);
 
+  // Square tears its payment-method objects down asynchronously, and asking
+  // it for a second one of the same kind while the first is still being
+  // destroyed is refused. That really happens here: applying an ambassador
+  // promo code redirects back to this same route, so the total changes and
+  // this effect re-runs *without* the component remounting. Racing the
+  // teardown would leave the customer watching the wallet buttons vanish
+  // the moment they entered a code. Each setup therefore chains onto the
+  // previous teardown instead of starting alongside it.
+  const teardownRef = useRef<Promise<void>>(Promise.resolve());
+
   // onToken lives in the parent's render scope, so it's a new function
   // every render. Keep it in a ref so the wallet setup effect below isn't
   // torn down and rebuilt on every keystroke in the form.
@@ -92,9 +101,13 @@ export default function WalletButtons({
     if (amountCents <= 0) return;
 
     let cancelled = false;
-    let cashAppPay: SquareCashAppPay | null = null;
+    // Whatever this run manages to create, in the order it was created.
+    // Only these get torn down — a wallet the SDK refused never lands here.
+    const destroyers: (() => Promise<void>)[] = [];
 
-    (async () => {
+    const setup = teardownRef.current.then(async () => {
+      if (cancelled) return;
+
       let payments: SquarePayments;
       try {
         payments = await window.Square!.payments(SQUARE_APPLICATION_ID, SQUARE_LOCATION_ID);
@@ -115,6 +128,7 @@ export default function WalletButtons({
       // (see .apple-pay-button in globals.css) for Safari to honour it.
       try {
         const applePay = await payments.applePay(buildRequest());
+        if (applePay.destroy) destroyers.push(() => applePay.destroy!());
         if (cancelled) return;
         applePayRef.current = applePay;
         setAvailable((prev) => ({ ...prev, apple: true }));
@@ -124,16 +138,14 @@ export default function WalletButtons({
 
       try {
         const googlePay = await payments.googlePay(buildRequest());
+        if (googlePay.destroy) destroyers.push(() => googlePay.destroy!());
         if (cancelled) return;
         await googlePay.attach?.(`#${googleId}`, {
           buttonColor: "white",
           buttonType: "buy",
           buttonSizeMode: "fill",
         });
-        if (cancelled) {
-          await googlePay.destroy?.();
-          return;
-        }
+        if (cancelled) return;
         googlePayRef.current = googlePay;
         setAvailable((prev) => ({ ...prev, google: true }));
       } catch {
@@ -145,10 +157,8 @@ export default function WalletButtons({
           redirectURL: window.location.href,
           referenceId,
         });
-        if (cancelled) {
-          await pay.destroy();
-          return;
-        }
+        destroyers.push(() => pay.destroy());
+        if (cancelled) return;
         // Cash App Pay reports its token through an event rather than from
         // tokenize(): on a phone it sends the customer out to the Cash App
         // and the page is reloaded on the way back, so there's no pending
@@ -163,25 +173,28 @@ export default function WalletButtons({
           }
         });
         await pay.attach(`#${cashAppId}`, { shape: "semiround", width: "full" });
-        if (cancelled) {
-          await pay.destroy();
-          return;
-        }
-        cashAppPay = pay;
+        if (cancelled) return;
         setAvailable((prev) => ({ ...prev, cashApp: true }));
       } catch {
         // Cash App Pay isn't enabled on this Square account.
       }
-    })();
+    });
 
     return () => {
       cancelled = true;
       setAvailable({ apple: false, google: false, cashApp: false });
-      void applePayRef.current?.destroy?.();
-      void googlePayRef.current?.destroy?.();
-      void cashAppPay?.destroy();
       applePayRef.current = null;
       googlePayRef.current = null;
+      // Publish the teardown so the next run waits on it. Failures are
+      // swallowed on purpose: a wallet that won't destroy cleanly must not
+      // deadlock every later setup behind a rejected promise.
+      teardownRef.current = setup
+        .then(async () => {
+          for (const destroy of destroyers) {
+            await destroy().catch(() => {});
+          }
+        })
+        .catch(() => {});
     };
     // The total is baked into the payment request when it's built, so a
     // changed amount (a promo code applied, early-bird pricing rolling
