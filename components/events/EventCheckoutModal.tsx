@@ -7,7 +7,7 @@ import { formatCents } from "@/lib/money";
 import { eventRsvpAction } from "@/app/events/actions";
 import { accountSignOutAction, getAccountAction } from "@/app/account/actions";
 import { markRsvped } from "@/components/events/useRsvp";
-import WalletButtons from "@/components/checkout/WalletButtons";
+import WalletButtons, { type WalletBuyer } from "@/components/checkout/WalletButtons";
 import { eventCheckoutDraft, newReferenceId, type EventCheckoutDraft } from "@/lib/checkoutDrafts";
 import {
   SQUARE_APPLICATION_ID as APPLICATION_ID,
@@ -47,6 +47,9 @@ export default function EventCheckoutModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  // Where the ticket was actually sent — with a wallet that can be the
+  // email Apple Pay supplied, not whatever is sitting in the form field.
+  const [sentTo, setSentTo] = useState("");
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
   const [name, setName] = useState(restored?.name ?? "");
@@ -193,15 +196,25 @@ export default function EventCheckoutModal({
   // Square's sourceId is the same field whether the token came from the
   // card field or from Apple Pay / Google Pay / Cash App Pay, so the
   // server action below doesn't need to know which one it was.
-  async function submitWithToken(token: string | undefined) {
+  async function submitWithToken(token: string | undefined, buyer?: WalletBuyer) {
+    // A ticket needs a name and an email to send the QR code to. Apple Pay
+    // and Google Pay supply both, so buying one needn't mean typing them.
+    const buyerName = buyer?.name?.trim() || name;
+    const buyerEmail = buyer?.email?.trim() || email;
+
+    if (!buyerName || !buyerEmail) {
+      setError("Add your name and email below, then try again.");
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
 
     const outcome = await eventRsvpAction({
       eventId: event.id,
-      name,
-      email,
-      phone: phone || undefined,
+      name: buyerName,
+      email: buyerEmail,
+      phone: buyer?.phone?.trim() || phone || undefined,
       selectedArtist: selectedArtist || undefined,
       password: account ? undefined : password || undefined,
       token,
@@ -215,6 +228,7 @@ export default function EventCheckoutModal({
     }
 
     eventCheckoutDraft.clear();
+    setSentTo(buyerEmail);
     markRsvped(event.id);
     setQrDataUrl(outcome.qrDataUrl ?? null);
     setDone(true);
@@ -269,7 +283,7 @@ export default function EventCheckoutModal({
               </p>
               <h3 className="font-display mt-3 text-3xl">You&apos;re in!</h3>
               <p className="mt-3 text-sm text-muted">
-                {event.title} — {event.dateLabel}. A confirmation is on its way to {email}.
+                {event.title} — {event.dateLabel}. A confirmation is on its way to {sentTo || email}.
               </p>
   
               {qrDataUrl && (
@@ -299,6 +313,19 @@ export default function EventCheckoutModal({
               </p>
   
               <form ref={formRef} onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+                {isPaid && (
+                  <WalletButtons
+                    squareReady={scriptReady && !scriptFailed}
+                    amountCents={priceCents}
+                    label={event.title}
+                    referenceId={referenceId}
+                    formRef={formRef}
+                    onToken={submitWithToken}
+                    onBeforeRedirect={saveDraft}
+                    busy={submitting}
+                  />
+                )}
+
                 <div>
                   <label htmlFor="rsvp-name" className="text-sm font-medium">
                     Name
@@ -398,18 +425,6 @@ export default function EventCheckoutModal({
                   )
                 )}
   
-                {isPaid && (
-                  <WalletButtons
-                    squareReady={scriptReady && !scriptFailed}
-                    amountCents={priceCents}
-                    label={event.title}
-                    referenceId={referenceId}
-                    formRef={formRef}
-                    onToken={submitWithToken}
-                    onBeforeRedirect={saveDraft}
-                    busy={submitting}
-                  />
-                )}
   
                 {isPaid && (
                   <div>

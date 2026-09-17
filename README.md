@@ -371,6 +371,14 @@ doesn't render if Square says it isn't available — wrong browser, domain not
 registered, not enabled on the account. **The card field is the guaranteed
 path and is never gated on any of this.**
 
+Apple Pay and Google Pay ask for the buyer's contact and shipping details
+(`requestBillingContact` / `requestShippingContact`), and what comes back on
+the token wins over the typed form — that is what lets someone check out
+without filling anything in. Cash App Pay returns a token and nothing else,
+so it alone stays covered until the form is complete; sending someone
+through Face ID only to tell them afterwards that their address is missing
+would be worse than the cover.
+
 Two things to know about the setup:
 
 - **Apple Pay needs the domain verified with Apple** before Safari will
@@ -403,6 +411,34 @@ Two things to know about the setup:
   in session storage first (`lib/checkoutDrafts.ts`) and restored — for a
   ticket, `EventsGrid` reopens the modal that was holding it, which is what
   gives Square's SDK a live checkout to return the token to.
+
+### Pricing and tax
+
+**Square prices the order, not the browser.** `quoteCheckoutAction` calls
+Square's `orders.calculate` with the same line items and ambassador
+discount that `checkoutAction` will charge — both build that payload from
+`buildOrderPricing` in `lib/checkoutOrder.ts`, so the quote and the charge
+cannot drift apart.
+
+This matters because the checkout used to display its own arithmetic: cart
+subtotal minus a flat 15%. That was wrong in two ways at once. It assumed
+every item takes the ambassador discount, when Art Collective items never
+do, and it had no way to know about tax — so a customer could agree to one
+number and be charged another, with the wallet payment sheet showing the
+wrong figure too.
+
+If Square can't be reached the page falls back to the cart's own
+arithmetic and Square still charges its own total, so a pricing hiccup
+can't block a sale.
+
+> **What this does and doesn't do about tax.** The checkout collects and
+> displays whatever tax is configured on the items in Square. It does not
+> work out what tax is owed. Square applies catalog and location taxes; it
+> does not do destination-based US sales tax by ship-to address. If no tax
+> is set up in the Square Dashboard, Square returns zero and no tax line
+> appears — that is Square reporting no tax, not the site failing to ask.
+> Event tickets are priced as ad-hoc line items rather than catalog
+> objects, so no catalog tax attaches to them at all.
 
 The card field itself is themed to match the site through
 `SQUARE_CARD_STYLE` in `lib/squareWeb.ts`. Square renders those fields in a

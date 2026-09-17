@@ -5,9 +5,54 @@ import {
   SQUARE_APPLICATION_ID,
   SQUARE_LOCATION_ID,
   squareAmount,
+  type SquareContact,
   type SquarePayments,
+  type SquareTokenResult,
   type SquareWallet,
 } from "@/lib/squareWeb";
+
+/** Buyer details a wallet handed back, normalised to this app's shape. */
+export interface WalletBuyer {
+  name?: string;
+  email?: string;
+  phone?: string;
+  address?: { line1: string; line2?: string; city: string; state: string; zip: string };
+}
+
+/**
+ * Apple Pay and Google Pay already know who the customer is and where they
+ * want things sent — asking them for it is what lets someone check out
+ * without typing anything. Shipping is the better source when both are
+ * present: it's the address the goods are going to, not the card's.
+ */
+function readBuyer(result: SquareTokenResult): WalletBuyer {
+  const shipping: SquareContact | undefined = result.details?.shipping?.contact;
+  const billing: SquareContact | undefined = result.details?.billing;
+  const named = shipping ?? billing;
+
+  const name = [named?.givenName, named?.familyName].filter(Boolean).join(" ").trim();
+  const addressLines = shipping?.addressLines ?? [];
+
+  // Only offered as an address if it's complete enough to ship to —
+  // a half-filled one would be worse than falling back to the form.
+  const address =
+    addressLines[0] && shipping?.city && shipping?.state && shipping?.postalCode
+      ? {
+          line1: addressLines[0],
+          line2: addressLines.slice(1).join(", ") || undefined,
+          city: shipping.city,
+          state: shipping.state,
+          zip: shipping.postalCode,
+        }
+      : undefined;
+
+  return {
+    name: name || undefined,
+    email: shipping?.email || billing?.email || undefined,
+    phone: shipping?.phone || billing?.phone || undefined,
+    address,
+  };
+}
 
 /**
  * Apple Pay / Google Pay / Cash App Pay, rendered above the card field.
@@ -25,6 +70,7 @@ export default function WalletButtons({
   label,
   referenceId,
   formRef,
+  requestShipping,
   onToken,
   onBeforeRedirect,
   busy,
@@ -45,7 +91,13 @@ export default function WalletButtons({
    * shipping details the order actually needs are filled in.
    */
   formRef: RefObject<HTMLFormElement | null>;
-  onToken: (token: string) => void | Promise<void>;
+  /**
+   * True when the order has to be shipped somewhere, which makes the
+   * wallets collect an address as part of the payment sheet. Tickets don't
+   * ship, so they only ask for contact details.
+   */
+  requestShipping?: boolean;
+  onToken: (token: string, buyer: WalletBuyer) => void | Promise<void>;
   /**
    * Called just before Cash App Pay may navigate the customer out to the
    * Cash App — the parent uses it to stash the form so it can be restored
@@ -121,6 +173,11 @@ export default function WalletButtons({
           countryCode: "US",
           currencyCode: "USD",
           total: { amount: squareAmount(amountCents), label },
+          // What makes express checkout express: the sheet collects the
+          // buyer's name, email and address so the form below doesn't have
+          // to be filled in first.
+          requestBillingContact: true,
+          requestShippingContact: requestShipping === true,
         });
 
       // Apple Pay is never attached — Square hands back an object and we
@@ -167,7 +224,7 @@ export default function WalletButtons({
         pay.addEventListener("ontokenization", (event) => {
           const result = event.detail.tokenResult;
           if (result.status === "OK" && result.token) {
-            void onTokenRef.current(result.token);
+            void onTokenRef.current(result.token, readBuyer(result));
           } else if (result.status !== "ABORT" && result.status !== "CANCEL") {
             setError(result.errors?.[0]?.message ?? "Cash App Pay couldn't be completed.");
           }
@@ -199,7 +256,7 @@ export default function WalletButtons({
     // The total is baked into the payment request when it's built, so a
     // changed amount (a promo code applied, early-bird pricing rolling
     // over) has to rebuild the wallets rather than update them.
-  }, [squareReady, amountCents, label, referenceId, googleId, cashAppId]);
+  }, [squareReady, amountCents, label, referenceId, requestShipping, googleId, cashAppId]);
 
   async function payWith(wallet: SquareWallet | null) {
     if (!wallet || busy) return;
@@ -207,7 +264,7 @@ export default function WalletButtons({
     try {
       const result = await wallet.tokenize();
       if (result.status === "OK" && result.token) {
-        await onTokenRef.current(result.token);
+        await onTokenRef.current(result.token, readBuyer(result));
         return;
       }
       // The customer closing the sheet isn't an error worth shouting about.
@@ -225,7 +282,10 @@ export default function WalletButtons({
     <div className={anyAvailable ? "flex flex-col gap-3" : "hidden"} aria-hidden={!anyAvailable}>
       <span className="text-sm font-medium">Express checkout</span>
 
-      <div className="relative flex flex-col gap-2">
+      <div className="flex flex-col gap-2">
+        {/* Apple Pay and Google Pay collect the buyer's name, email and
+            address in their own sheet, so there is nothing to fill in
+            first — these are always live. */}
         {available.apple && (
           <button
             type="button"
@@ -241,25 +301,22 @@ export default function WalletButtons({
           onClick={() => void payWith(googlePayRef.current)}
         />
 
-        <div
-          id={cashAppId}
-          className={available.cashApp ? "w-full" : "hidden"}
-          onClickCapture={() => onBeforeRedirect?.()}
-        />
-
-        {/* Wallets bypass our own inputs, so an order could otherwise be
-            paid for with no name, email or address attached to it. Cover
-            the buttons until the rest of the form is filled in — clicking
-            the cover pops the browser's own "please fill this in" hints. */}
-        {!formValid && (
-          <button
-            type="button"
-            className="absolute inset-0 z-10 cursor-not-allowed rounded-xl bg-surface/70 text-xs font-medium text-muted backdrop-blur-[1px]"
-            onClick={() => formRef.current?.reportValidity()}
-          >
-            Fill in your details below to pay this way
-          </button>
-        )}
+        {/* Cash App Pay is the exception: it returns a payment token and
+            nothing else, so this one really does need the form. Covering
+            just this button beats sending someone through Face ID only to
+            be told afterwards that their address is missing. */}
+        <div className={available.cashApp ? "relative w-full" : "hidden"}>
+          <div id={cashAppId} className="w-full" onClickCapture={() => onBeforeRedirect?.()} />
+          {!formValid && (
+            <button
+              type="button"
+              className="absolute inset-0 z-10 rounded-xl bg-surface/75 text-xs font-medium text-muted backdrop-blur-[1px]"
+              onClick={() => formRef.current?.reportValidity()}
+            >
+              Fill in your details below to pay with Cash App
+            </button>
+          )}
+        </div>
       </div>
 
       {error && (

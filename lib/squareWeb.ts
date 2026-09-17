@@ -16,10 +16,38 @@ export const SQUARE_JS_SRC =
     ? "https://web.squarecdn.com/v1/square.js"
     : "https://sandbox.web.squarecdn.com/v1/square.js";
 
+/**
+ * Name, email, phone and address as a digital wallet reports them. Shapes
+ * here follow @square/web-payments-sdk-types (Contact / ShippingContact),
+ * which is where the field names — givenName, addressLines, postalCode —
+ * come from.
+ */
+export interface SquareContact {
+  givenName?: string;
+  familyName?: string;
+  addressLines?: string[];
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  countryCode?: string;
+  email?: string;
+  phone?: string;
+}
+
 export interface SquareTokenResult {
   status: string;
   token?: string;
   errors?: { message: string }[];
+  /**
+   * Populated for the wallets when the payment request asked for contact
+   * details. This is what lets Apple Pay and Google Pay fill in the order
+   * instead of making the customer type an address they've already told
+   * their phone about.
+   */
+  details?: {
+    billing?: SquareContact;
+    shipping?: { contact?: SquareContact };
+  };
 }
 
 export interface SquareCard {
@@ -54,6 +82,8 @@ export interface SquarePaymentRequestOptions {
   countryCode: string;
   currencyCode: string;
   total: { amount: string; label: string };
+  requestBillingContact?: boolean;
+  requestShippingContact?: boolean;
 }
 
 export interface SquarePaymentRequest {
