@@ -38,55 +38,134 @@ export interface EventInfo {
   // shop. Never set alongside href. When earlyBirdPriceCents is also set,
   // this is the day-of/door price instead of the only price — see below.
   priceCents?: number;
-  // Optional discounted price (cents) in effect any day before startDate;
-  // priceCents becomes the door price starting the day of the event itself.
-  // Use getCurrentPriceCents(event) rather than reading priceCents directly
+  // Optional discounted price (cents), in effect right up until the event
+  // starts — so someone buying on the day, before doors, still gets it.
+  // priceCents is the door price from that moment on. Use
+  // getCurrentPriceCents(event) rather than reading priceCents directly
   // wherever a ticket price is shown or charged.
   earlyBirdPriceCents?: number;
 }
 
-// The price a ticket actually costs right now — priceCents, discounted to
-// earlyBirdPriceCents (when set) for any purchase before the event's own
-// startDate. Computed server-side at charge time in app/events/actions.ts,
-// never trusted from the client.
-export function getCurrentPriceCents(event: EventInfo, referenceDate: Date = new Date()): number {
-  const todayKey = referenceDate.toISOString().slice(0, 10);
-  if (event.earlyBirdPriceCents !== undefined && todayKey < event.startDate) {
-    return event.earlyBirdPriceCents;
-  }
-  return event.priceCents ?? 0;
+// Every WHOA event happens in San Diego, and every time printed on a flyer
+// is a San Diego time. Without pinning that down, "7PM" means 7PM wherever
+// the code happens to be running: 7PM UTC on Vercel's servers, which is
+// noon here, and 7PM in whatever zone the customer's phone is set to. The
+// server and the browser would disagree about what a ticket costs, and on
+// the day of a show both would be wrong.
+const EVENT_TIME_ZONE = "America/Los_Angeles";
+
+// How far the event zone is from UTC at a given instant — worked out from
+// the zone itself rather than hardcoded, so it follows daylight saving.
+function timeZoneOffsetMs(instant: Date): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: EVENT_TIME_ZONE,
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(instant);
+  const value = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? "0");
+  // Some engines render midnight as hour 24 under hour12: false.
+  const asIfUtc = Date.UTC(
+    value("year"),
+    value("month") - 1,
+    value("day"),
+    value("hour") % 24,
+    value("minute"),
+    value("second"),
+  );
+  return asIfUtc - instant.getTime();
 }
 
-// Pulls the last "H(AM|PM)" out of a time label — e.g. "7PM – 11PM" -> 23,
-// "9PM–4AM" -> { hour: 4, overnight: true } (the range crosses midnight,
-// detected by the closing hour being earlier in the day than the opening
-// one). Returns undefined for a label with nothing clock-shaped in it
-// ("3 Days", "WHOADEGA Art Gallery Experience").
-function parseClosingHour(timeLabel: string): { hour: number; overnight: boolean } | undefined {
+/**
+ * The actual moment a wall-clock time happens in San Diego —
+ * zonedInstant("2026-09-16", 19) is 7PM on the 16th, there.
+ *
+ * `dayOffset` shifts the calendar day, which is how an overnight window's
+ * 4AM close and the midnight that ends a day are expressed.
+ */
+function zonedInstant(dateKey: string, hour: number, dayOffset = 0): Date {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const wallClock = Date.UTC(year, month - 1, day + dayOffset, hour);
+  // Two passes: the first offset is looked up at roughly the right moment,
+  // the second corrects it if that landed the other side of a DST change.
+  let instant = wallClock - timeZoneOffsetMs(new Date(wallClock));
+  instant = wallClock - timeZoneOffsetMs(new Date(instant));
+  return new Date(instant);
+}
+
+/** Today's date in San Diego, as yyyy-mm-dd. */
+function eventDayKey(instant: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: EVENT_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(instant);
+}
+
+// The price a ticket actually costs right now — priceCents, discounted to
+// earlyBirdPriceCents (when set) until the event starts. Computed
+// server-side at charge time in app/events/actions.ts, never trusted from
+// the client.
+export function getCurrentPriceCents(event: EventInfo, referenceDate: Date = new Date()): number {
+  const doorPriceCents = event.priceCents ?? 0;
+  if (event.earlyBirdPriceCents === undefined) return doorPriceCents;
+
+  // Early bird runs right up to the moment doors open, so buying on the
+  // day of the show still gets it — it only locks once the thing has
+  // actually started. With no readable start time, fall back to the day
+  // itself, which never charges early bird once that day has arrived.
+  const doorsOpen = getDoorsOpenDate(event) ?? zonedInstant(event.startDate, 0);
+  return referenceDate < doorsOpen ? event.earlyBirdPriceCents : doorPriceCents;
+}
+
+// Pulls the clock times out of a time label — "7PM – 11PM" -> opens 19,
+// closes 23; "9PM–4AM" -> opens 21, closes 4, overnight (the range crosses
+// midnight, detected by the closing hour being earlier in the day than the
+// opening one). Returns undefined for a label with nothing clock-shaped in
+// it ("3 Days", "WHOADEGA Art Gallery Experience").
+function parseTimeRange(
+  timeLabel: string,
+): { openHour: number; closeHour: number; overnight: boolean } | undefined {
   const matches = [...timeLabel.matchAll(/(\d{1,2})\s*(AM|PM)/gi)];
   if (matches.length === 0) return undefined;
 
   const toHour24 = (raw: string, meridiem: string) => (Number(raw) % 12) + (meridiem.toUpperCase() === "PM" ? 12 : 0);
-  const hour = toHour24(matches[matches.length - 1][1], matches[matches.length - 1][2]);
-  const overnight = matches.length > 1 && hour < toHour24(matches[0][1], matches[0][2]);
-  return { hour, overnight };
+  const openHour = toHour24(matches[0][1], matches[0][2]);
+  const closeHour = toHour24(matches[matches.length - 1][1], matches[matches.length - 1][2]);
+  return { openHour, closeHour, overnight: matches.length > 1 && closeHour < openHour };
 }
 
-// When ticket/RSVP purchasing for an event actually closes: its own stated
-// end time on its last day (crossing into the next calendar day for an
-// overnight window like "9PM–4AM"), or 11PM on its last day when no time
-// is stated at all.
+// When the event itself starts, San Diego time. Undefined when the label
+// has no readable time in it.
+export function getDoorsOpenDate(event: EventInfo): Date | undefined {
+  const range = parseTimeRange(event.timeLabel);
+  return range ? zonedInstant(event.startDate, range.openHour) : undefined;
+}
+
+// When ticket/RSVP purchasing for an event actually closes: the end of its
+// last day, which is to say the moment the next day begins.
+//
+// Sales deliberately outlast the event. Someone turning up late, or
+// hearing about it while it's happening, can still buy a ticket at the
+// door — cutting sales off at the stated end time turned away money from
+// people who were already there.
 export function getTicketingCloseDate(event: EventInfo): Date {
   const lastDay = event.endDate ?? event.startDate;
-  const closing = parseClosingHour(event.timeLabel);
-  const close = new Date(`${lastDay}T00:00:00`);
-  if (closing) {
-    close.setDate(close.getDate() + (closing.overnight ? 1 : 0));
-    close.setHours(closing.hour, 0, 0, 0);
-  } else {
-    close.setHours(23, 0, 0, 0);
-  }
-  return close;
+  const endOfLastDay = zonedInstant(lastDay, 0, 1);
+
+  // An overnight window like "9PM–4AM" is still running past midnight, so
+  // closing at midnight would cut it short. Nothing else can land later
+  // than the end of the day, so this is the only case worth checking.
+  const range = parseTimeRange(event.timeLabel);
+  if (!range?.overnight) return endOfLastDay;
+
+  const overnightClose = zonedInstant(lastDay, range.closeHour, 1);
+  return overnightClose > endOfLastDay ? overnightClose : endOfLastDay;
 }
 
 // Whether an event's ticket/RSVP link (in-app or an outbound href) should
@@ -115,7 +194,9 @@ export function requiresDamageWaiver(event: EventInfo): boolean {
 }
 
 export function sortEventsByProximity(events: EventInfo[], referenceDate: Date = new Date()): EventInfo[] {
-  const todayKey = referenceDate.toISOString().slice(0, 10);
+  // San Diego's date, not UTC's — otherwise an event still going on
+  // tonight slides into the past list at 5PM local.
+  const todayKey = eventDayKey(referenceDate);
   const upcoming: EventInfo[] = [];
   const past: EventInfo[] = [];
 
