@@ -13,11 +13,25 @@ export interface ContactMessageInput {
   message: string;
 }
 
-// Stores the message, then notifies info@wearewhoa.com via Resend (see
-// lib/email.ts). The notification is best-effort — the message is already
-// safely stored by the time it's attempted, so an email hiccup here just
-// gets logged, not surfaced to the visitor. Public-facing, so this fails
-// soft (returns an error string) rather than throwing.
+/**
+ * Files the message two ways, independently: a row in contact_messages for
+ * staff to browse later, and an email to info@wearewhoa.com (see
+ * lib/email.ts) so a person actually hears about it.
+ *
+ * Neither one gates the other. The insert used to come first and decide
+ * the outcome, so when the contact_messages table wasn't there the visitor
+ * got a raw Postgres error — "Could not find the table
+ * 'public.contact_messages' in the schema cache" — and the email was never
+ * even attempted. A message someone took the trouble to write was lost
+ * because of a bookkeeping table.
+ *
+ * The submission counts as delivered if either half worked. Only losing
+ * both is a real failure, and then the visitor is told how to reach us
+ * directly rather than being asked to retype it into the same form.
+ *
+ * Public-facing, so this fails soft (returns an error string) rather than
+ * throwing.
+ */
 export async function submitContactMessage(
   input: ContactMessageInput,
 ): Promise<{ ok: boolean; error?: string }> {
@@ -30,19 +44,38 @@ export async function submitContactMessage(
   if (!EMAIL_PATTERN.test(email)) return { ok: false, error: "Enter a valid email." };
   if (!message) return { ok: false, error: "Enter a message." };
 
+  const stored = await storeContactMessage({ name, email, topic, message });
+
+  let notified = false;
   try {
-    const { error } = await getSupabase().from("contact_messages").insert({ name, email, topic, message });
-    if (error) return { ok: false, error: error.message };
-
-    try {
-      await sendContactMessageNotification({ name, email, topic, message });
-    } catch (emailErr) {
-      console.error("sendContactMessageNotification failed:", emailErr);
-    }
-
-    return { ok: true };
+    await sendContactMessageNotification({ name, email, topic, message });
+    notified = true;
   } catch (err) {
-    console.error("submitContactMessage failed:", err);
-    return { ok: false, error: "Something went wrong on our end — try again in a moment." };
+    console.error("sendContactMessageNotification failed:", err);
+  }
+
+  if (!stored && !notified) {
+    return {
+      ok: false,
+      error: "We couldn't get that through — please email info@wearewhoa.com directly.",
+    };
+  }
+
+  return { ok: true };
+}
+
+// Never surfaces its own error text: a visitor shouldn't be shown our
+// schema, and there is nothing they could do about it anyway.
+async function storeContactMessage(row: ContactMessageInput): Promise<boolean> {
+  try {
+    const { error } = await getSupabase().from("contact_messages").insert(row);
+    if (error) {
+      console.error("Failed to store contact message:", error.message);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("Failed to store contact message:", err);
+    return false;
   }
 }

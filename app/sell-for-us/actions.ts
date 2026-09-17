@@ -42,7 +42,16 @@ export async function applySellForUsAction(formData: FormData) {
       await createSession(code);
     }
 
-    await recordEventSalesApplication({ ambassadorCode: code, name, email, phone, instagram, message });
+    // Best-effort. This row is a reference copy for staff; the account
+    // above is the part that had to succeed, and the notification below is
+    // what actually reaches a person. Letting a table hiccup throw here
+    // used to drop the applicant into the generic error page *and* skip
+    // the email, losing an application that was otherwise complete.
+    try {
+      await recordEventSalesApplication({ ambassadorCode: code, name, email, phone, instagram, message });
+    } catch (recordErr) {
+      console.error("recordEventSalesApplication failed:", recordErr);
+    }
 
     // Best-effort — staff should hear about every application, but a
     // Resend hiccup must never block the submission that already
