@@ -5,9 +5,9 @@ import Script from "next/script";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/components/cart/CartProvider";
 import { formatCents } from "@/lib/money";
-import { applyPromoCodeAction, checkoutAction } from "@/app/checkout/actions";
+import { applyPromoCodeAction, checkoutAction, quoteCheckoutAction } from "@/app/checkout/actions";
 import { accountSignOutAction, getAccountAction } from "@/app/account/actions";
-import WalletButtons from "@/components/checkout/WalletButtons";
+import WalletButtons, { type WalletBuyer } from "@/components/checkout/WalletButtons";
 import {
   SQUARE_APPLICATION_ID as APPLICATION_ID,
   SQUARE_CARD_STYLE,
@@ -16,6 +16,7 @@ import {
   type SquareCard,
 } from "@/lib/squareWeb";
 import { newReferenceId, shopCheckoutDraft, type ShopCheckoutDraft } from "@/lib/checkoutDrafts";
+import type { CheckoutQuote } from "@/lib/checkoutOrder";
 
 interface CheckoutFormProps {
   ambassadorCode: string | null;
@@ -47,6 +48,12 @@ function CheckoutFields({
 
   const [referenceId] = useState(() => draft?.referenceId || newReferenceId("cart"));
 
+  // null until Square has answered one way or the other; then a wrapper
+  // whose value is the quote, or null if the call failed. The extra layer
+  // is what tells "still asking" apart from "asked, and we're on our own".
+  const [quoteState, setQuoteState] = useState<{ value: CheckoutQuote | null } | null>(null);
+  const quote = quoteState?.value ?? null;
+  const quoteSettled = quoteState !== null;
   const [scriptReady, setScriptReady] = useState(false);
   const [scriptFailed, setScriptFailed] = useState(false);
   const [cardReady, setCardReady] = useState(false);
@@ -66,8 +73,35 @@ function CheckoutFields({
   const [zip, setZip] = useState(draft?.zip ?? "");
   const [phone, setPhone] = useState(draft?.phone ?? "");
 
-  const discountCents = ambassadorCode ? Math.round(totalCents * 0.15) : 0;
-  const finalCents = totalCents - discountCents;
+  // What the cart says, used until Square has priced the order and if that
+  // call fails. It can't know about tax, and it assumes every item takes
+  // the ambassador discount — Art Collective items don't — so it's a
+  // fallback, not the number to trust.
+  const estimatedDiscountCents = ambassadorCode ? Math.round(totalCents * 0.15) : 0;
+
+  const discountCents = quote ? quote.discountCents : estimatedDiscountCents;
+  const taxCents = quote?.taxCents ?? 0;
+  const finalCents = quote ? quote.totalCents : totalCents - estimatedDiscountCents;
+
+  // Ask Square what this cart actually costs — including any tax
+  // configured on the items, which nothing on this page can work out for
+  // itself. Re-runs when a promo code lands, since that changes the price.
+  useEffect(() => {
+    let cancelled = false;
+    quoteCheckoutAction(lines)
+      .then((result) => {
+        if (!cancelled) setQuoteState({ value: result });
+      })
+      .catch((err) => {
+        // Falling back to the cart's own arithmetic is better than
+        // blocking the sale; Square still charges its own total.
+        console.error("Couldn't price the checkout with Square:", err);
+        if (!cancelled) setQuoteState({ value: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [lines, ambassadorCode]);
 
   // The Square <Script> tag's onLoad callback only reliably fires the
   // first time it's ever injected — navigating checkout -> cart -> checkout
@@ -197,8 +231,21 @@ function CheckoutFields({
   // Everything past tokenization is identical whether the token came from
   // the card field or from a wallet — Square's sourceId doesn't care which
   // it was, so neither does the server action.
-  async function submitWithToken(token: string) {
+  async function submitWithToken(token: string, buyer?: WalletBuyer) {
     if (lines.length === 0) return;
+
+    // A wallet knows the customer's name, email and shipping address, so
+    // what it hands back wins — it is what they picked in the payment
+    // sheet. The typed form is the fallback, and the only source at all
+    // for the card path and for Cash App Pay.
+    const shippingAddress = buyer?.address
+      ? { ...buyer.address, phone: buyer.phone?.trim() || phone }
+      : { line1, line2, city, state, zip, phone };
+
+    if (!shippingAddress.line1.trim()) {
+      setError("Add your shipping address below, then try again.");
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -206,10 +253,10 @@ function CheckoutFields({
     const outcome = await checkoutAction({
       token,
       lines,
-      customerName: name,
-      customerEmail: email,
+      customerName: buyer?.name?.trim() || name,
+      customerEmail: buyer?.email?.trim() || email,
       password: account ? undefined : password || undefined,
-      shippingAddress: { line1, line2, city, state, zip, phone },
+      shippingAddress,
     });
 
     if (!outcome.ok) {
@@ -276,7 +323,12 @@ function CheckoutFields({
           ))}
         </div>
 
-        <div className="mt-4 flex justify-between text-sm">
+        <div className="mt-4 flex justify-between border-t border-border pt-4 text-sm">
+          <span className="text-muted">Subtotal</span>
+          <span>{formatCents(totalCents)}</span>
+        </div>
+
+        <div className="mt-2 flex justify-between text-sm">
           <span className="text-muted">Shipping</span>
           <span>Free</span>
         </div>
@@ -312,6 +364,13 @@ function CheckoutFields({
           </div>
         )}
 
+        {taxCents > 0 && (
+          <div className="mt-2 flex justify-between text-sm">
+            <span className="text-muted">Tax</span>
+            <span>{formatCents(taxCents)}</span>
+          </div>
+        )}
+
         <div className="mt-4 flex justify-between border-t border-border pt-4 font-semibold">
           <span>Total</span>
           <span>{formatCents(finalCents)}</span>
@@ -319,6 +378,18 @@ function CheckoutFields({
       </div>
 
       <form ref={formRef} onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5">
+        <WalletButtons
+          squareReady={scriptReady && !scriptFailed && quoteSettled}
+          amountCents={finalCents}
+          label="WHOA order"
+          referenceId={referenceId}
+          formRef={formRef}
+          requestShipping
+          onToken={submitWithToken}
+          onBeforeRedirect={saveDraft}
+          busy={submitting}
+        />
+
         <div>
           <label htmlFor="name" className="text-sm font-medium">
             Name
@@ -444,17 +515,6 @@ function CheckoutFields({
           />
           <p className="mt-2 text-xs text-muted">Shipping within the US only, for now.</p>
         </div>
-
-        <WalletButtons
-          squareReady={scriptReady && !scriptFailed}
-          amountCents={finalCents}
-          label="WHOA order"
-          referenceId={referenceId}
-          formRef={formRef}
-          onToken={submitWithToken}
-          onBeforeRedirect={saveDraft}
-          busy={submitting}
-        />
 
         <div>
           <span className="text-sm font-medium">Card</span>

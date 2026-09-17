@@ -11,6 +11,7 @@ import { findOrCreateSquareCustomerId } from "@/lib/squareCustomers";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { getSupabase } from "@/lib/supabase";
 import { REF_COOKIE, REF_COOKIE_DAYS } from "@/lib/attribution";
+import { buildOrderPricing, type CheckoutQuote } from "@/lib/checkoutOrder";
 import type { CartLine, ShippingAddress } from "@/lib/types";
 import type { Money } from "square";
 
@@ -54,6 +55,82 @@ export async function applyPromoCodeAction(formData: FormData) {
   });
 
   redirect("/checkout?promoApplied=1");
+}
+
+/**
+ * What this cart really costs, priced by Square rather than guessed in the
+ * browser.
+ *
+ * The checkout used to show a total it worked out itself: cart subtotal
+ * minus a flat 15%. Square prices the actual order from the catalog, so
+ * the two could disagree — an Art Collective item doesn't take the
+ * ambassador discount, and any tax configured on the items is added by
+ * Square. The customer would then be charged something other than the
+ * number they agreed to, and the amount shown in the Apple Pay sheet would
+ * be wrong too.
+ *
+ * `orders.calculate` runs Square's pricing engine without creating an
+ * order, so the quote comes from exactly the same rules that will charge
+ * the card a moment later.
+ *
+ * Returns null if Square can't be reached; the caller falls back to the
+ * cart's own arithmetic so a pricing hiccup can't block checking out.
+ *
+ * NOTE ON TAX: this collects the tax configured on the items in Square —
+ * it does not work out what tax is owed. Square applies catalog/location
+ * taxes; it does not do destination-based US sales tax by ship-to address.
+ */
+export async function quoteCheckoutAction(lines: CartLine[]): Promise<CheckoutQuote | null> {
+  if (lines.length === 0) return null;
+
+  try {
+    const store = await cookies();
+    const refCode = store.get(REF_COOKIE)?.value;
+    const ambassador = refCode
+      ? await getByCode(refCode).catch((err) => {
+          console.error("Referral lookup failed while quoting checkout:", err);
+          return undefined;
+        })
+      : undefined;
+
+    // Same fail-closed rule as checkoutAction: if we can't tell which
+    // products are Art Collective, assume all of them are, so the quote
+    // never promises a discount the real order won't honour.
+    const excludedProductIds = ambassador
+      ? await getArtCollectiveProductIds(lines.map((l) => l.productId)).catch((err) => {
+          console.error("Art Collective category lookup failed while quoting checkout:", err);
+          return new Set(lines.map((l) => l.productId));
+        })
+      : new Set<string>();
+
+    const response = await getSquare().orders.calculate({
+      order: {
+        locationId: getSquareLocationId(),
+        ...buildOrderPricing({
+          lines,
+          ambassadorCode: ambassador?.code,
+          excludedProductIds,
+        }),
+      },
+    });
+
+    const order = response.order;
+    if (order?.totalMoney?.amount == null) return null;
+
+    const cents = (money?: Money) => (money?.amount == null ? 0 : Number(money.amount));
+
+    return {
+      // The line rows the customer is already looking at, summed — not
+      // derived from Square, so it always matches what's listed above it.
+      subtotalCents: lines.reduce((sum, line) => sum + line.priceCents * line.quantity, 0),
+      discountCents: cents(order.totalDiscountMoney),
+      taxCents: cents(order.totalTaxMoney),
+      totalCents: Number(order.totalMoney.amount),
+    };
+  } catch (err) {
+    console.error("Failed to quote checkout with Square:", err);
+    return null;
+  }
 }
 
 export interface CheckoutResult {
@@ -182,7 +259,6 @@ export async function checkoutAction(input: {
   // server-side against Square's real category data, never trusting
   // whatever the client's cart line objects happen to carry. Only
   // resolved when there's actually a discount that would otherwise apply.
-  const AMBASSADOR_DISCOUNT_UID = "ambassador-discount";
   const excludedProductIds = ambassador
     ? await getArtCollectiveProductIds(input.lines.map((l) => l.productId)).catch((err) => {
         console.error("Art Collective category lookup failed during checkout:", err);
@@ -201,25 +277,11 @@ export async function checkoutAction(input: {
       order: {
         locationId,
         customerId: squareCustomerId,
-        lineItems: input.lines.map((line) => ({
-          catalogObjectId: line.variationId,
-          quantity: String(line.quantity),
-          appliedDiscounts:
-            ambassador && !excludedProductIds.has(line.productId)
-              ? [{ discountUid: AMBASSADOR_DISCOUNT_UID }]
-              : undefined,
-        })),
-        discounts: ambassador
-          ? [
-              {
-                uid: AMBASSADOR_DISCOUNT_UID,
-                name: `WHOA Ambassador (${ambassador.code})`,
-                type: "FIXED_PERCENTAGE",
-                percentage: "15",
-                scope: "LINE_ITEM",
-              },
-            ]
-          : undefined,
+        ...buildOrderPricing({
+          lines: input.lines,
+          ambassadorCode: ambassador?.code,
+          excludedProductIds,
+        }),
         fulfillments: shipping
           ? [
               {
