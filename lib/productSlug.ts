@@ -63,22 +63,57 @@ export interface SlugIndex {
  * to its id, which is always a valid segment.
  */
 export function buildSlugIndex(products: Product[]): SlugIndex {
+  const { idBySlug, slugById } = buildSlugMap(products);
+  const productById = new Map(products.map((product) => [product.id, product]));
+
   const bySlug = new Map<string, Product>();
+  for (const [slug, id] of idBySlug) {
+    const product = productById.get(id);
+    if (product) bySlug.set(slug, product);
+  }
+
+  return { bySlug, slugById };
+}
+
+/** The least a product needs for a slug to be assigned to it. */
+export interface SluggableProduct {
+  id: string;
+  name: string;
+}
+
+export interface SlugMap {
+  /** slug -> Square id. */
+  idBySlug: Map<string, string>;
+  /** Square id -> the slug that product is canonically served at. */
+  slugById: Map<string, string>;
+}
+
+/**
+ * The slug assignment itself, over nothing but ids and names.
+ *
+ * Split out from buildSlugIndex so a page that only needs to turn a URL
+ * segment into an id doesn't have to load the entire catalog — every
+ * image, category, option and inventory count — just to find out which
+ * product it's looking at. Both are the same algorithm, so the slug a URL
+ * resolves to and the slug the sitemap advertises can never disagree.
+ */
+export function buildSlugMap(products: SluggableProduct[]): SlugMap {
+  const idBySlug = new Map<string, string>();
   const slugById = new Map<string, string>();
 
   for (const product of [...products].sort((a, b) => a.id.localeCompare(b.id))) {
     const base = slugify(product.name) || product.id.toLowerCase();
     let slug = base;
-    if (bySlug.has(slug)) slug = `${base}-${product.id.toLowerCase().slice(0, 6)}`;
+    if (idBySlug.has(slug)) slug = `${base}-${product.id.toLowerCase().slice(0, 6)}`;
     // Still taken (same name *and* the same id prefix) — fall back to the
     // id, which is unique by definition.
-    if (bySlug.has(slug)) slug = product.id.toLowerCase();
+    if (idBySlug.has(slug)) slug = product.id.toLowerCase();
 
-    bySlug.set(slug, product);
+    idBySlug.set(slug, product.id);
     slugById.set(product.id, slug);
   }
 
-  return { bySlug, slugById };
+  return { idBySlug, slugById };
 }
 
 /**

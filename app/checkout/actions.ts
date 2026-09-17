@@ -4,7 +4,7 @@ import { randomUUID } from "crypto";
 import { cookies } from "next/headers";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { getSquare, getSquareLocationId } from "@/lib/square";
-import { getArtCollectiveProductIds, getInventoryCounts } from "@/lib/catalog";
+import { getDiscountIneligibleProductIds, getInventoryCounts } from "@/lib/catalog";
 import { getByCode, getLinkBySlug, recordLinkClick, setSquareCustomerId } from "@/lib/store";
 import { resolveAccount } from "@/lib/accountAuth";
 import { findOrCreateSquareCustomerId } from "@/lib/squareCustomers";
@@ -93,12 +93,12 @@ export async function quoteCheckoutAction(lines: CartLine[]): Promise<CheckoutQu
         })
       : undefined;
 
-    // Same fail-closed rule as checkoutAction: if we can't tell which
-    // products are Art Collective, assume all of them are, so the quote
-    // never promises a discount the real order won't honour.
+    // Same fail-closed rule as checkoutAction: if eligibility can't be
+    // read at all, exclude everything, so the quote never promises a
+    // discount the real order won't honour.
     const excludedProductIds = ambassador
-      ? await getArtCollectiveProductIds(lines.map((l) => l.productId)).catch((err) => {
-          console.error("Art Collective category lookup failed while quoting checkout:", err);
+      ? await getDiscountIneligibleProductIds(lines.map((l) => l.productId)).catch((err) => {
+          console.error("Discount eligibility lookup failed while quoting checkout:", err);
           return new Set(lines.map((l) => l.productId));
         })
       : new Set<string>();
@@ -254,16 +254,16 @@ export async function checkoutAction(input: {
     console.error("Stock check failed during checkout:", err);
   }
 
-  // Art Collective items (everyone's cut except WHOA's own WHOAdega/WHOA
-  // products) never get a promo-code/ambassador discount — checked
-  // server-side against Square's real category data, never trusting
-  // whatever the client's cart line objects happen to carry. Only
-  // resolved when there's actually a discount that would otherwise apply.
+  // Ambassador and promo discounts apply to WHOA's own goods only. Which
+  // those are is read from each item's Square description at charge time
+  // (see lib/discountEligibility.ts), never trusting whatever the client's
+  // cart line objects happen to carry. Only resolved when there's actually
+  // a discount that would otherwise apply.
   const excludedProductIds = ambassador
-    ? await getArtCollectiveProductIds(input.lines.map((l) => l.productId)).catch((err) => {
-        console.error("Art Collective category lookup failed during checkout:", err);
-        // Fail closed: if we can't tell what's excluded, exclude
-        // everything rather than risk discounting Art Collective sales.
+    ? await getDiscountIneligibleProductIds(input.lines.map((l) => l.productId)).catch((err) => {
+        console.error("Discount eligibility lookup failed during checkout:", err);
+        // Fail closed: if eligibility can't be read, exclude everything
+        // rather than risk discounting something that isn't ours.
         return new Set(input.lines.map((l) => l.productId));
       })
     : new Set<string>();

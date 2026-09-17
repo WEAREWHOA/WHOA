@@ -1,5 +1,6 @@
 import { cache } from "react";
-import { buildSlugIndex, looksLikeSquareId, slugify } from "./productSlug";
+import { buildSlugIndex, buildSlugMap, looksLikeSquareId, slugify } from "./productSlug";
+import { isDiscountEligible } from "./discountEligibility";
 import { randomUUID } from "crypto";
 import { SquareError, type Square } from "square";
 import { getSquare, getSquareLocationId } from "./square";
@@ -125,7 +126,9 @@ export async function getOnlineStoreChannelId(): Promise<string | null> {
 // checked in Square — used by the public shop, which shouldn't show
 // internal/private inventory. The POS register (which doesn't pass this)
 // still sees everything, since staff need to sell in-person-only items too.
-export async function listProducts(options?: { onlineOnly?: boolean }): Promise<Product[]> {
+// The item listing itself, shared by listProducts and listCatalogNames so
+// the two can never disagree about which items count as online.
+async function fetchCatalogItems(options?: { onlineOnly?: boolean }) {
   const square = getSquare();
   const locationId = getSquareLocationId();
 
@@ -157,6 +160,33 @@ export async function listProducts(options?: { onlineOnly?: boolean }): Promise<
       ? items.filter((item) => item.type === "ITEM" && item.itemData?.channels?.includes(channelId))
       : [];
   }
+
+  return items;
+}
+
+/**
+ * Every product's id and name, and nothing more.
+ *
+ * This is the cheap half of listProducts: one paginated searchItems pass,
+ * with none of the image/category/option batchGets or the per-variation
+ * inventory lookup. It's what the slug map is built from, so turning a URL
+ * into a product no longer costs a full catalog load.
+ */
+export async function listCatalogNames(options?: { onlineOnly?: boolean }) {
+  const items = await fetchCatalogItems(options);
+  const entries: { id: string; name: string }[] = [];
+  for (const item of items) {
+    if (item.type !== "ITEM" || !item.itemData) continue;
+    entries.push({ id: item.id, name: item.itemData.name ?? "" });
+  }
+  return entries;
+}
+
+export async function listProducts(options?: { onlineOnly?: boolean }): Promise<Product[]> {
+  const square = getSquare();
+  const locationId = getSquareLocationId();
+
+  const items = await fetchCatalogItems(options);
 
   const imageIds = new Set<string>();
   const categoryIds = new Set<string>();
@@ -424,7 +454,6 @@ export async function getInventoryCounts(
 // place (same id) rather than abandoning it, so every item already
 // assigned to it stays assigned.
 export const ART_COLLECTIVE_CATEGORY_DISPLAY_NAME = "Art Collective";
-const ART_COLLECTIVE_CATEGORY_NAME = ART_COLLECTIVE_CATEGORY_DISPLAY_NAME.toLowerCase();
 const LEGACY_ARTIST_SALES_CATEGORY_NAME = "artist sales";
 
 async function findCategoryObjectByName(name: string): Promise<Square.CatalogObject.Category | undefined> {
@@ -535,49 +564,39 @@ export async function getOrCreateArtistCategoryId(artistName: string, parentCate
   return id;
 }
 
-// Read-only lookup used by checkout's discount exclusion below — never
-// writes to Square from the checkout hot path. Checks the current "Art
-// Collective" name first, falling back to the legacy "Artist Sales" name
-// in case the rename migration (getOrCreateArtCollectiveCategoryId,
-// triggered from the ART ADMIN approval flow or the /admin/square-sync
-// backfill button) hasn't run yet in this environment. Cached per server
-// instance, same posture as getOnlineStoreChannelId above.
-let checkoutCategoryId: string | null | undefined;
-
-async function getArtCollectiveCategoryIdForCheckout(): Promise<string | null> {
-  if (checkoutCategoryId !== undefined) return checkoutCategoryId;
-
-  const found =
-    (await findCategoryObjectByName(ART_COLLECTIVE_CATEGORY_NAME))?.id ??
-    (await findCategoryObjectByName(LEGACY_ARTIST_SALES_CATEGORY_NAME))?.id ??
-    null;
-
-  checkoutCategoryId = found;
-  return checkoutCategoryId;
-}
-
-// Given a set of catalog item (product) IDs, returns the subset that
-// belong to the Art Collective category. Every Art Collective item is
-// assigned to the parent "Art Collective" category directly (in addition
-// to its artist subcategory — see getOrCreateArtistCategoryId), so this
-// only needs to check for direct membership, not walk the category tree.
-// Checked server-side at checkout, never trusting whatever category info
-// (if any) the client sent, the same never-trust-the-client posture as
-// stock/price checks elsewhere in checkout.
-export async function getArtCollectiveProductIds(productIds: string[]): Promise<Set<string>> {
+// Given a set of catalog item (product) IDs, returns the subset that must
+// NOT take an ambassador/promo discount, decided by the marker in each
+// item's own Square description (see lib/discountEligibility.ts).
+//
+// Note the direction: this returns the *ineligible* ones, so anything that
+// can't be read — an id Square didn't return, a missing description — ends
+// up excluded rather than quietly discounted.
+//
+// Checked server-side at checkout, never trusting whatever the client's
+// cart claims about a product — the same never-trust-the-client posture as
+// the stock and price checks around it.
+export async function getDiscountIneligibleProductIds(productIds: string[]): Promise<Set<string>> {
   const result = new Set<string>();
   if (productIds.length === 0) return result;
-
-  const categoryId = await getArtCollectiveCategoryIdForCheckout();
-  if (!categoryId) return result;
 
   const square = getSquare();
   for (const idBatch of chunk(productIds, BATCH_CHUNK_SIZE)) {
     const response = await square.catalog.batchGet({ objectIds: idBatch });
+
+    const seen = new Set<string>();
     for (const obj of response.objects ?? []) {
       if (obj.type !== "ITEM" || !obj.id) continue;
-      const categories = obj.itemData?.categories ?? [];
-      if (categories.some((c) => c.id === categoryId)) result.add(obj.id);
+      seen.add(obj.id);
+      const data = obj.itemData;
+      const description = data?.descriptionPlaintext ?? data?.description ?? "";
+      if (!isDiscountEligible(description)) result.add(obj.id);
+    }
+
+    // An id Square didn't return — deleted, or not visible to this token —
+    // is excluded too. Anything we can't read the marker on doesn't get
+    // discounted.
+    for (const id of idBatch) {
+      if (!seen.has(id)) result.add(id);
     }
   }
 
@@ -585,16 +604,23 @@ export async function getArtCollectiveProductIds(productIds: string[]): Promise<
 }
 
 /**
- * The catalog's slug index, built once per request.
+ * Slug <-> id, and nothing else.
  *
- * React's cache() means a page that resolves a product and then renders
- * something else needing the catalog pays for one Square round trip, not
- * two. Across requests the page's own `revalidate` does the caching.
+ * Deliberately built from a names-only listing rather than listProducts().
+ * Resolving /shop/<slug> used to load the entire catalog — every page of
+ * searchItems, a batchGet of every image, category and option, and an
+ * inventory count for every variation across ~200 items — purely to find
+ * which product the URL meant. That is what made opening any single
+ * product take over ten seconds while /shop itself stayed fast: /shop is
+ * prerendered, the product page is rendered on demand.
+ *
+ * Now the URL is turned into an id from this cheap map and the product
+ * itself is fetched with getProduct(), which touches one item.
+ *
+ * React's cache() keeps it to one lookup per request; across requests the
+ * page's own `revalidate` does the caching.
  */
-const slugIndex = cache(async () => {
-  const products = await listProducts({ onlineOnly: true });
-  return { products, index: buildSlugIndex(products) };
-});
+const slugMap = cache(async () => buildSlugMap(await listCatalogNames({ onlineOnly: true })));
 
 /** The canonical `/shop/<slug>` path for a product. */
 export function productPath(product: Product): string {
@@ -611,9 +637,8 @@ export function productPath(product: Product): string {
  */
 export async function productPathById(id: string): Promise<string> {
   try {
-    const { index } = await slugIndex();
-    const slug = index.slugById.get(id);
-    return `/shop/${slug ?? id}`;
+    const { slugById } = await slugMap();
+    return `/shop/${slugById.get(id) ?? id}`;
   } catch {
     return `/shop/${id}`;
   }
@@ -639,15 +664,28 @@ export type ProductResolution =
  * ranking to the slug while the original link keeps working forever.
  */
 export async function resolveProduct(segment: string): Promise<ProductResolution | undefined> {
-  const { products, index } = await slugIndex();
+  const { idBySlug, slugById } = await slugMap();
 
-  const bySlug = index.bySlug.get(segment);
-  if (bySlug) return { kind: "canonical", product: bySlug };
+  const idForSlug = idBySlug.get(segment);
+  if (idForSlug) {
+    const product = await getProduct(idForSlug);
+    if (!product) return undefined;
+    // getProduct fetches one item and so can't know the slug, which is a
+    // property of the whole catalog. Carry it over, or productPath would
+    // fall back to the id and undo the canonical URL.
+    return { kind: "canonical", product: { ...product, slug: segment } };
+  }
 
   if (!looksLikeSquareId(segment)) return undefined;
 
-  const byId = products.find((product) => product.id === segment);
-  if (!byId) return undefined;
+  // Only ids the catalog listing knows about resolve — that keeps the
+  // online-only filter honest, so an item hidden from the shop can't be
+  // reached by pasting its id.
+  const slug = slugById.get(segment);
+  if (!slug) return undefined;
 
-  return { kind: "legacy-id", product: byId, slug: byId.slug };
+  const product = await getProduct(segment);
+  if (!product) return undefined;
+
+  return { kind: "legacy-id", product: { ...product, slug }, slug };
 }
