@@ -412,6 +412,39 @@ Two things to know about the setup:
   ticket, `EventsGrid` reopens the modal that was holding it, which is what
   gives Square's SDK a live checkout to return the token to.
 
+### Which products take a discount
+
+Ambassador codes and promo codes apply to **WHOA's own goods only**, and
+which those are is read from the marker in each item's Square description
+(`lib/discountEligibility.ts`):
+
+```
+✅ ELIGIBLE for WHOA discounts OR purchase with WHOA gift card ✅
+🚫 NOT ELIGIBLE for WHOA discounts OR purchase with WHOA gift card 🚫
+```
+
+The description is the right home for the rule because it's already where
+the rule is stated to the customer: one place to edit in Square, and what
+the shopper reads is what the checkout enforces. This replaces keying off
+Square's "Art Collective" category, which only covered that one group and
+silently discounted anything else that shouldn't have been.
+
+Matching is loose on purpose — the emoji alone or the words alone are each
+enough, in any casing or spacing — so a re-typed description keeps working.
+Two rules decide the awkward cases:
+
+- **The negative wins.** "NOT ELIGIBLE" contains "ELIGIBLE", so exclusion
+  is tested first; an item carrying both markers is excluded.
+- **Unmarked means not eligible.** A product nobody has labelled doesn't
+  get discounted, and neither does one Square declines to return. Erring
+  the other way gives money away on items that were never meant to be
+  included, and the mistake stays invisible until the books are reconciled.
+
+Checked server-side at charge time against Square's own data, never
+against what the browser's cart claims — same posture as the stock and
+price checks beside it. **Adding the ✅ line to an item is what turns
+discounts on for it.**
+
 ### Buying more than one ticket
 
 A paid ticket can be bought 1–5 at a time (`MAX_TICKETS_PER_ORDER` in
@@ -457,6 +490,31 @@ San Diego time. These functions run on the server *and* in the browser — so
 without a fixed zone, "7PM" would mean 7PM UTC on Vercel (noon here) and 7PM
 in whatever zone the customer's phone happens to be set to, and the two
 would quote different prices for the same ticket.
+
+### Why a product page is fast
+
+Resolving `/shop/<slug>` used to load the **entire catalog** — every page
+of `searchItems`, a `batchGet` of every image, category and option, and an
+inventory count for every variation across ~200 items — purely to work out
+which product the URL meant. That is why opening any single product took
+over ten seconds while `/shop` itself stayed quick: `/shop` is prerendered,
+a product page is rendered on demand.
+
+Two pieces fix it:
+
+- `listCatalogNames` returns only ids and names (one `searchItems` pass),
+  and `buildSlugMap` builds slug ↔ id from that.
+- `resolveProduct` then hands the id to `getProduct`, which fetches that
+  one item with `includeRelatedObjects` plus an inventory lookup for its
+  own variations.
+
+Measured against a stubbed 200-item catalog: **10 Square calls down to 4**,
+with the two expensive ones gone entirely — no image/category `batchGet`
+sweep, and inventory covering 2 variations instead of 400.
+
+`buildSlugIndex` (full products, used by the sitemap) and `buildSlugMap`
+(ids and names) run the *same* assignment, so the slug a URL resolves to
+and the slug the sitemap advertises can never disagree.
 
 ### Pricing and tax
 
