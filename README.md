@@ -378,13 +378,26 @@ Two things to know about the setup:
   add `wearewhoa.art`, which issues a verification file. That file is
   committed here at
   `public/.well-known/apple-developer-merchantid-domain-association` and is
-  served verbatim from the apex domain — Apple fetches it directly and does
-  **not** follow redirects, so a copy reachable only via `www` would not
-  verify. It has no extension, so `headers()` in `next.config.ts` pins it to
-  `text/plain`. Re-registering the domain issues a new file; replace that
-  one and redeploy. Until verification passes the Apple Pay button simply
-  doesn't appear; nothing else is affected. Google Pay and Cash App Pay need
-  no domain step.
+  served verbatim over HTTPS. Two things Apple's checker is strict about,
+  both handled by `headers()` in `next.config.ts`:
+
+  - **It must download, not render.** The file is served as
+    `application/octet-stream` with `Content-Disposition: attachment`.
+    Making it `text/plain` so the URL reads nicely in a browser is exactly
+    what Apple rejects it for.
+  - **No redirect may sit in front of it.** Apple fetches the registered
+    host's URL directly and does not follow redirects. If the apex and
+    `www` hosts redirect to one another — a Vercel domain setting or
+    registrar URL forwarding, neither of which this repo can override —
+    then the host registered with Square has to be whichever one answers
+    directly. That is also the host customers' browsers end up on, which
+    is the domain Apple Pay checks at payment time, so the two have to be
+    the same.
+
+  Re-registering the domain issues a new file; replace that one and
+  redeploy. Until verification passes the Apple Pay button simply doesn't
+  appear; nothing else is affected. Google Pay and Cash App Pay need no
+  domain step.
 - **Cash App Pay can navigate away.** On a phone it hands the customer to
   the Cash App and reloads this site on the way back, so the form is parked
   in session storage first (`lib/checkoutDrafts.ts`) and restored — for a
