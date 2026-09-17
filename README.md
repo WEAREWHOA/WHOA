@@ -373,11 +373,18 @@ path and is never gated on any of this.**
 
 Two things to know about the setup:
 
-- **Apple Pay needs the domain registered with Square** before Safari will
-  offer it — Square Developer Dashboard → your application → *Apple Pay* →
-  add `wearewhoa.art` (and `www.wearewhoa.art` if that's also served). Until
-  that's done the button just doesn't appear; nothing else is affected.
-  Google Pay and Cash App Pay need no domain step.
+- **Apple Pay needs the domain verified with Apple** before Safari will
+  offer it. Square Developer Dashboard → your application → *Apple Pay* →
+  add `wearewhoa.art`, which issues a verification file. That file is
+  committed here at
+  `public/.well-known/apple-developer-merchantid-domain-association` and is
+  served verbatim from the apex domain — Apple fetches it directly and does
+  **not** follow redirects, so a copy reachable only via `www` would not
+  verify. It has no extension, so `headers()` in `next.config.ts` pins it to
+  `text/plain`. Re-registering the domain issues a new file; replace that
+  one and redeploy. Until verification passes the Apple Pay button simply
+  doesn't appear; nothing else is affected. Google Pay and Cash App Pay need
+  no domain step.
 - **Cash App Pay can navigate away.** On a phone it hands the customer to
   the Cash App and reloads this site on the way back, so the form is parked
   in session storage first (`lib/checkoutDrafts.ts`) and restored — for a
