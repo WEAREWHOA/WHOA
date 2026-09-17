@@ -263,3 +263,18 @@ body {
     animation: event-float 6s ease-in-out infinite;
   }
 }
+
+/* Apple Pay insists on its own button: Safari only treats an element as a
+   real Apple Pay button when it carries this appearance, and Square hands
+   back an applePay object expecting us to supply it. */
+.apple-pay-button {
+  display: block;
+  width: 100%;
+  height: 48px;
+  border-radius: 9999px;
+  cursor: pointer;
+  -webkit-appearance: -apple-pay-button;
+  appearance: -apple-pay-button;
+  -apple-pay-button-type: buy;
+  -apple-pay-button-style: white;
+}

@@ -7,6 +7,7 @@ import EventModal from "@/components/events/EventModal";
 import EventCheckoutModal from "@/components/events/EventCheckoutModal";
 import DamageWaiverModal from "@/components/events/DamageWaiverModal";
 import EventsCalendar from "@/components/events/EventsCalendar";
+import { eventCheckoutDraft } from "@/lib/checkoutDrafts";
 import { EVENT_CATEGORIES, requiresDamageWaiver, sortEventsByProximity, type EventCategory, type EventInfo } from "@/lib/events";
 
 const CLOSE_DURATION = 520;
@@ -31,6 +32,19 @@ export default function EventsGrid({ events }: { events: EventInfo[] }) {
   const [waiverEvent, setWaiverEvent] = useState<EventInfo | null>(null);
   const [waiverAgreed, setWaiverAgreed] = useState(false);
 
+  // Cash App Pay on a phone sends the customer out to the Cash App and
+  // drops them back here on a fresh page load — with their ticket form and
+  // the modal that held it gone. Reopening it is what gives Square's SDK a
+  // live checkout to hand the token it's carrying back to. Derived rather
+  // than set in an effect, so the reopen happens in the same render the
+  // draft first becomes readable. See lib/checkoutDrafts.ts.
+  const draft = eventCheckoutDraft.useDraft();
+  const restoredDraft = checkoutEvent ? null : draft;
+  const restoredEvent = restoredDraft
+    ? (events.find((event) => event.id === restoredDraft.eventId) ?? null)
+    : null;
+  const activeCheckout = checkoutEvent ?? restoredEvent;
+
   const filtered = sortEventsByProximity(filter === "all" ? events : events.filter((event) => event.category === filter));
 
   // Every RSVP/Buy Ticket button (card or modal) routes through here rather
@@ -40,6 +54,7 @@ export default function EventsGrid({ events }: { events: EventInfo[] }) {
   // eventRsvpAction regardless — this is only what decides which modal
   // opens first.
   function handleCheckoutRequest(event: EventInfo) {
+    eventCheckoutDraft.clear();
     if (requiresDamageWaiver(event)) {
       setWaiverAgreed(false);
       setWaiverEvent(event);
@@ -132,11 +147,16 @@ export default function EventsGrid({ events }: { events: EventInfo[] }) {
         <DamageWaiverModal event={waiverEvent} onAgree={handleWaiverAgree} onClose={() => setWaiverEvent(null)} />
       )}
 
-      {checkoutEvent && (
+      {activeCheckout && (
         <EventCheckoutModal
-          event={checkoutEvent}
-          waiverAgreed={waiverAgreed}
+          // Remounts on a restore so the form starts from the parked
+          // values rather than the blank state it first mounted with.
+          key={restoredEvent ? `${activeCheckout.id}-restored` : activeCheckout.id}
+          event={activeCheckout}
+          waiverAgreed={restoredEvent ? restoredDraft?.waiverAgreed === true : waiverAgreed}
+          restored={restoredEvent ? (restoredDraft ?? undefined) : undefined}
           onClose={() => {
+            eventCheckoutDraft.clear();
             setCheckoutEvent(null);
             setWaiverAgreed(false);
           }}

@@ -5,31 +5,13 @@ import Script from "next/script";
 import { checkoutAction } from "@/app/checkout/actions";
 import { formatCents } from "@/lib/money";
 import type { CartLine, Product } from "@/lib/types";
-
-interface SquareCard {
-  attach: (selector: string) => Promise<void>;
-  tokenize: () => Promise<{ status: string; token?: string; errors?: { message: string }[] }>;
-  destroy: () => Promise<void>;
-}
-
-interface SquarePayments {
-  card: () => Promise<SquareCard>;
-}
-
-declare global {
-  interface Window {
-    Square?: {
-      payments: (appId: string, locationId: string) => Promise<SquarePayments>;
-    };
-  }
-}
-
-const APPLICATION_ID = process.env.NEXT_PUBLIC_SQUARE_APPLICATION_ID ?? "";
-const LOCATION_ID = process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID ?? "";
-const SQUARE_JS_SRC =
-  process.env.NEXT_PUBLIC_SQUARE_ENVIRONMENT === "production"
-    ? "https://web.squarecdn.com/v1/square.js"
-    : "https://sandbox.web.squarecdn.com/v1/square.js";
+import {
+  SQUARE_APPLICATION_ID as APPLICATION_ID,
+  SQUARE_CARD_STYLE,
+  SQUARE_JS_SRC,
+  SQUARE_LOCATION_ID as LOCATION_ID,
+  type SquareCard,
+} from "@/lib/squareWeb";
 
 type Step = "shop" | "pay" | "done";
 
@@ -304,7 +286,7 @@ function PaymentPanel({
 
     (async () => {
       const payments = await window.Square!.payments(APPLICATION_ID, LOCATION_ID);
-      const card = await payments.card();
+      const card = await payments.card({ style: SQUARE_CARD_STYLE });
       await card.attach("#pos-card-container");
       if (cancelled) {
         await card.destroy();

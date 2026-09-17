@@ -7,44 +7,45 @@ import { useCart } from "@/components/cart/CartProvider";
 import { formatCents } from "@/lib/money";
 import { applyPromoCodeAction, checkoutAction } from "@/app/checkout/actions";
 import { accountSignOutAction, getAccountAction } from "@/app/account/actions";
+import WalletButtons from "@/components/checkout/WalletButtons";
+import {
+  SQUARE_APPLICATION_ID as APPLICATION_ID,
+  SQUARE_CARD_STYLE,
+  SQUARE_JS_SRC,
+  SQUARE_LOCATION_ID as LOCATION_ID,
+  type SquareCard,
+} from "@/lib/squareWeb";
+import { newReferenceId, shopCheckoutDraft, type ShopCheckoutDraft } from "@/lib/checkoutDrafts";
 
-interface SquareCard {
-  attach: (selector: string) => Promise<void>;
-  tokenize: () => Promise<{ status: string; token?: string; errors?: { message: string }[] }>;
-  destroy: () => Promise<void>;
-}
-
-interface SquarePayments {
-  card: () => Promise<SquareCard>;
-}
-
-declare global {
-  interface Window {
-    Square?: {
-      payments: (appId: string, locationId: string) => Promise<SquarePayments>;
-    };
-  }
-}
-
-const APPLICATION_ID = process.env.NEXT_PUBLIC_SQUARE_APPLICATION_ID ?? "";
-const LOCATION_ID = process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID ?? "";
-const SQUARE_JS_SRC =
-  process.env.NEXT_PUBLIC_SQUARE_ENVIRONMENT === "production"
-    ? "https://web.squarecdn.com/v1/square.js"
-    : "https://sandbox.web.squarecdn.com/v1/square.js";
-
-export default function CheckoutForm({
-  ambassadorCode,
-  promoApplied,
-  promoError,
-}: {
+interface CheckoutFormProps {
   ambassadorCode: string | null;
   promoApplied?: boolean;
   promoError?: boolean;
-}) {
+}
+
+/**
+ * Picks up a form parked before a Cash App Pay redirect, if there is one.
+ * The draft only exists client-side, so the fields below are keyed on it
+ * and start from the parked values rather than being written into state
+ * after the fact. See lib/checkoutDrafts.ts.
+ */
+export default function CheckoutForm(props: CheckoutFormProps) {
+  const draft = shopCheckoutDraft.useDraft();
+  return <CheckoutFields key={draft ? "restored" : "fresh"} draft={draft} {...props} />;
+}
+
+function CheckoutFields({
+  ambassadorCode,
+  promoApplied,
+  promoError,
+  draft,
+}: CheckoutFormProps & { draft: ShopCheckoutDraft | null }) {
   const { lines, totalCents, clear } = useCart();
   const router = useRouter();
   const cardRef = useRef<SquareCard | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  const [referenceId] = useState(() => draft?.referenceId || newReferenceId("cart"));
 
   const [scriptReady, setScriptReady] = useState(false);
   const [scriptFailed, setScriptFailed] = useState(false);
@@ -52,18 +53,18 @@ export default function CheckoutForm({
   const cardReadyRef = useRef(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [name, setName] = useState(draft?.name ?? "");
+  const [email, setEmail] = useState(draft?.email ?? "");
   const [password, setPassword] = useState("");
   const [account, setAccount] = useState<{ name: string; email: string } | null>(null);
   const [accountChecked, setAccountChecked] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-  const [line1, setLine1] = useState("");
-  const [line2, setLine2] = useState("");
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("");
-  const [zip, setZip] = useState("");
-  const [phone, setPhone] = useState("");
+  const [line1, setLine1] = useState(draft?.line1 ?? "");
+  const [line2, setLine2] = useState(draft?.line2 ?? "");
+  const [city, setCity] = useState(draft?.city ?? "");
+  const [state, setState] = useState(draft?.state ?? "");
+  const [zip, setZip] = useState(draft?.zip ?? "");
+  const [phone, setPhone] = useState(draft?.phone ?? "");
 
   const discountCents = ambassadorCode ? Math.round(totalCents * 0.15) : 0;
   const finalCents = totalCents - discountCents;
@@ -97,7 +98,7 @@ export default function CheckoutForm({
     (async () => {
       try {
         const payments = await window.Square!.payments(APPLICATION_ID, LOCATION_ID);
-        const card = await payments.card();
+        const card = await payments.card({ style: SQUARE_CARD_STYLE });
         await card.attach("#card-container");
         if (cancelled) {
           await card.destroy();
@@ -160,6 +161,20 @@ export default function CheckoutForm({
     };
   }, []);
 
+  function saveDraft() {
+    shopCheckoutDraft.save({
+      name,
+      email,
+      line1,
+      line2,
+      city,
+      state,
+      zip,
+      phone,
+      referenceId,
+    });
+  }
+
   async function handleSignOut() {
     setSigningOut(true);
     try {
@@ -172,22 +187,17 @@ export default function CheckoutForm({
     setSigningOut(false);
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    if (!cardRef.current || lines.length === 0) return;
+  // Everything past tokenization is identical whether the token came from
+  // the card field or from a wallet — Square's sourceId doesn't care which
+  // it was, so neither does the server action.
+  async function submitWithToken(token: string) {
+    if (lines.length === 0) return;
 
     setSubmitting(true);
     setError(null);
 
-    const tokenResult = await cardRef.current.tokenize();
-    if (tokenResult.status !== "OK" || !tokenResult.token) {
-      setError(tokenResult.errors?.[0]?.message ?? "Card details couldn't be verified.");
-      setSubmitting(false);
-      return;
-    }
-
     const outcome = await checkoutAction({
-      token: tokenResult.token,
+      token,
       lines,
       customerName: name,
       customerEmail: email,
@@ -205,7 +215,25 @@ export default function CheckoutForm({
     const accountParam = outcome.accountCreated ? "created" : outcome.signedIn ? "signedin" : "";
     const params = new URLSearchParams({ order: outcome.orderId ?? "" });
     if (accountParam) params.set("account", accountParam);
+    shopCheckoutDraft.clear();
     router.push(`/order-confirmed?${params.toString()}`);
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!cardRef.current || lines.length === 0) return;
+
+    setSubmitting(true);
+    setError(null);
+
+    const tokenResult = await cardRef.current.tokenize();
+    if (tokenResult.status !== "OK" || !tokenResult.token) {
+      setError(tokenResult.errors?.[0]?.message ?? "Card details couldn't be verified.");
+      setSubmitting(false);
+      return;
+    }
+
+    await submitWithToken(tokenResult.token);
   }
 
   if (lines.length === 0) {
@@ -283,7 +311,7 @@ export default function CheckoutForm({
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5">
+      <form ref={formRef} onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5">
         <div>
           <label htmlFor="name" className="text-sm font-medium">
             Name
@@ -410,6 +438,17 @@ export default function CheckoutForm({
           <p className="mt-2 text-xs text-muted">Shipping within the US only, for now.</p>
         </div>
 
+        <WalletButtons
+          squareReady={scriptReady && !scriptFailed}
+          amountCents={finalCents}
+          label="WHOA order"
+          referenceId={referenceId}
+          formRef={formRef}
+          onToken={submitWithToken}
+          onBeforeRedirect={saveDraft}
+          busy={submitting}
+        />
+
         <div>
           <span className="text-sm font-medium">Card</span>
           {scriptFailed ? (
@@ -426,10 +465,7 @@ export default function CheckoutForm({
               .
             </div>
           ) : (
-            <div
-              id="card-container"
-              className="mt-2 rounded-lg border border-border-strong bg-surface-raised px-4 py-3"
-            />
+            <div id="card-container" className="mt-2" />
           )}
         </div>
 
