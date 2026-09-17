@@ -114,6 +114,13 @@ function CheckoutFields({
 
     return () => {
       cancelled = true;
+      // Hand the card iframe back to Square on the way out. Without this it
+      // was simply abandoned, so every visit to this form left another live
+      // cross-origin frame behind and the SDK was never told the old field
+      // was finished with.
+      const card = cardRef.current;
+      cardRef.current = null;
+      if (card) void card.destroy().catch(() => {});
     };
   }, [scriptReady]);
 
