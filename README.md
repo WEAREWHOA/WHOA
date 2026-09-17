@@ -412,6 +412,27 @@ Two things to know about the setup:
   ticket, `EventsGrid` reopens the modal that was holding it, which is what
   gives Square's SDK a live checkout to return the token to.
 
+### Ticket timing
+
+Two moments matter for a ticketed event, and they are not the same one:
+
+- **Early bird locks when the event starts.** `getCurrentPriceCents` charges
+  `earlyBirdPriceCents` right up to the minute doors open, so someone buying
+  on the day of the show still gets it; `priceCents` is the door price from
+  then on. It used to flip at midnight, which charged the door price to
+  anyone buying that morning.
+- **Sales close at the end of the event's last day**, not at its stated end
+  time. Someone turning up late, or hearing about it while it is happening,
+  can still buy at the door. An overnight window like `9PM – 4AM` runs past
+  midnight, so `getTicketingCloseDate` carries it through to the real close
+  rather than cutting it off.
+
+Both are pinned to `America/Los_Angeles`, because every time on a flyer is a
+San Diego time. These functions run on the server *and* in the browser — so
+without a fixed zone, "7PM" would mean 7PM UTC on Vercel (noon here) and 7PM
+in whatever zone the customer's phone happens to be set to, and the two
+would quote different prices for the same ticket.
+
 ### Pricing and tax
 
 **Square prices the order, not the browser.** `quoteCheckoutAction` calls
