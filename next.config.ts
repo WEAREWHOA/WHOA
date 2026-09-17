@@ -61,18 +61,27 @@ const nextConfig: NextConfig = {
     return [
       {
         // Apple's domain verification file for Apple Pay, served from
-        // public/.well-known/. It has no extension, so Next would otherwise
-        // hand it out as application/octet-stream — which some browsers
-        // offer as a download rather than displaying. Apple fetches the
-        // bytes either way, but text/plain is what this file is and it
-        // makes checking the URL by hand behave sensibly.
+        // public/.well-known/.
         //
-        // The file itself is issued per merchant by Square (Developer
-        // Dashboard -> Apple Pay) and must be served from the apex domain
-        // exactly as downloaded — Apple does not follow redirects to find
-        // it, so a www-only copy would not verify.
+        // Apple requires this URL to *download* the file rather than render
+        // it, so it is served as an attachment. Do not "improve" this to
+        // text/plain to make the URL readable in a browser — that is the
+        // one thing Apple's checker rejects it for.
+        //
+        // The file is issued per merchant by Square (Developer Dashboard ->
+        // Apple Pay) and must be served verbatim over HTTPS from whichever
+        // host is registered, with no redirect in front of it: Apple
+        // fetches this exact URL and does not follow redirects. If the apex
+        // and www hosts redirect to one another, the registered domain has
+        // to be whichever one answers directly.
         source: "/.well-known/apple-developer-merchantid-domain-association",
-        headers: [{ key: "Content-Type", value: "text/plain; charset=utf-8" }],
+        headers: [
+          { key: "Content-Type", value: "application/octet-stream" },
+          {
+            key: "Content-Disposition",
+            value: 'attachment; filename="apple-developer-merchantid-domain-association"',
+          },
+        ],
       },
     ];
   },
