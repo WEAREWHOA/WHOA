@@ -1,6 +1,10 @@
--- /contact's message form. Same posture as custom_design_submissions: no
--- email service is wired up anywhere in this app, so a submission is just
--- stored for staff to read later rather than triggering a notification.
+-- /contact's message form.
+--
+-- This is the browsable copy, not the delivery mechanism: every message
+-- is also emailed to info@wearewhoa.com, and lib/contact.ts treats the two
+-- as independent, so a submission still reaches a person if this table is
+-- missing. Running this migration is what gets staff the searchable
+-- history alongside the inbox.
 create table if not exists contact_messages (
   id uuid primary key default gen_random_uuid(),
   name text not null,

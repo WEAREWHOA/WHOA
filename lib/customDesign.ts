@@ -405,6 +405,12 @@ export async function submitDesign(input: SubmitDesignInput): Promise<{ ok: bool
     return { ok: false, error: "Design preview is too large." };
   }
 
+  // Stored and emailed independently, and the submission counts as
+  // delivered if either worked — same reasoning as lib/contact.ts. The
+  // insert used to decide the outcome, so a missing table meant the
+  // design someone had just drawn was lost rather than landing in
+  // info@wearewhoa.com's inbox.
+  let stored = false;
   try {
     const { error } = await getSupabase().from("custom_design_submissions").insert({
       template_id: template.id,
@@ -414,18 +420,26 @@ export async function submitDesign(input: SubmitDesignInput): Promise<{ ok: bool
       email,
       phone,
     });
-
-    if (error) return { ok: false, error: error.message };
-
-    try {
-      await sendCustomDesignNotification({ name, email, phone, templateLabel: template.label });
-    } catch (emailErr) {
-      console.error("sendCustomDesignNotification failed:", emailErr);
-    }
-
-    return { ok: true };
+    if (error) console.error("Failed to store custom design submission:", error.message);
+    else stored = true;
   } catch (err) {
-    console.error("submitDesign failed:", err);
-    return { ok: false, error: "Something went wrong on our end — try again in a moment." };
+    console.error("Failed to store custom design submission:", err);
   }
+
+  let notified = false;
+  try {
+    await sendCustomDesignNotification({ name, email, phone, templateLabel: template.label });
+    notified = true;
+  } catch (err) {
+    console.error("sendCustomDesignNotification failed:", err);
+  }
+
+  if (!stored && !notified) {
+    return {
+      ok: false,
+      error: "We couldn't get that through — please email info@wearewhoa.com directly.",
+    };
+  }
+
+  return { ok: true };
 }
