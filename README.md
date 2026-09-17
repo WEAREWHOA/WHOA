@@ -412,6 +412,31 @@ Two things to know about the setup:
   ticket, `EventsGrid` reopens the modal that was holding it, which is what
   gives Square's SDK a live checkout to return the token to.
 
+### Buying more than one ticket
+
+A paid ticket can be bought 1–5 at a time (`MAX_TICKETS_PER_ORDER` in
+`lib/events.ts`), and the whole order is **one QR code that admits the
+group** rather than several codes to keep track of. The count is printed on
+the ticket — on the confirmation screen, in the email, and on the
+`/checkin/[id]` page door staff see when they scan it, where it reads
+*Admits N* and the button becomes "Check in all N".
+
+Free RSVPs are always one person; batching only applies to something being
+paid for.
+
+Two things follow from this that are easy to get wrong:
+
+- `price_cents` on `event_rsvps` is the price of a **single** ticket, which
+  is what it has always meant. What was paid is `price_cents * quantity`.
+- **Counts are in people, not bookings.** `lib/eventsAdmin.ts` sums
+  `quantity` for headcount, revenue and the per-artist breakdown, because a
+  row worth five guests is five guests to the door and to the capacity
+  figure.
+
+The quantity is clamped server-side (`clampTicketQuantity`) rather than
+rejected: a request carrying `0`, `99` or `"three"` is a broken client, not
+a reason to lose a sale. Anything unusable becomes 1, never the cap.
+
 ### Ticket timing
 
 Two moments matter for a ticketed event, and they are not the same one:

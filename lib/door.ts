@@ -53,6 +53,7 @@ export async function getDoorEvents(): Promise<DoorEvent[]> {
           name: rsvp.name,
           email: rsvp.email,
           priceCents: rsvp.priceCents,
+          quantity: rsvp.quantity,
           checkedInAt: rsvp.checkedInAt,
           checkedInBy: rsvp.checkedInBy,
         }))

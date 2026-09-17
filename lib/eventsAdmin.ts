@@ -37,7 +37,7 @@ function buildArtistBreakdown(guests: EventRsvpRecord[]): ArtistBreakdownEntry[]
   const counts = new Map<string, number>();
   for (const guest of guests) {
     if (!guest.selectedArtist) continue;
-    counts.set(guest.selectedArtist, (counts.get(guest.selectedArtist) ?? 0) + 1);
+    counts.set(guest.selectedArtist, (counts.get(guest.selectedArtist) ?? 0) + guest.quantity);
   }
   return [...counts.entries()]
     .map(([artist, count]) => ({ artist, count }))
@@ -47,13 +47,18 @@ function buildArtistBreakdown(guests: EventRsvpRecord[]): ArtistBreakdownEntry[]
 function summarizeEvent(event: EventInfo, guests: EventRsvpRecord[]): EventAdminSummary {
   const tickets = guests.filter((g) => g.priceCents > 0);
   const rsvps = guests.filter((g) => g.priceCents === 0);
-  const revenueCents = tickets.reduce((sum, g) => sum + g.priceCents, 0);
+
+  // Counted in people, not bookings. One order can be five tickets on a
+  // single QR, so a row is worth its quantity — to the door, to the
+  // capacity figure, and to the money.
+  const headcount = (records: EventRsvpRecord[]) => records.reduce((sum, g) => sum + g.quantity, 0);
+  const revenueCents = tickets.reduce((sum, g) => sum + g.priceCents * g.quantity, 0);
 
   return {
     event,
-    rsvpCount: rsvps.length,
-    ticketCount: tickets.length,
-    totalGuests: guests.length,
+    rsvpCount: headcount(rsvps),
+    ticketCount: headcount(tickets),
+    totalGuests: headcount(guests),
     revenueCents,
     guests,
     artistBreakdown: buildArtistBreakdown(guests),

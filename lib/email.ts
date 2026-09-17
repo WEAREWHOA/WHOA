@@ -94,9 +94,11 @@ function buildEventHtml(input: {
   eventDateLabel: string;
   eventVenue: string;
   priceCents: number;
+  quantity?: number;
   ticketUrl?: string;
 }): string {
   const isTicket = input.priceCents > 0;
+  const quantity = input.quantity && input.quantity > 1 ? input.quantity : 1;
   return wrapEmail(`
         <p style="margin:0;color:#ff7a00;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;font-weight:600;">${isTicket ? "Ticket confirmed" : "RSVP confirmed"}</p>
         <h1 style="margin:8px 0 0;color:#f7f0e6;font-size:28px;">You&#39;re in, ${escapeHtml(input.name)}</h1>
@@ -109,9 +111,17 @@ function buildEventHtml(input: {
         ${
           isTicket
             ? `<table style="width:100%;border-collapse:collapse;border-top:1px solid #2a231b;margin-top:20px;">
+                ${
+                  quantity > 1
+                    ? `<tr>
+                        <td style="padding:12px 0 0;color:#b8ada0;font-size:14px;">Tickets</td>
+                        <td style="padding:12px 0 0;color:#b8ada0;font-size:14px;text-align:right;">${quantity} × ${formatCents(input.priceCents)}</td>
+                      </tr>`
+                    : ""
+                }
                 <tr>
                   <td style="padding:12px 0 0;color:#f7f0e6;font-size:15px;font-weight:600;">Total paid</td>
-                  <td style="padding:12px 0 0;color:#f7f0e6;font-size:15px;font-weight:600;text-align:right;">${formatCents(input.priceCents)}</td>
+                  <td style="padding:12px 0 0;color:#f7f0e6;font-size:15px;font-weight:600;text-align:right;">${formatCents(input.priceCents * quantity)}</td>
                 </tr>
               </table>`
             : ""
@@ -121,7 +131,7 @@ function buildEventHtml(input: {
             ? `<table style="width:100%;border-collapse:collapse;border-top:1px solid #2a231b;margin-top:20px;">
                 <tr>
                   <td style="padding:20px 0 0;text-align:center;">
-                    <p style="margin:0 0 12px;color:#ff7a00;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;font-weight:600;">Your ticket</p>
+                    <p style="margin:0 0 12px;color:#ff7a00;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;font-weight:600;">${quantity > 1 ? `Your tickets — admits ${quantity}` : "Your ticket"}</p>
                     <!-- cid: — the image travels with the email as an
                          attachment. A data: URI here would be stripped by
                          Gmail and most clients, leaving a broken box where
@@ -179,6 +189,8 @@ export async function sendEventConfirmationEmail(input: {
   eventDateLabel: string;
   eventVenue: string;
   priceCents: number;
+  /** How many people the one QR admits. Omitted or 1 reads as a single ticket. */
+  quantity?: number;
   /** The /checkin/<id> link the QR encodes. Omitted, no ticket block. */
   ticketUrl?: string;
   /** The QR as a data: URL, converted to a real attachment below. */
@@ -200,7 +212,11 @@ export async function sendEventConfirmationEmail(input: {
     from: FROM_ADDRESS,
     to: input.to,
     replyTo: REPLY_TO,
-    subject: isTicket ? `Your ticket for ${input.eventTitle} is confirmed` : `You're RSVP'd for ${input.eventTitle}`,
+    subject: isTicket
+      ? input.quantity && input.quantity > 1
+        ? `Your ${input.quantity} tickets for ${input.eventTitle} are confirmed`
+        : `Your ticket for ${input.eventTitle} is confirmed`
+      : `You're RSVP'd for ${input.eventTitle}`,
     html: buildEventHtml(input),
     attachments,
   });

@@ -52,6 +52,19 @@ export interface EventInfo {
 // noon here, and 7PM in whatever zone the customer's phone is set to. The
 // server and the browser would disagree about what a ticket costs, and on
 // the day of a show both would be wrong.
+// How many tickets one person can buy in a single order. A cap belongs
+// here rather than in the database: it's a door/capacity decision that
+// changes with the room, not a fact about the data.
+export const MAX_TICKETS_PER_ORDER = 5;
+
+// Anything unusable becomes 1 rather than the cap — a broken client should
+// cost the buyer nothing, not sell them the largest order on offer.
+export function clampTicketQuantity(requested: unknown): number {
+  const quantity = Math.floor(Number(requested));
+  if (!Number.isFinite(quantity) || quantity < 1) return 1;
+  return Math.min(quantity, MAX_TICKETS_PER_ORDER);
+}
+
 const EVENT_TIME_ZONE = "America/Los_Angeles";
 
 // How far the event zone is from UTC at a given instant — worked out from

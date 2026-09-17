@@ -72,7 +72,20 @@ export default async function CheckinPage(props: PageProps<"/checkin/[rsvpId]">)
       <div className="card-surface mt-8 w-full rounded-2xl border border-border-strong p-6 text-left">
         <p className="text-xs font-semibold tracking-wide text-muted uppercase">Ticket holder</p>
         <p className="font-display mt-1 text-2xl">{rsvp.name}</p>
-        {isTicket && <p className="mt-3 text-sm text-muted">Paid {formatCents(rsvp.priceCents)}</p>}
+
+        {/* How many people this one code lets in. Door staff read this off
+            the phone to know whether it's one guest or a group of five, so
+            it gets more weight than the price does. */}
+        {rsvp.quantity > 1 && (
+          <p className="text-flame-3 font-display mt-2 text-xl">Admits {rsvp.quantity}</p>
+        )}
+
+        {isTicket && (
+          <p className="mt-3 text-sm text-muted">
+            Paid {formatCents(rsvp.priceCents * rsvp.quantity)}
+            {rsvp.quantity > 1 ? ` (${rsvp.quantity} × ${formatCents(rsvp.priceCents)})` : ""}
+          </p>
+        )}
 
         {used && rsvp.checkedInAt && (
           <p className="text-flame-3 mt-3 text-sm">
@@ -105,7 +118,7 @@ export default async function CheckinPage(props: PageProps<"/checkin/[rsvpId]">)
               <input type="hidden" name="rsvpId" value={rsvp.id} />
               <input type="hidden" name="eventId" value={rsvp.eventId} />
               <button type="submit" className="btn-flame w-full rounded-full px-6 py-4 text-base">
-                Check in {rsvp.name}
+                {rsvp.quantity > 1 ? `Check in all ${rsvp.quantity}` : `Check in ${rsvp.name}`}
               </button>
             </form>
           )}

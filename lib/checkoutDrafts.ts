@@ -124,6 +124,7 @@ export interface EventCheckoutDraft {
   name: string;
   email: string;
   phone: string;
+  quantity: number;
   selectedArtist: string;
   waiverAgreed: boolean;
   referenceId: string;
@@ -140,6 +141,7 @@ export const eventCheckoutDraft = createSessionDraftStore<EventCheckoutDraft>(
       name: readString(raw, "name"),
       email: readString(raw, "email"),
       phone: readString(raw, "phone"),
+      quantity: typeof raw.quantity === "number" && raw.quantity >= 1 ? raw.quantity : 1,
       selectedArtist: readString(raw, "selectedArtist"),
       waiverAgreed: raw.waiverAgreed === true,
       referenceId: readString(raw, "referenceId"),

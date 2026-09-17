@@ -21,7 +21,9 @@ function EventEntryCard({ entry, qrDataUrl }: { entry: EventHistoryEntry; qrData
             isTicket ? "bg-flame-2/15 text-flame-3" : "border border-border-strong text-muted"
           }`}
         >
-          {isTicket ? `Ticket · ${formatCents(rsvp.priceCents)}` : "RSVP"}
+          {isTicket
+            ? `${rsvp.quantity > 1 ? `${rsvp.quantity} tickets` : "Ticket"} · ${formatCents(rsvp.priceCents * rsvp.quantity)}`
+            : "RSVP"}
         </span>
       </div>
 
