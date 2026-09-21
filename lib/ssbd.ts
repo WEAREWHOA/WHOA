@@ -240,29 +240,27 @@ export const SCHEDULE_AREAS: ScheduleArea[] = [
       { name: "Ali", friday: "10 AM – 6 PM", saturday: "2 PM – 10 PM", sunday: "2 PM – 10 PM" },
       { name: "Dylan", friday: "6 PM – 2 AM", saturday: "10 PM – 6 AM", sunday: "8 PM – 4 AM" },
       { name: "Julianna", friday: "10 PM – 6 AM", saturday: "10 PM – 6 AM", sunday: "10 PM – 4 AM" },
-      { name: "Bryce", friday: "10 PM – 6 AM", saturday: "10 PM – 6 AM", sunday: "6 PM – 2 AM" },
-      { name: "James", friday: "10 PM – 6 AM", saturday: "6 PM – 2 AM", sunday: "10 PM – 4 AM" },
+      { name: "Bryce S", friday: "10 PM – 6 AM", saturday: "10 PM – 6 AM", sunday: "6 PM – 2 AM" },
+      // OFF is a real entry, not a blank: a crew member reading their row
+      // needs to see the day accounted for, not wonder if it's missing.
+      { name: "James", friday: "OFF", saturday: "6 PM – 2 AM", sunday: "10 PM – 4 AM" },
     ],
   },
   {
     id: "whoa-oasis",
     label: "WHOA OASIS",
     shifts: [
-      // Two windows on Sunday — the day shift, then the overnight. Both in
-      // the one cell rather than a second Michele row, so nobody reads the
-      // list and thinks there are two of her.
-      { name: "Michele", friday: "10 AM – 7 PM", saturday: "10 AM – 7 PM", sunday: "10 AM – 7 PM · 1 AM – 4 AM" },
+      { name: "Michele", friday: "10 AM – 7 PM", saturday: "10 AM – 7 PM", sunday: "10 AM – 7 PM" },
       { name: "Vee", friday: "10 AM – 6 PM", saturday: "10 AM – 6 PM", sunday: "10 AM – 6 PM" },
-      { name: "Lily", friday: "2 – 10 PM", saturday: "2 – 10 PM", sunday: "2 – 10 PM" },
+      { name: "Kyle (Coastal Hook)", friday: "2 – 10 PM", saturday: "2 – 10 PM", sunday: "2 – 10 PM" },
+      { name: "Maggie", friday: "2 – 10 PM", saturday: "2 – 10 PM", sunday: "2 – 10 PM" },
       { name: "Nate", friday: "2 – 10 PM", saturday: "2 – 10 PM", sunday: "2 – 10 PM" },
-      { name: "Bryce", friday: "6 PM – 2 AM", saturday: "6 PM – 2 AM", sunday: "6 PM – 2 AM" },
-      { name: "Charlotte", friday: "8 PM – 4 AM", saturday: "6 PM – 2 AM", sunday: "6 PM – 2 AM" },
-      { name: "Marc Hazelhoff", friday: "10 PM – 6 AM", saturday: "10 PM – 6 AM", sunday: "8 PM – 4 AM" },
+      { name: "Bryce H", friday: "6 PM – 2 AM", saturday: "6 PM – 2 AM", sunday: "6 PM – 2 AM" },
       // OFF is a real entry, not a blank: a crew member reading their row
       // needs to see the day accounted for, not wonder if it's missing.
+      { name: "Charlotte", friday: "8 PM – 4 AM", saturday: "OFF", sunday: "6 PM – 2 AM" },
+      { name: "Marc Hazelhoff", friday: "10 PM – 6 AM", saturday: "10 PM – 6 AM", sunday: "8 PM – 4 AM" },
       { name: "Rome", friday: "OFF", saturday: "12 – 6 AM", sunday: "10 PM – 4 AM" },
-      { name: "Kyle (Coastal Hook)", friday: "OFF", saturday: "10 AM – 4 PM", sunday: "10 PM – 4 AM" },
-      { name: "Maggie", friday: "OFF", saturday: "10 AM – 4 PM", sunday: "10 PM – 4 AM" },
     ],
     managers: [
       {
