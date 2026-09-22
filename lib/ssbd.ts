@@ -252,15 +252,26 @@ export const SCHEDULE_AREAS: ScheduleArea[] = [
     shifts: [
       { name: "Michele", friday: "10 AM – 7 PM", saturday: "10 AM – 7 PM", sunday: "10 AM – 7 PM" },
       { name: "Vee", friday: "10 AM – 6 PM", saturday: "10 AM – 6 PM", sunday: "10 AM – 6 PM" },
-      { name: "Kyle (Coastal Hook)", friday: "2 – 10 PM", saturday: "2 – 10 PM", sunday: "2 – 10 PM" },
-      { name: "Maggie", friday: "2 – 10 PM", saturday: "2 – 10 PM", sunday: "2 – 10 PM" },
+      // "(w/ Nick)" is who they're paired with on shift, kept in the name
+      // so it travels with the row rather than needing a column nobody
+      // else would fill in.
+      { name: "Hope (w/ Nick)", friday: "2 – 10 PM", saturday: "2 – 10 PM", sunday: "2 – 10 PM" },
+      { name: "Kim (w/ Nick)", friday: "2 – 10 PM", saturday: "2 – 10 PM", sunday: "2 – 10 PM" },
       { name: "Nate", friday: "2 – 10 PM", saturday: "2 – 10 PM", sunday: "2 – 10 PM" },
+      // "Bryce H" and the ART GALLERY's "Bryce S" are two different people.
+      // The new rota writes this one as plain "Bryce"; the initial stays so
+      // the two rows can still be told apart on one sheet.
       { name: "Bryce H", friday: "6 PM – 2 AM", saturday: "6 PM – 2 AM", sunday: "6 PM – 2 AM" },
       // OFF is a real entry, not a blank: a crew member reading their row
       // needs to see the day accounted for, not wonder if it's missing.
       { name: "Charlotte", friday: "8 PM – 4 AM", saturday: "OFF", sunday: "6 PM – 2 AM" },
       { name: "Marc Hazelhoff", friday: "10 PM – 6 AM", saturday: "10 PM – 6 AM", sunday: "8 PM – 4 AM" },
       { name: "Rome", friday: "OFF", saturday: "12 – 6 AM", sunday: "10 PM – 4 AM" },
+      // Back on nights: the previous rota had these two on 2–10 PM, which
+      // Hope and Kim now cover. "(Coastal Hook)" tells this Kyle apart from
+      // the Kyle in the managers table below.
+      { name: "Kyle (Coastal Hook)", friday: "OFF", saturday: "10 PM – 4 AM", sunday: "10 PM – 4 AM" },
+      { name: "Maggie", friday: "OFF", saturday: "10 PM – 4 AM", sunday: "10 PM – 4 AM" },
     ],
     managers: [
       {
