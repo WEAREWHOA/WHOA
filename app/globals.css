@@ -582,3 +582,306 @@ body {
 .water-input:focus {
   border-color: var(--water-bright);
 }
+
+/* ── THE SSBD EXPERIENCE · /go ────────────────────────────────────────
+   A portal you travel through into a village. Scoped under .go-root so
+   none of it escapes into the rest of the site. */
+.go-root {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 50% 40%, #241538 0%, #0c0812 60%),
+    #0c0812;
+  color: #f7f0e6;
+}
+
+/* ── the portal ─────────────────────────────────────────────────────── */
+.go-portal {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.go-portal-rings {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.go-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid;
+  animation-name: go-spin;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  /* The rush outward when the portal opens. */
+  transition:
+    transform 1.3s cubic-bezier(0.6, 0, 0.9, 0.3),
+    opacity 1.3s ease-in;
+}
+
+.go-portal-core {
+  position: absolute;
+  width: 6vmax;
+  height: 6vmax;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, #ffb800 35%, #ff2f1a 70%, transparent 100%);
+  filter: blur(2px);
+  animation: go-pulse 2.4s ease-in-out infinite;
+  transition:
+    transform 1.3s cubic-bezier(0.6, 0, 0.9, 0.3),
+    opacity 1s ease-in;
+}
+
+/* Travelling: everything rushes past the viewport and fades. */
+.go-portal-open .go-ring,
+.go-portal-open .go-portal-core {
+  transform: scale(9);
+  opacity: 0;
+}
+
+@keyframes go-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+@keyframes go-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.18);
+    opacity: 1;
+  }
+}
+
+.go-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 21;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  pointer-events: none;
+}
+
+.go-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: #ffb800;
+}
+
+.go-title {
+  margin-top: 14px;
+  font-size: clamp(2.2rem, 9vw, 5rem);
+  letter-spacing: 0.06em;
+  line-height: 0.95;
+  text-shadow: 0 0 40px rgba(255, 122, 0, 0.5);
+}
+
+.go-skip {
+  margin-top: 26px;
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: rgba(247, 240, 230, 0.45);
+}
+
+/* ── the village ────────────────────────────────────────────────────── */
+.go-village {
+  position: relative;
+  z-index: 10;
+  opacity: 0;
+  transform: scale(1.35);
+  transition:
+    opacity 1.1s ease-out,
+    transform 1.4s cubic-bezier(0.2, 0.7, 0.3, 1);
+  padding: 96px 16px 56px;
+}
+
+/* Arriving: the village settles back as if you stepped out of the tunnel. */
+.go-village-in {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.go-map {
+  display: block;
+  width: 100%;
+  max-width: 940px;
+  margin: 0 auto;
+}
+
+.go-hut {
+  cursor: pointer;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition:
+    transform 0.3s ease,
+    filter 0.3s ease;
+}
+.go-hut:hover,
+.go-hut:focus-visible {
+  transform: translateY(-8px) scale(1.04);
+  filter: brightness(1.15);
+}
+
+.go-hut-glow {
+  animation: go-breathe 4.5s ease-in-out infinite;
+}
+
+.go-hut-label {
+  font-family: var(--font-display);
+  font-size: 30px;
+  letter-spacing: 0.14em;
+}
+
+.go-fire {
+  animation: go-breathe 3s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.go-torch {
+  animation: go-flicker 1.8s ease-in-out infinite;
+}
+
+@keyframes go-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.07);
+  }
+}
+
+@keyframes go-flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  45% {
+    opacity: 0.55;
+  }
+  70% {
+    opacity: 0.85;
+  }
+}
+
+/* ── chrome of its own ──────────────────────────────────────────────── */
+.go-header {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  background: linear-gradient(to bottom, rgba(12, 8, 18, 0.9), transparent);
+}
+
+.go-exit {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(247, 240, 230, 0.55);
+}
+.go-exit:hover {
+  color: #f7f0e6;
+}
+
+.go-welcome {
+  position: relative;
+  z-index: 10;
+  margin: -16px auto 0;
+  max-width: 640px;
+  padding: 0 20px 40px;
+  text-align: center;
+}
+
+.go-welcome-title {
+  margin-top: 10px;
+  font-size: clamp(1.8rem, 6vw, 3rem);
+  letter-spacing: 0.06em;
+}
+
+.go-welcome-sub {
+  margin-top: 10px;
+  font-size: 14px;
+  color: rgba(247, 240, 230, 0.6);
+}
+
+.go-zone-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  max-width: 940px;
+  margin: 28px auto 0;
+  padding: 0 4px;
+}
+@media (min-width: 640px) {
+  .go-zone-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.go-zone-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid;
+  border-radius: 16px;
+  background: rgba(23, 15, 36, 0.7);
+  padding: 16px 18px;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+.go-zone-card:hover {
+  transform: translateY(-2px);
+  background: rgba(36, 21, 56, 0.85);
+}
+
+.go-zone-name {
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: 0.12em;
+}
+
+.go-zone-blurb {
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(247, 240, 230, 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .go-ring,
+  .go-portal-core,
+  .go-hut-glow,
+  .go-fire,
+  .go-torch {
+    animation: none !important;
+  }
+  .go-village {
+    transition: none !important;
+  }
+}
