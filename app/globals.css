@@ -566,3 +566,19 @@ body {
     transition: none !important;
   }
 }
+
+.water-input {
+  border-radius: 10px;
+  border: 1px solid var(--water-line);
+  background: rgba(4, 22, 28, 0.8);
+  padding: 12px 14px;
+  font-size: 15px;
+  color: var(--water-text);
+  outline: none;
+}
+.water-input::placeholder {
+  color: #6f909c;
+}
+.water-input:focus {
+  border-color: var(--water-bright);
+}

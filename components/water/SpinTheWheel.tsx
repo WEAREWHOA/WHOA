@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { recordWaterSpin, useWaterSpin } from "@/components/water/waterPrize";
+import ClaimPrize from "@/components/water/ClaimPrize";
 
 /**
  * The wheel's faces, in the order they're drawn, clockwise from the top.
@@ -93,15 +94,22 @@ export default function SpinTheWheel() {
         >
           <svg viewBox="0 0 200 200" className="h-full w-full">
             {SLICES.map((slice, i) => {
-              const start = (i * sliceAngle - 90) * (Math.PI / 180);
-              const end = ((i + 1) * sliceAngle - 90) * (Math.PI / 180);
-              const x1 = 100 + 100 * Math.cos(start);
-              const y1 = 100 + 100 * Math.sin(start);
-              const x2 = 100 + 100 * Math.cos(end);
-              const y2 = 100 + 100 * Math.sin(end);
-              const mid = (i * sliceAngle + sliceAngle / 2 - 90) * (Math.PI / 180);
-              const tx = 100 + 62 * Math.cos(mid);
-              const ty = 100 + 62 * Math.sin(mid);
+              // Rounded, and not for tidiness: Math.cos/Math.sin aren't
+              // required to be correctly rounded, so Node and the browser
+              // can disagree in the last bits and render path strings that
+              // differ by a digit. React sees that as a hydration mismatch
+              // and warns it "won't be patched up". Two decimals is well
+              // past what a 200-unit viewBox can show.
+              const at = (deg: number, radius: number) => {
+                const rad = (deg - 90) * (Math.PI / 180);
+                return [
+                  (100 + radius * Math.cos(rad)).toFixed(2),
+                  (100 + radius * Math.sin(rad)).toFixed(2),
+                ] as const;
+              };
+              const [x1, y1] = at(i * sliceAngle, 100);
+              const [x2, y2] = at((i + 1) * sliceAngle, 100);
+              const [tx, ty] = at(i * sliceAngle + sliceAngle / 2, 62);
 
               return (
                 <g key={i}>
@@ -156,13 +164,10 @@ export default function SpinTheWheel() {
               </p>
               <h3 className="font-display mt-2 text-4xl tracking-wide">A FREE STICKER</h3>
               <p className="mt-3 text-sm text-[#a9c9d4]">
-                Show this screen at <strong className="text-[#e9f6fa]">the WHOAdega</strong> in Ocean
-                Beach to claim it.
+                Show it at <strong className="text-[#e9f6fa]">the WHOAdega</strong> in Ocean Beach to
+                pick it up.
               </p>
-              <p className="water-code mt-5">{spin.code}</p>
-              <p className="mt-3 text-xs text-[#6f909c]">
-                4847 Newport Ave, San Diego · one sticker per bottle
-              </p>
+              <ClaimPrize code={spin.code} />
             </div>
           ) : (
             <div className="water-prize">

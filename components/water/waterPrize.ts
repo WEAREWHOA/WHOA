@@ -5,24 +5,29 @@ import { useSyncExternalStore } from "react";
 /**
  * The one spin a bottle gets.
  *
- * Stored per device rather than per account, because the person scanning
- * the QR on an H2WHOA bottle is usually not signed in — asking them to log
- * in before they can spin would lose most of them at the first tap. The
- * trade-off is that this is a fun, low-stakes promo, not a controlled
- * voucher: clearing site data or using another phone gets another spin.
- * Worth knowing before the prize becomes anything more expensive than a
- * sticker — see the note in app/water/page.tsx.
+ * The spin is stored per device, because the person scanning a QR on a
+ * bottle usually isn't signed in and making them log in before they can
+ * play would lose most of them at the first tap. Clearing site data buys
+ * another spin, and that's fine — the spin isn't the prize.
+ *
+ * The *prize* is a different matter: a win only becomes a code once
+ * there's an account behind it (see app/water/actions.ts), and the code
+ * is issued and stored server-side against that account. So however many
+ * times someone re-spins, one person still gets one sticker.
  */
 
 const STORAGE_KEY = "whoa_water_spin";
 
 export interface WaterSpin {
-  /** true = free sticker. */
+  /** true = free sticker, pending a claim. */
   won: boolean;
-  /** Shown at the WHOAdega so staff have something to read back. */
-  code: string;
-  /** ISO date, so staff can see how old a claim is. */
+  /** ISO date of the spin. */
   spunAt: string;
+  /**
+   * The server-issued claim code, once an account has claimed it. Absent
+   * on a fresh win — that's what tells the page to ask them to sign up.
+   */
+  code?: string;
 }
 
 let spin: WaterSpin | null = null;
@@ -36,8 +41,12 @@ function hydrateFromStorage() {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return;
     const parsed = JSON.parse(raw) as Partial<WaterSpin>;
-    if (typeof parsed.won === "boolean" && typeof parsed.code === "string") {
-      spin = { won: parsed.won, code: parsed.code, spunAt: parsed.spunAt ?? "" };
+    if (typeof parsed.won === "boolean") {
+      spin = {
+        won: parsed.won,
+        spunAt: parsed.spunAt ?? "",
+        code: typeof parsed.code === "string" ? parsed.code : undefined,
+      };
     }
   } catch {
     // Unreadable storage just means they get to spin — the friendlier miss.
@@ -68,14 +77,13 @@ export function useWaterSpin(): WaterSpin | null {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
 
-/** A short, readable code — staff read it off a screen, so no lookalikes. */
-function makeCode(): string {
-  const alphabet = "ACDEFHJKLMNPRTWXY3479";
-  let code = "";
-  for (let i = 0; i < 6; i += 1) {
-    code += alphabet[Math.floor(Math.random() * alphabet.length)];
+function persist() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(spin));
+  } catch {
+    // Private browsing — the result still shows for this visit, it just
+    // won't survive a reload.
   }
-  return `H2W-${code}`;
 }
 
 export function recordWaterSpin(won: boolean): WaterSpin {
@@ -84,13 +92,17 @@ export function recordWaterSpin(won: boolean): WaterSpin {
   // it. One chance means one chance, including on a double-tap.
   if (spin) return spin;
 
-  spin = { won, code: makeCode(), spunAt: new Date().toISOString() };
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(spin));
-  } catch {
-    // Private browsing — the result still shows for this visit, it just
-    // won't survive a reload.
-  }
+  spin = { won, spunAt: new Date().toISOString() };
+  persist();
   notify();
   return spin;
+}
+
+/** Remembers the code the server issued, so it survives a reload. */
+export function saveWaterCode(code: string) {
+  hydrateFromStorage();
+  if (!spin) return;
+  spin = { ...spin, code };
+  persist();
+  notify();
 }

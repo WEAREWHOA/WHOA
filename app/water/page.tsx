@@ -11,16 +11,25 @@ import SpinTheWheel from "@/components/water/SpinTheWheel";
  * that reads as its own thing rather than a page of the website, with its
  * own explicit ways in rather than a navbar.
  *
- * The spin is stored per device, not per account: asking someone to sign
- * in before they can spin would lose most of them at the first tap. That
- * makes it a fun promo rather than a controlled voucher — clearing site
- * data gets another spin. Fine for a sticker; worth revisiting before the
- * prize is worth more than one.
+ * Spinning is anonymous and per device — making someone sign in before
+ * they can play would lose most of them at the first tap. Claiming a win
+ * is not: the code is issued against an account (app/water/actions.ts),
+ * so re-spinning on a fresh browser buys another spin but never a second
+ * sticker.
+ *
+ * noindex, deliberately. The page is worth nothing in search — nobody is
+ * looking for it, and its content only repeats /about and /join — while a
+ * page that says "spin to win a free sticker" ranking in Google turns a
+ * reward for picking up a bottle into something anyone can find without
+ * ever touching one. It stays crawlable (a robots.txt Disallow would stop
+ * Google reading the noindex and could leave a bare URL in the index) and
+ * out of the sitemap.
  */
 export const metadata: Metadata = {
   title: "H2WHOA",
   description:
     "You found an H2WHOA bottle. Recycle me, meet WHOA, and spin once for a free sticker at the WHOAdega in Ocean Beach.",
+  robots: { index: false, follow: true },
 };
 
 export default function WaterPage() {
@@ -118,16 +127,16 @@ export default function WaterPage() {
             SPIN THE WHEEL
           </h2>
           <p className="mx-auto mt-4 mb-10 max-w-md text-center text-sm leading-relaxed text-[#a9c9d4]">
-            You get one. Land on a sticker and it&apos;s yours — show this screen at the WHOAdega in
-            Ocean Beach to pick it up.
+            You get one. Land on a sticker and it&apos;s yours — claim it to a free WHOA account
+            and pick it up at the WHOAdega in Ocean Beach.
           </p>
 
           <SpinTheWheel />
         </div>
 
         <p className="mt-10 text-center text-xs leading-relaxed text-[#6f909c]">
-          One spin per bottle, while stickers last. Claim in person at the WHOAdega, 4847 Newport
-          Ave, San Diego.
+          One spin per bottle and one sticker per account, while stickers last. Claim in person at
+          the WHOAdega, 4847 Newport Ave, San Diego.
         </p>
 
         <p className="mt-8 text-center">
