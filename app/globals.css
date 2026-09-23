@@ -440,3 +440,129 @@ body {
   font-weight: 700;
   color: #17120b;
 }
+
+/* ── H2WHOA · /water ──────────────────────────────────────────────────
+   The QR landing on the water bottle. Scoped under .water-root so its
+   cooler palette can't reach the rest of the site — this one is water,
+   not flame. */
+.water-root {
+  --water-deep: #04161c;
+  --water-surface: #0a2530;
+  --water-line: rgba(233, 246, 250, 0.12);
+  --water-bright: #4fc3e0;
+  --water-text: #e9f6fa;
+  --water-dim: #a9c9d4;
+
+  min-height: 100vh;
+  background:
+    radial-gradient(130% 70% at 50% 0%, #0d3c4c 0%, var(--water-deep) 60%),
+    var(--water-deep);
+  color: var(--water-text);
+}
+
+.water-eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--water-bright);
+}
+
+.water-divider {
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 0.6em;
+  color: rgba(79, 195, 224, 0.45);
+}
+
+.water-card {
+  border: 1px solid var(--water-line);
+  border-radius: 16px;
+  background: rgba(10, 37, 48, 0.6);
+  padding: 20px;
+}
+
+.water-btn,
+.water-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 13px 26px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  transition:
+    filter 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+.water-btn {
+  background: var(--water-bright);
+  color: #04161c;
+}
+.water-btn:hover {
+  filter: brightness(1.1);
+}
+.water-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.water-btn-ghost {
+  border: 1px solid var(--water-line);
+  color: var(--water-dim);
+}
+.water-btn-ghost:hover {
+  border-color: var(--water-bright);
+  color: var(--water-text);
+}
+
+.water-spin-panel {
+  border: 1px solid var(--water-line);
+  border-radius: 24px;
+  background: rgba(4, 22, 28, 0.55);
+  padding: 32px 20px 40px;
+}
+
+.water-wheel {
+  width: min(78vw, 320px);
+  height: min(78vw, 320px);
+  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.55));
+}
+
+/* The pointer sits above the wheel's top edge and doesn't rotate with it. */
+.water-pointer {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  z-index: 2;
+  width: 0;
+  height: 0;
+  transform: translateX(-50%);
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-top: 20px solid var(--water-bright);
+}
+
+.water-prize {
+  border: 1px solid rgba(79, 195, 224, 0.4);
+  border-radius: 18px;
+  background: rgba(79, 195, 224, 0.08);
+  padding: 24px 20px;
+}
+
+.water-code {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  letter-spacing: 0.22em;
+  color: var(--water-bright);
+  border: 1px dashed rgba(79, 195, 224, 0.5);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .water-wheel {
+    transition: none !important;
+  }
+}
