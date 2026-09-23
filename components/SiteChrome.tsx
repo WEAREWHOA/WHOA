@@ -16,9 +16,11 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
     pathname === "/" ||
     pathname?.startsWith("/pos") ||
     pathname?.startsWith("/oasis") ||
-    // /water is the QR landing on an H2WHOA bottle — it gets its own
-    // ways into the site rather than a navbar wrapped around it.
-    pathname?.startsWith("/water");
+    // /water is the QR landing on an H2WHOA bottle, /go is the SSBD
+    // experience — both get their own ways into the site rather than a
+    // navbar wrapped around them.
+    pathname?.startsWith("/water") ||
+    pathname?.startsWith("/go");
 
   if (isImmersive) {
     return <main className="flex flex-1 flex-col">{children}</main>;
