@@ -13,7 +13,12 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
   // catalogue is the same idea: its own place, entered from the footer,
   // with its own header and no WHOA chrome around it.
   const isImmersive =
-    pathname === "/" || pathname?.startsWith("/pos") || pathname?.startsWith("/oasis");
+    pathname === "/" ||
+    pathname?.startsWith("/pos") ||
+    pathname?.startsWith("/oasis") ||
+    // /water is the QR landing on an H2WHOA bottle — it gets its own
+    // ways into the site rather than a navbar wrapped around it.
+    pathname?.startsWith("/water");
 
   if (isImmersive) {
     return <main className="flex flex-1 flex-col">{children}</main>;
