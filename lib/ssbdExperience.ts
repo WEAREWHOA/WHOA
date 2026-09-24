@@ -1,69 +1,70 @@
 /**
- * The four areas of the SSBD village.
+ * The four doors of the SSBD experience, one per element.
  *
- * Every one maps to a real place at the festival *and* to something this
- * site already does, so walking into a hut always lands somewhere with
- * substance rather than a coming-soon page:
+ * Each maps to something this site already does, so a door always opens
+ * on something real:
  *
- *   WHOADEGA        → the shop (the bazaar, in the village)
- *   ARCADE          → the eleven games already built under /games
- *   CREATION STATION→ the custom design editor
- *   WHOA OASIS      → the pre-order catalogue
+ *   FIRE  → the shop, the hottest thing WHOA makes
+ *   AIR   → the games, light and quick
+ *   EARTH → the scavenger hunt, walked on real ground
+ *   WATER → the story, which runs deep
  *
- * Deliberately not here: the Art and Music Collectives, which are locked
- * behind "coming soon" (see lib/lockedRoutes.ts) — a village hut you can
- * walk into and find nothing is worse than no hut.
+ * Elements are not decoration here: each one drives its box's colour and
+ * its animation, so the four read as four different things at a glance
+ * rather than four tiles in four hues.
  */
 
-export interface VillageZone {
+export type Element = "fire" | "water" | "air" | "earth";
+
+export interface ExperienceDoor {
   id: string;
-  /** Shown carved on the sign. */
+  element: Element;
+  /** Big, on the box. */
   name: string;
-  /** One line, in the village's voice. */
+  /** One line underneath. */
   blurb: string;
   href: string;
-  /** Where the hut sits in the 1000x800 village viewBox. */
-  x: number;
-  y: number;
-  /** Ties the hut, its sign and its card to one colour. */
+  /** Core colour, and the one the animation is drawn in. */
   accent: string;
+  /** Second colour, for the gradient the box sits in. */
+  accentDeep: string;
 }
 
-export const VILLAGE_ZONES: VillageZone[] = [
+export const EXPERIENCE_DOORS: ExperienceDoor[] = [
   {
-    id: "whoadega",
-    name: "THE WHOADEGA",
-    blurb: "The bazaar. Stalls, racks and everything with our name on it.",
+    id: "shop",
+    element: "fire",
+    name: "SHOP",
+    blurb: "Everything with our name on it.",
     href: "/shop",
-    x: 250,
-    y: 250,
     accent: "#ff7a00",
+    accentDeep: "#ff2f1a",
   },
   {
-    id: "arcade",
-    name: "THE ARCADE",
-    blurb: "Eleven games, no quarters. Snake, graffiti, beat pads and more.",
+    id: "games",
+    element: "air",
+    name: "GAMES",
+    blurb: "Eleven of them. No quarters needed.",
     href: "/games",
-    x: 750,
-    y: 250,
-    accent: "#7b2ff7",
+    accent: "#b9a7ff",
+    accentDeep: "#6d4fd6",
   },
   {
-    id: "creation-station",
-    name: "CREATION STATION",
-    blurb: "Draw your own piece and we'll put it on real fabric.",
-    href: "/custom-design",
-    x: 250,
-    y: 560,
-    accent: "#2ea8c7",
+    id: "journey",
+    element: "earth",
+    name: "THE JOURNEY",
+    blurb: "Six hidden codes, one per WHOA branch. Find them all.",
+    href: "/games/hunt",
+    accent: "#9ecf6d",
+    accentDeep: "#3f6b2e",
   },
   {
-    id: "oasis",
-    name: "WHOA OASIS",
-    blurb: "Water, shade, and a catalogue of things not made yet.",
-    href: "/oasis",
-    x: 750,
-    y: 560,
-    accent: "#e8a33d",
+    id: "story",
+    element: "water",
+    name: "STORY OF WHOA",
+    blurb: "Where this came from, and who built it.",
+    href: "/about",
+    accent: "#4fc3e0",
+    accentDeep: "#1b6f8c",
   },
 ];
