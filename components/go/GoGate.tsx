@@ -10,7 +10,7 @@ import { enterExperienceAction } from "@/app/go/actions";
  * already started before anyone has typed anything — the account is the
  * key to the door, not a form standing in front of it.
  */
-export default function GoGate({ scanned }: { scanned?: string }) {
+export default function GoGate() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -31,8 +31,7 @@ export default function GoGate({ scanned }: { scanned?: string }) {
     }
 
     // The page decides what to show from the session, so a refresh moves
-    // them through the door — and because ?s= is still in the URL, a
-    // scanned sticker gets stamped on that same pass.
+    // them through the door, scavenger card and all.
     router.refresh();
   }
 
@@ -44,9 +43,8 @@ export default function GoGate({ scanned }: { scanned?: string }) {
         <p className="go-eyebrow">Same Same But Different</p>
         <h1 className="font-display go-title">THE SSBD EXPERIENCE</h1>
         <p className="go-gate-sub">
-          {scanned
-            ? "Nice find. Make a free WHOA account to keep that stamp — or sign in with one you already have."
-            : "Four doors on the other side. Make a free WHOA account to step through — or sign in with one you already have."}
+          Four doors on the other side, and your scavenger card. Make a free WHOA account to step
+          through — or sign in with one you already have.
         </p>
 
         <form onSubmit={handleEnter} className="go-gate-form">

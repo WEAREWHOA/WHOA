@@ -1,18 +1,18 @@
 -- The Creation Station scavenger card.
 --
--- Six stickers are spread around Creation Station. Each one carries its
--- own token (see SCAVENGER_SLOTS in lib/scavenger.ts) and stamps its own
--- square on the card, which is what makes "six different scans" mean six
--- different stickers rather than one sticker scanned six times.
+-- Every sticker in Creation Station carries the same printed URL (/go),
+-- so a row cannot record which sticker was scanned — only that a stamp
+-- was earned. slot therefore holds the square's ordinal ('slot-1' …
+-- 'slot-6'), filled in order.
 --
--- One row per account per slot, so a re-scan of a sticker already found
--- is a no-op rather than a second stamp.
+-- The unique index is still what keeps the card honest about its own
+-- count: it caps an account at six rows and stops a double-tapped button
+-- becoming two stamps. The spacing between stamps is enforced in
+-- lib/scavenger.ts, from stamped_at.
 
 create table if not exists scavenger_stamps (
   id uuid primary key default gen_random_uuid(),
   account_code text not null,
-  -- The slot id, not the token: tokens can be reprinted without
-  -- invalidating stamps people have already earned.
   slot text not null,
   stamped_at timestamptz not null default now(),
   unique (account_code, slot)

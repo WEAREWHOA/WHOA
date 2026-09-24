@@ -53,7 +53,7 @@ export const EXPERIENCE_DOORS: ExperienceDoor[] = [
     id: "scavenger",
     element: "earth",
     name: "SCAVENGER",
-    blurb: "Six stickers hidden around Creation Station. Scan any six.",
+    blurb: "Six stickers hidden around Creation Station. Find them all.",
     href: "/go/scavenger",
     accent: "#9ecf6d",
     accentDeep: "#3f6b2e",
