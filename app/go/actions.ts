@@ -1,7 +1,9 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { resolveAccount } from "@/lib/accountAuth";
 import { getSessionAmbassadorCode } from "@/lib/auth";
+import { recordStamp, type StampResult } from "@/lib/scavenger";
 
 export interface EnterResult {
   ok: boolean;
@@ -37,4 +39,30 @@ export async function enterExperienceAction(input: {
   }
 
   return { ok: true };
+}
+
+/**
+ * Takes a stamp. A tap, never a page load — see recordStamp for why.
+ *
+ * Both pages that can stamp are revalidated, so the count in the /go
+ * banner and the squares on the card never disagree about where someone
+ * is.
+ */
+export async function stampAction(): Promise<StampResult> {
+  const code = await getSessionAmbassadorCode().catch(() => null);
+  if (!code) {
+    return {
+      outcome: "signed-out",
+      state: { count: 0, complete: false, nextStampAt: null, asOfSecond: 0 },
+    };
+  }
+
+  const result = await recordStamp(code);
+
+  if (result.outcome === "stamped") {
+    revalidatePath("/go");
+    revalidatePath("/go/scavenger");
+  }
+
+  return result;
 }

@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import GoGate from "@/components/go/GoGate";
 import SsbdExperience from "@/components/go/SsbdExperience";
 import { getSessionAmbassadorCode } from "@/lib/auth";
-import { recordStamp } from "@/lib/scavenger";
+import { getCardState } from "@/lib/scavenger";
 
 /**
- * /go — the SSBD EXPERIENCE, and the landing point for every scavenger
+ * /go — the SSBD EXPERIENCE, and the URL printed on every scavenger
  * sticker in Creation Station.
  *
  * An account is the key: anyone without a session gets the door, and the
@@ -14,29 +13,20 @@ import { recordStamp } from "@/lib/scavenger";
  * the server rather than in the browser, so the experience can't be
  * reached by flipping a flag in devtools.
  *
- * A sticker scan arrives as /go?s=<token>. If they're signed in the stamp
- * is recorded and they're sent to their card. If they're not, the token
- * is held through the door and applied the moment they're through — being
- * asked to sign up shouldn't cost someone the sticker they just walked to.
+ * Because the stickers all point here, a scan and a plain visit are the
+ * same request. So nothing is stamped on arrival — the four doors come
+ * up, with a stamp offered above them while a card is still unfilled.
  */
 export const metadata: Metadata = {
   title: "The SSBD Experience",
   description: "Step through the portal and pick your element — fire, air, earth or water.",
 };
 
-export default async function GoPage(props: PageProps<"/go">) {
-  const params = await props.searchParams;
-  const scanned = typeof params.s === "string" ? params.s : undefined;
-
+export default async function GoPage() {
   const code = await getSessionAmbassadorCode().catch(() => null);
-  if (!code) return <GoGate scanned={scanned} />;
+  if (!code) return <GoGate />;
 
-  // A scan: stamp it, then hand them their card rather than the doors.
-  if (scanned) {
-    const { outcome, slot } = await recordStamp(code, scanned);
-    const target = slot ? `/go/scavenger?outcome=${outcome}&s=${slot.token}` : `/go/scavenger?outcome=${outcome}`;
-    redirect(target);
-  }
+  const card = await getCardState(code);
 
-  return <SsbdExperience />;
+  return <SsbdExperience card={card} />;
 }

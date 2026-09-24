@@ -1,27 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { SCAVENGER_SLOTS, STAMPS_TO_COMPLETE, type StampOutcome } from "@/lib/scavenger";
+import StampControl from "@/components/go/StampControl";
+import {
+  STAMPS_TO_COMPLETE,
+  STAMP_COOLDOWN_MS,
+  STAMP_LABELS,
+  type CardState,
+} from "@/lib/scavenger";
 
 /**
- * The card itself: six squares, stamped as stickers are found.
+ * The card itself: six squares, filled in order as stickers are found.
  *
- * The square that was just stamped is called out rather than left for the
- * eye to spot — someone scanning in a crowd gets one glance at their
- * phone, and "which one changed" shouldn't be a puzzle.
+ * In order, rather than one square per sticker, because every sticker
+ * carries the same /go URL — the card can count what someone found, not
+ * which ones. Numbering the squares after specific stickers would read as
+ * a claim the page can't back up.
  */
-export default function ScavengerCard({
-  stamped,
-  justStamped,
-  outcome,
-}: {
-  stamped: string[];
-  /** The slot id stamped by the scan that brought them here, if any. */
-  justStamped?: string;
-  outcome?: StampOutcome;
-}) {
-  const found = new Set(stamped);
-  const complete = found.size >= STAMPS_TO_COMPLETE;
+export default function ScavengerCard({ card }: { card: CardState }) {
+  const minutes = Math.round(STAMP_COOLDOWN_MS / 60000);
 
   return (
     <div className="scav-root">
@@ -30,7 +27,7 @@ export default function ScavengerCard({
           ← SSBD
         </Link>
         <span className="go-exit">
-          {found.size} / {STAMPS_TO_COMPLETE}
+          {card.count} / {STAMPS_TO_COMPLETE}
         </span>
       </header>
 
@@ -38,38 +35,23 @@ export default function ScavengerCard({
         <p className="go-eyebrow">Creation Station</p>
         <h1 className="font-display scav-title">THE SCAVENGER</h1>
         <p className="scav-sub">
-          Six stickers are hidden around Creation Station. Scan any six different ones to fill your
-          card — it doesn&apos;t matter which.
+          Six stickers are hidden around Creation Station. Find one, scan it, and stamp your card —
+          then go and find the next. It doesn&apos;t matter which six you find.
         </p>
-
-        {outcome === "stamped" && (
-          <p className="scav-flash scav-flash-good">Stamped. {STAMPS_TO_COMPLETE - found.size} to go.</p>
-        )}
-        {outcome === "already-had-it" && (
-          <p className="scav-flash">You&apos;ve already got that one — find a different sticker.</p>
-        )}
-        {outcome === "unknown-code" && (
-          <p className="scav-flash">That code isn&apos;t part of the hunt.</p>
-        )}
-        {outcome === "failed" && (
-          <p className="scav-flash scav-flash-bad">
-            We couldn&apos;t save that scan — try scanning again in a moment.
-          </p>
-        )}
       </section>
 
       <div className="scav-card">
-        {SCAVENGER_SLOTS.map((slot, i) => {
-          const got = found.has(slot.id);
-          const fresh = justStamped === slot.id;
+        {STAMP_LABELS.map((label, i) => {
+          const got = i < card.count;
+          const fresh = i === card.count - 1;
           return (
             <div
-              key={slot.id}
+              key={label}
               className={`scav-slot ${got ? "scav-slot-on" : ""} ${fresh ? "scav-slot-fresh" : ""}`}
             >
               {got ? (
                 <>
-                  <span className="scav-stamp">{slot.label}</span>
+                  <span className="scav-stamp">{label}</span>
                   <span className="scav-slot-tick">✓</span>
                 </>
               ) : (
@@ -80,7 +62,7 @@ export default function ScavengerCard({
         })}
       </div>
 
-      {complete ? (
+      {card.complete ? (
         <div className="scav-done">
           <p className="go-eyebrow">Card complete</p>
           <h2 className="font-display scav-done-title">ALL SIX FOUND</h2>
@@ -90,9 +72,13 @@ export default function ScavengerCard({
           </p>
         </div>
       ) : (
-        <p className="scav-hint">
-          Keep scanning. Every sticker is a different square — the same one won&apos;t stamp twice.
-        </p>
+        <>
+          <StampControl card={card} variant="card" />
+          <p className="scav-hint">
+            One stamp every {minutes} minutes — long enough to get to the next sticker. Your card is
+            saved to your WHOA account, so you can close this and come back.
+          </p>
+        </>
       )}
     </div>
   );
