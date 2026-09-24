@@ -32,7 +32,7 @@ export const GAME_TILES: GameTile[] = [
   {
     id: "snake",
     title: "WHOA Snake",
-    tagline: "A paint line eating 1-of-1 drops. Beat the score, unlock a code.",
+    tagline: "A paint line eating 1-of-1 drops. Ten unlocks a free sticker.",
     accent: "#ff2fb0",
     href: "/games/snake",
     status: "live",

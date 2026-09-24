@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import StampControl from "@/components/go/StampControl";
+import PrizeClaim from "@/components/prizes/PrizeClaim";
 import { STAMPS_TO_COMPLETE, STAMP_LABELS, type CardState } from "@/lib/scavenger";
 
 /**
@@ -60,18 +60,15 @@ export default function ScavengerCard({ card }: { card: CardState }) {
           <p className="go-eyebrow">Card complete</p>
           <h2 className="font-display scav-done-title">ALL SIX FOUND</h2>
           <p className="scav-sub">
-            Show this screen at Creation Station. Your card is saved to your WHOA account, so it
-            stays filled if you close this.
+            Six for six. Take your pick — an H2WHOA water or a free sticker.
           </p>
+          <PrizeClaim game="scavenger" where="Creation Station" />
         </div>
       ) : (
-        <>
-          <StampControl card={card} variant="card" />
-          <p className="scav-hint">
-            One stamp per scan. Your card is saved to your WHOA account, so you can close this and
-            come back to it.
-          </p>
-        </>
+        <p className="scav-hint">
+          Scanning a flyer stamps your card on its own — there&apos;s nothing to tap. Your card is
+          saved to your WHOA account, so you can close this and come back to it.
+        </p>
       )}
     </div>
   );

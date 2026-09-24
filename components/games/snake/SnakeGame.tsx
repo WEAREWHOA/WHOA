@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import PrizeClaim from "@/components/prizes/PrizeClaim";
 
 const GRID = 20;
 const CELL = 20;
@@ -8,7 +9,6 @@ const CANVAS_SIZE = GRID * CELL;
 const START_SPEED_MS = 140;
 const MIN_SPEED_MS = 80;
 const SCORE_THRESHOLD = 10;
-const DISCOUNT_CODE = "WHOAGAMES10";
 
 // The "drops" the snake eats — each one a different color, standing in
 // for a 1-of-1 piece rather than a plain dot.
@@ -231,15 +231,14 @@ export default function SnakeGame() {
       <div className="mt-8 w-full max-w-sm rounded-2xl border border-border-strong p-5 text-center">
         {unlocked ? (
           <>
-            <p className="text-flame-2 text-xs font-semibold tracking-wide uppercase">Unlocked</p>
-            <p className="font-mono-code font-display mt-2 text-3xl tracking-wide">{DISCOUNT_CODE}</p>
-            <p className="mt-2 text-xs text-muted">
-              Show this at checkout or the register — ask staff to apply it.
+            <p className="text-flame-2 text-xs font-semibold tracking-wide uppercase">
+              Free sticker unlocked
             </p>
+            <PrizeClaim game="snake" rewards={["FREE STICKER"]} where="the WHOADEGA" />
           </>
         ) : (
           <p className="text-sm text-muted">
-            Collect {SCORE_THRESHOLD} drops in one run to unlock a discount code.
+            Collect {SCORE_THRESHOLD} drops in one run to unlock a free sticker.
           </p>
         )}
       </div>

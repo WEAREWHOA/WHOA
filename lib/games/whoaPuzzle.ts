@@ -93,27 +93,53 @@ export function homePosition(value: number, size: number = PUZZLE_SIZE): [number
 }
 
 const ACCENT_DOTS: Array<{ x: number; y: number; r: number; color: string }> = [
-  { x: 0.12, y: 0.18, r: 46, color: "#ff2fb0" },
-  { x: 0.85, y: 0.12, r: 34, color: "#29e6ff" },
-  { x: 0.08, y: 0.82, r: 38, color: "#baff29" },
-  { x: 0.88, y: 0.85, r: 50, color: "#7b2ff7" },
-  { x: 0.5, y: 0.9, r: 30, color: "#fff229" },
-  { x: 0.5, y: 0.08, r: 26, color: "#ff3b3b" },
+  { x: 0.16, y: 0.16, r: 30, color: "#ffffff" },
+  { x: 0.84, y: 0.16, r: 22, color: "#150900" },
+  { x: 0.16, y: 0.84, r: 26, color: "#150900" },
+  { x: 0.84, y: 0.84, r: 34, color: "#ffffff" },
+  { x: 0.5, y: 0.88, r: 20, color: "#ffffff" },
+  { x: 0.5, y: 0.12, r: 18, color: "#150900" },
 ];
 
-// Draws the puzzle's source art: a flame-gradient board with the WHOA
-// wordmark and a few scattered accent marks, so every tile has some
-// unique visual signal to solve by — a flat gradient alone would make
-// most of the nine tiles look identical.
-export function drawPuzzleArt(ctx: CanvasRenderingContext2D, dimension: number) {
-  const gradient = ctx.createLinearGradient(0, 0, dimension, dimension);
-  gradient.addColorStop(0, "#ff2f1a");
-  gradient.addColorStop(0.5, "#ff7a00");
-  gradient.addColorStop(1, "#ffb800");
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, dimension, dimension);
+// How finely the spectrum field is sampled. Small enough that the bands
+// read as a smooth gradient, large enough that the whole thing is a few
+// thousand fills drawn once into an off-screen canvas.
+const FIELD_STEP = 6;
 
-  ctx.globalAlpha = 0.35;
+/**
+ * Hue at a point on the board, as a fraction across (fx) and down (fy).
+ *
+ * The board is a 3×3, and the sliding puzzle is only fun if a tile can be
+ * told apart from its neighbours at a glance. So the hue is chosen to put
+ * each of the nine home positions a clean 40° apart: substituting a tile
+ * centre — fx = (col + 0.5) / 3, fy = (row + 0.5) / 3 — gives exactly
+ * (col + 3·row) × 40°, which walks the whole colour wheel once across the
+ * nine squares. A single diagonal gradient can't do that: it hands the
+ * top-right and bottom-left tiles the same colour.
+ */
+function hueAt(fx: number, fy: number): number {
+  return (((3 * fx + 9 * fy - 2) / 9) * 360 + 360) % 360;
+}
+
+// Draws the puzzle's source art: a full-spectrum field with the WHOA
+// wordmark and a few scattered accent marks, so every tile carries both
+// its own colour and some unique detail to solve by. It used to be a
+// flame gradient, which left most of the nine tiles a near-identical
+// orange and the puzzle much harder to read than it was to solve.
+export function drawPuzzleArt(ctx: CanvasRenderingContext2D, dimension: number) {
+  for (let y = 0; y < dimension; y += FIELD_STEP) {
+    for (let x = 0; x < dimension; x += FIELD_STEP) {
+      const fx = (x + FIELD_STEP / 2) / dimension;
+      const fy = (y + FIELD_STEP / 2) / dimension;
+      // Lightness lifts towards the middle of the board so the wordmark
+      // has something to sit on and the field doesn't read as flat.
+      const lift = 1 - Math.abs(fy - 0.5) * 0.6;
+      ctx.fillStyle = `hsl(${hueAt(fx, fy)}, 82%, ${Math.round(46 + lift * 12)}%)`;
+      ctx.fillRect(x, y, FIELD_STEP + 1, FIELD_STEP + 1);
+    }
+  }
+
+  ctx.globalAlpha = 0.28;
   for (const dot of ACCENT_DOTS) {
     ctx.beginPath();
     ctx.arc(dot.x * dimension, dot.y * dimension, dot.r, 0, Math.PI * 2);
@@ -126,7 +152,7 @@ export function drawPuzzleArt(ctx: CanvasRenderingContext2D, dimension: number) 
   ctx.textBaseline = "middle";
   ctx.font = `900 ${dimension * 0.26}px system-ui, sans-serif`;
   ctx.lineWidth = dimension * 0.014;
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.55)";
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.72)";
   ctx.strokeText("WHOA", dimension / 2, dimension / 2);
   ctx.fillStyle = "#150900";
   ctx.fillText("WHOA", dimension / 2, dimension / 2);
