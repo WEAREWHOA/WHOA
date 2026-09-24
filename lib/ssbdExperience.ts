@@ -44,7 +44,7 @@ export const EXPERIENCE_DOORS: ExperienceDoor[] = [
     id: "games",
     element: "air",
     name: "GAMES",
-    blurb: "Eleven of them. No quarters needed.",
+    blurb: "Five of them. No quarters needed.",
     href: "/games",
     accent: "#b9a7ff",
     accentDeep: "#6d4fd6",

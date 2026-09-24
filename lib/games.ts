@@ -5,8 +5,8 @@ export interface GameTile {
   accent: string;
   href?: string;
   status: "live" | "soon";
-  // Overrides the default "Play now →" label — for a live tile that isn't
-  // actually a playable game, like the arcade cabinet's build-plan page.
+  // Overrides the default "Play now →" label, for a live tile that isn't
+  // actually a playable game.
   ctaLabel?: string;
 }
 
@@ -14,6 +14,12 @@ export interface GameTile {
 // "Coming soon" rather than linked, same honesty-over-fake-functionality
 // posture used everywhere else in this app (the POS "Reports" tab, the
 // dashboard's Music tab, etc.) until each one actually ships.
+//
+// This list is the whole of the games page: a game that isn't here isn't
+// on it. Some routes under /games still exist without a tile — the QR
+// scavenger hunt lives on in the SSBD experience, and the others are
+// kept out of the way rather than deleted — so dropping a tile is how a
+// game leaves the page.
 export const GAME_TILES: GameTile[] = [
   {
     id: "incoming",
@@ -29,46 +35,6 @@ export const GAME_TILES: GameTile[] = [
     tagline: "A paint line eating 1-of-1 drops. Beat the score, unlock a code.",
     accent: "#ff2fb0",
     href: "/games/snake",
-    status: "live",
-  },
-  {
-    id: "mystery-drop",
-    title: "Mystery Drop Spinner",
-    tagline: "Spin to reveal what's in the blind box.",
-    accent: "#29e6ff",
-    href: "/games/mystery-drop",
-    status: "live",
-  },
-  {
-    id: "quiz",
-    title: "Which WHOA Piece Are You",
-    tagline: "6 questions, one psychedelic result card built to share.",
-    accent: "#baff29",
-    href: "/games/quiz",
-    status: "live",
-  },
-  {
-    id: "graffiti",
-    title: "Graffiti Wall",
-    tagline: "Draw on the wall. It saves to the public gallery.",
-    accent: "#ff7a00",
-    href: "/games/graffiti",
-    status: "live",
-  },
-  {
-    id: "scavenger-hunt",
-    title: "QR Scavenger Hunt",
-    tagline: "Six hidden codes, one per WHOA branch. Find them all.",
-    accent: "#fff229",
-    href: "/games/hunt",
-    status: "live",
-  },
-  {
-    id: "outfit-builder",
-    title: "Outfit Builder",
-    tagline: "Pick real WHOADEGA pieces. Download your fit.",
-    accent: "#7b2ff7",
-    href: "/games/outfit-builder",
     status: "live",
   },
   {
@@ -94,14 +60,5 @@ export const GAME_TILES: GameTile[] = [
     accent: "#ff8a29",
     href: "/games/whoa-puzzle",
     status: "live",
-  },
-  {
-    id: "arcade-cabinet",
-    title: "WHOASIS Arcade Cabinet",
-    tagline: "This whole page, running kiosk-mode in the lounge on real hardware.",
-    accent: "#ffffff",
-    href: "/games/arcade-cabinet",
-    status: "live",
-    ctaLabel: "See the plan →",
   },
 ];
