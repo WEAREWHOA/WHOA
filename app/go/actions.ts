@@ -53,7 +53,7 @@ export async function stampAction(): Promise<StampResult> {
   if (!code) {
     return {
       outcome: "signed-out",
-      state: { count: 0, complete: false, nextStampAt: null, asOfSecond: 0 },
+      state: { count: 0, complete: false },
     };
   }
 

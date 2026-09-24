@@ -6,12 +6,12 @@ import { getCardState } from "@/lib/scavenger";
 
 export const metadata: Metadata = {
   title: "The Scavenger",
-  description: "Find the stickers around Creation Station and fill your card.",
+  description: "Scan the flyers around Creation Station and fill your card.",
 };
 
 /**
  * The card. Reached from the SCAVENGER door and from the stamp strip on
- * /go, which is where a sticker scan lands.
+ * /go, which is where a flyer scan lands.
  *
  * Signed out, /go shows the sign-in door instead, so anyone arriving here
  * without a session is sent back to pick the card up afterwards — a card

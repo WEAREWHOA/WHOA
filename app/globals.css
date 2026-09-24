@@ -961,8 +961,8 @@ body {
 }
 
 /* The stamp. Two homes, one button: a strip above the four doors on /go
-   (which is the URL on the stickers, so a scan can be recorded without
-   going looking for the card) and under the card itself. */
+   (the URL on every flyer, so a scan is one tap from recorded) and under
+   the card itself. */
 .scav-strip {
   display: flex;
   flex-wrap: wrap;
@@ -1021,7 +1021,7 @@ body {
   filter: brightness(1.12);
 }
 .scav-btn:disabled {
-  /* Counting down, not broken — it reads its own remaining time. */
+  /* Already stamped on this page load — the label says to scan again. */
   border-color: rgba(247, 240, 230, 0.18);
   background: rgba(247, 240, 230, 0.07);
   color: rgba(247, 240, 230, 0.6);
