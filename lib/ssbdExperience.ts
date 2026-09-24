@@ -6,7 +6,7 @@
  *
  *   FIRE  → the shop, the hottest thing WHOA makes
  *   AIR   → the games, light and quick
- *   EARTH → the scavenger hunt, walked on real ground
+ *   EARTH → the scavenger card, stamped on real ground
  *   WATER → the story, which runs deep
  *
  * Elements are not decoration here: each one drives its box's colour and
@@ -50,11 +50,11 @@ export const EXPERIENCE_DOORS: ExperienceDoor[] = [
     accentDeep: "#6d4fd6",
   },
   {
-    id: "journey",
+    id: "scavenger",
     element: "earth",
-    name: "THE JOURNEY",
-    blurb: "Six hidden codes, one per WHOA branch. Find them all.",
-    href: "/games/hunt",
+    name: "SCAVENGER",
+    blurb: "Six stickers hidden around Creation Station. Scan any six.",
+    href: "/go/scavenger",
     accent: "#9ecf6d",
     accentDeep: "#3f6b2e",
   },
