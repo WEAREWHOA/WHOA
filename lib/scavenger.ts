@@ -3,48 +3,35 @@ import { getSupabase } from "./supabase";
 /**
  * The Creation Station scavenger card.
  *
- * Six stickers are spread around Creation Station and every one of them
- * carries the same printed URL — /go. That is the constraint this file is
- * built around, and it is worth being blunt about what it costs: the
- * server cannot tell one sticker from another, so it cannot know whether
- * someone walked to six of them or stood in front of one. Nothing in the
- * request distinguishes those two people.
+ * Every flyer carries the same printed URL (/go), so the server cannot
+ * tell one from another — a scan at the far wall and a scan of the flyer
+ * someone is already standing at arrive as identical requests. The card
+ * doesn't try to police that. People walk the room because the flyers are
+ * spread around it, not because a database made them.
  *
- * So the card doesn't pretend to. What it does enforce is the part of the
- * hunt that actually takes effort: spreading the six stamps out over
- * time. A stamp is a deliberate tap, and the next one won't land until
- * STAMP_COOLDOWN_MS has passed, which makes filling the card cost about
- * as long as walking the room. Someone determined to fake it can still
- * sit in one place and tap every couple of minutes — they just don't get
- * to do it in ten seconds, and they've spent the same time everyone else
- * spent.
+ * So a stamp is simply a stamp: no cooldown, no waiting, nothing to
+ * out-wait. What the card does keep is one stamp per page load, which is
+ * the only thing standing between a hunt and a button that fills the card
+ * in four seconds of tapping. Rescanning any flyer is a new page load, so
+ * it never stops anyone who is actually out there scanning.
  *
- * If the stickers are ever reprinted, give each one its own URL
- * (/go?s=dune and so on) and the hunt becomes properly enforceable: six
- * different tokens really are six different stickers.
+ * The tap matters for a second reason: /go is the URL on the flyers, so
+ * stamping on arrival would mean a refresh, a route prefetch or the back
+ * button each looked like a scan, and the card would fill itself while
+ * someone was reading it.
  */
 
 /** Squares on the card. */
 export const STAMPS_TO_COMPLETE = 6;
 
-/**
- * How long between stamps. The whole integrity of the card rests on this
- * number: it's the difference between a hunt and a button you press six
- * times. Long enough to mean crossing the room, short enough that nobody
- * gives up standing still.
- */
-export const STAMP_COOLDOWN_MS = 2 * 60 * 1000;
-
-/**
- * Names for the six squares, filled in order. They're the card's
- * decoration, not sticker identities — with one URL we can't know which
- * sticker was scanned, and labelling a square "DUNE" when we don't know
- * that would be a small lie printed on the page.
- */
+/** Names for the six squares, filled in order. Decoration: with one URL
+ *  we can't know which flyer was scanned, and labelling a square after a
+ *  specific one would be a small lie printed on the page. */
 export const STAMP_LABELS = ["DUNE", "FLARE", "TIDE", "GUST", "STONE", "ECHO"];
 
 /** Stored in scavenger_stamps.slot. Ordinals, so the unique index on
- *  (account_code, slot) stops a double tap becoming two stamps. */
+ *  (account_code, slot) caps a card at six and stops a double-tapped
+ *  button becoming two stamps. */
 function slotId(ordinal: number): string {
   return `slot-${ordinal}`;
 }
@@ -53,61 +40,36 @@ export interface CardState {
   /** Stamps earned, 0–6. */
   count: number;
   complete: boolean;
-  /**
-   * When the next stamp can be taken, in epoch ms, or null if one is
-   * available now. Sent to the browser as a timestamp rather than a
-   * remaining duration so a page left open counts down correctly.
-   */
-  nextStampAt: number | null;
-  /**
-   * The server's clock when the card was read, in whole seconds. Read
-   * here rather than during render — a page component calling Date.now()
-   * is an impure render, and the countdown needs a server value the
-   * browser can hydrate against without disagreeing by a second.
-   */
-  asOfSecond: number;
 }
 
-function emptyCard(now: number): CardState {
-  return { count: 0, complete: false, nextStampAt: null, asOfSecond: Math.floor(now / 1000) };
-}
+const EMPTY_CARD: CardState = { count: 0, complete: false };
 
 function normalize(accountCode: string): string {
   return accountCode.trim().toUpperCase();
 }
 
-/** Where an account's card stands right now. */
-export async function getCardState(accountCode: string, now = Date.now()): Promise<CardState> {
+function toCard(rowCount: number): CardState {
+  const count = Math.min(rowCount, STAMPS_TO_COMPLETE);
+  return { count, complete: count >= STAMPS_TO_COMPLETE };
+}
+
+/** Where an account's card stands. */
+export async function getCardState(accountCode: string): Promise<CardState> {
   try {
     const { data, error } = await getSupabase()
       .from("scavenger_stamps")
-      .select("slot, stamped_at")
+      .select("slot")
       .eq("account_code", normalize(accountCode));
 
     if (error) {
       console.error("Failed to load the scavenger card:", error.message);
-      return emptyCard(now);
+      return EMPTY_CARD;
     }
 
-    const rows = data ?? [];
-    const count = Math.min(rows.length, STAMPS_TO_COMPLETE);
-
-    const lastStampedAt = rows.reduce((latest, row) => {
-      const at = Date.parse(row.stamped_at as string);
-      return Number.isFinite(at) && at > latest ? at : latest;
-    }, 0);
-
-    const readyAt = lastStampedAt ? lastStampedAt + STAMP_COOLDOWN_MS : 0;
-
-    return {
-      count,
-      complete: count >= STAMPS_TO_COMPLETE,
-      nextStampAt: readyAt > now ? readyAt : null,
-      asOfSecond: Math.floor(now / 1000),
-    };
+    return toCard((data ?? []).length);
   } catch (err) {
     console.error("Failed to load the scavenger card:", err);
-    return emptyCard(now);
+    return EMPTY_CARD;
   }
 }
 
@@ -119,88 +81,57 @@ function nextOrdinal(taken: Set<string>): number | undefined {
   return undefined;
 }
 
-export type StampOutcome = "stamped" | "cooling-down" | "complete" | "signed-out" | "failed";
+export type StampOutcome = "stamped" | "complete" | "signed-out" | "failed";
 
 export interface StampResult {
   outcome: StampOutcome;
   state: CardState;
 }
 
-/**
- * Stamps the next square, if the cooldown has run out.
- *
- * Deliberately not called on page load. A stamp is a write, and /go is
- * the URL on the stickers: a refresh, a prefetch or a tap of the back
- * button would all look like a scan, and the card would fill itself while
- * someone read it.
- */
-export async function recordStamp(accountCode: string, now = Date.now()): Promise<StampResult> {
+/** Stamps the next square. Called from a tap, never from a page load. */
+export async function recordStamp(accountCode: string): Promise<StampResult> {
   const code = normalize(accountCode);
 
   let taken: Set<string>;
-  let state: CardState;
 
   try {
     const { data, error } = await getSupabase()
       .from("scavenger_stamps")
-      .select("slot, stamped_at")
+      .select("slot")
       .eq("account_code", code);
 
     if (error) {
       console.error("Failed to read the scavenger card before stamping:", error.message);
-      return { outcome: "failed", state: emptyCard(now) };
+      return { outcome: "failed", state: EMPTY_CARD };
     }
 
-    const rows = data ?? [];
-    taken = new Set(rows.map((row) => row.slot as string));
-    const lastStampedAt = rows.reduce((latest, row) => {
-      const at = Date.parse(row.stamped_at as string);
-      return Number.isFinite(at) && at > latest ? at : latest;
-    }, 0);
-    const readyAt = lastStampedAt ? lastStampedAt + STAMP_COOLDOWN_MS : 0;
-    state = {
-      count: Math.min(rows.length, STAMPS_TO_COMPLETE),
-      complete: rows.length >= STAMPS_TO_COMPLETE,
-      nextStampAt: readyAt > now ? readyAt : null,
-      asOfSecond: Math.floor(now / 1000),
-    };
+    taken = new Set((data ?? []).map((row) => row.slot as string));
   } catch (err) {
     console.error("Failed to read the scavenger card before stamping:", err);
-    return { outcome: "failed", state: emptyCard(now) };
+    return { outcome: "failed", state: EMPTY_CARD };
   }
 
+  const state = toCard(taken.size);
   if (state.complete) return { outcome: "complete", state };
-  if (state.nextStampAt) return { outcome: "cooling-down", state };
 
   const ordinal = nextOrdinal(taken);
-  if (ordinal === undefined) return { outcome: "complete", state: { ...state, complete: true } };
+  if (ordinal === undefined) return { outcome: "complete", state: toCard(STAMPS_TO_COMPLETE) };
 
   try {
     const { error } = await getSupabase()
       .from("scavenger_stamps")
       .insert({ account_code: code, slot: slotId(ordinal) });
 
-    if (error) {
-      // 23505 is the unique violation: two taps raced and the other one
-      // won. Their stamp is recorded, so this is a success, not a miss.
-      if (error.code !== "23505") {
-        console.error("Failed to record a scavenger stamp:", error.message);
-        return { outcome: "failed", state };
-      }
+    // 23505 is the unique violation: two taps raced and the other won.
+    // Their stamp is recorded, so that's a success, not a miss.
+    if (error && error.code !== "23505") {
+      console.error("Failed to record a scavenger stamp:", error.message);
+      return { outcome: "failed", state };
     }
   } catch (err) {
     console.error("Failed to record a scavenger stamp:", err);
     return { outcome: "failed", state };
   }
 
-  const count = Math.min(state.count + 1, STAMPS_TO_COMPLETE);
-  return {
-    outcome: "stamped",
-    state: {
-      count,
-      complete: count >= STAMPS_TO_COMPLETE,
-      nextStampAt: count >= STAMPS_TO_COMPLETE ? null : now + STAMP_COOLDOWN_MS,
-      asOfSecond: Math.floor(now / 1000),
-    },
-  };
+  return { outcome: "stamped", state: toCard(state.count + 1) };
 }

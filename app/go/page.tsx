@@ -13,9 +13,9 @@ import { getCardState } from "@/lib/scavenger";
  * the server rather than in the browser, so the experience can't be
  * reached by flipping a flag in devtools.
  *
- * Because the stickers all point here, a scan and a plain visit are the
- * same request. So nothing is stamped on arrival — the four doors come
- * up, with a stamp offered above them while a card is still unfilled.
+ * Because every flyer points here, a scan and a plain visit are the same
+ * request. So nothing is stamped on arrival — the four doors come up,
+ * with a stamp offered above them while a card is still unfilled.
  */
 export const metadata: Metadata = {
   title: "The SSBD Experience",

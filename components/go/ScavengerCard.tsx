@@ -2,12 +2,7 @@
 
 import Link from "next/link";
 import StampControl from "@/components/go/StampControl";
-import {
-  STAMPS_TO_COMPLETE,
-  STAMP_COOLDOWN_MS,
-  STAMP_LABELS,
-  type CardState,
-} from "@/lib/scavenger";
+import { STAMPS_TO_COMPLETE, STAMP_LABELS, type CardState } from "@/lib/scavenger";
 
 /**
  * The card itself: six squares, filled in order as stickers are found.
@@ -18,8 +13,6 @@ import {
  * a claim the page can't back up.
  */
 export default function ScavengerCard({ card }: { card: CardState }) {
-  const minutes = Math.round(STAMP_COOLDOWN_MS / 60000);
-
   return (
     <div className="scav-root">
       <header className="go-header">
@@ -35,8 +28,8 @@ export default function ScavengerCard({ card }: { card: CardState }) {
         <p className="go-eyebrow">Creation Station</p>
         <h1 className="font-display scav-title">THE SCAVENGER</h1>
         <p className="scav-sub">
-          Six stickers are hidden around Creation Station. Find one, scan it, and stamp your card —
-          then go and find the next. It doesn&apos;t matter which six you find.
+          Six flyers are spread around Creation Station. Scan one, stamp your card, then go and
+          find the next. It doesn&apos;t matter which six you find.
         </p>
       </section>
 
@@ -75,8 +68,8 @@ export default function ScavengerCard({ card }: { card: CardState }) {
         <>
           <StampControl card={card} variant="card" />
           <p className="scav-hint">
-            One stamp every {minutes} minutes — long enough to get to the next sticker. Your card is
-            saved to your WHOA account, so you can close this and come back.
+            One stamp per scan. Your card is saved to your WHOA account, so you can close this and
+            come back to it.
           </p>
         </>
       )}
