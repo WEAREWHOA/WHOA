@@ -4,10 +4,13 @@
  * Each maps to something this site already does, so a door always opens
  * on something real:
  *
- *   FIRE  → the shop, the hottest thing WHOA makes
- *   AIR   → the games, light and quick
  *   EARTH → the scavenger card, stamped on real ground
+ *   AIR   → the games, light and quick
+ *   FIRE  → the shop, the hottest thing WHOA makes
  *   WATER → the story, which runs deep
+ *
+ * The scavenger leads because /go is the URL on every flyer in Creation
+ * Station: whoever is reading this page most likely just scanned one.
  *
  * Elements are not decoration here: each one drives its box's colour and
  * its animation, so the four read as four different things at a glance
@@ -32,13 +35,13 @@ export interface ExperienceDoor {
 
 export const EXPERIENCE_DOORS: ExperienceDoor[] = [
   {
-    id: "shop",
-    element: "fire",
-    name: "SHOP",
-    blurb: "Everything with our name on it.",
-    href: "/shop",
-    accent: "#ff7a00",
-    accentDeep: "#ff2f1a",
+    id: "scavenger",
+    element: "earth",
+    name: "SCAVENGER",
+    blurb: "Six flyers around Creation Station. Scan them all.",
+    href: "/go/scavenger",
+    accent: "#9ecf6d",
+    accentDeep: "#3f6b2e",
   },
   {
     id: "games",
@@ -50,13 +53,13 @@ export const EXPERIENCE_DOORS: ExperienceDoor[] = [
     accentDeep: "#6d4fd6",
   },
   {
-    id: "scavenger",
-    element: "earth",
-    name: "SCAVENGER",
-    blurb: "Six flyers around Creation Station. Scan them all.",
-    href: "/go/scavenger",
-    accent: "#9ecf6d",
-    accentDeep: "#3f6b2e",
+    id: "shop",
+    element: "fire",
+    name: "SHOP",
+    blurb: "Everything with our name on it.",
+    href: "/shop",
+    accent: "#ff7a00",
+    accentDeep: "#ff2f1a",
   },
   {
     id: "story",
