@@ -234,7 +234,7 @@ export default function SnakeGame() {
             <p className="text-flame-2 text-xs font-semibold tracking-wide uppercase">
               Free sticker unlocked
             </p>
-            <PrizeClaim game="snake" rewards={["FREE STICKER"]} where="the WHOADEGA" />
+            <PrizeClaim game="snake" rewards={["FREE STICKER"]} />
           </>
         ) : (
           <p className="text-sm text-muted">
