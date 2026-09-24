@@ -91,7 +91,7 @@ export default function ClaimPrize({ code }: { code?: string }) {
     <form onSubmit={handleClaim} className="mt-6 flex flex-col gap-3 text-left">
       <p className="text-center text-sm text-[#a9c9d4]">
         {account
-          ? "Claim it to your account and we'll have it waiting."
+          ? "Show this to someone at the WHOADEGA / WHOA OASIS."
           : "Create a free WHOA account to claim it — it takes a second, and it's how we know the sticker is yours."}
       </p>
 

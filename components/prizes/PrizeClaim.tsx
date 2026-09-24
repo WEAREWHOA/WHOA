@@ -20,13 +20,10 @@ import { REWARDS, type Reward } from "@/lib/gamePrizes";
 export default function PrizeClaim({
   game,
   rewards = REWARDS as readonly string[] as Reward[],
-  where,
 }: {
   game: "snake" | "scavenger";
   /** One option claims silently; several ask them to pick. */
   rewards?: Reward[];
-  /** Where to go and get it. */
-  where: string;
 }) {
   const [account, setAccount] = useState<{ name: string; email: string } | null>(null);
   const [checked, setChecked] = useState(false);
@@ -94,11 +91,14 @@ export default function PrizeClaim({
       <div className="prize-won">
         <p className="prize-eyebrow">{held.reward}</p>
         <p className="prize-code">{held.code}</p>
-        <p className="prize-note">
-          {held.alreadyHeld
-            ? "This is the code already on your account — one per person."
-            : `Show this at ${where}.`}
-        </p>
+        <p className="prize-note">Show this to someone at the WHOADEGA / WHOA OASIS.</p>
+        {held.alreadyHeld && (
+          // Where to take it matters more than how they got back here, so
+          // this goes under the instruction rather than replacing it.
+          <p className="prize-note">
+            This is the code already on your account — one per person.
+          </p>
+        )}
       </div>
     );
   }
@@ -130,7 +130,7 @@ export default function PrizeClaim({
 
       <p className="prize-note">
         {account
-          ? "Claim it to your account and we'll have it waiting."
+          ? "Show this to someone at the WHOADEGA / WHOA OASIS."
           : "Create a free WHOA account to claim it — it's how we know the prize is yours."}
       </p>
 

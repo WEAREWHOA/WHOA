@@ -29,7 +29,7 @@ export default function ScavengerCard({ card }: { card: CardState }) {
         <h1 className="font-display scav-title">THE SCAVENGER</h1>
         <p className="scav-sub">
           Six flyers are spread around Creation Station. Scan one, stamp your card, then go and
-          find the next. It doesn&apos;t matter which six you find.
+          find the next.
         </p>
       </section>
 
@@ -62,7 +62,7 @@ export default function ScavengerCard({ card }: { card: CardState }) {
           <p className="scav-sub">
             Six for six. Take your pick — an H2WHOA water or a free sticker.
           </p>
-          <PrizeClaim game="scavenger" where="Creation Station" />
+          <PrizeClaim game="scavenger" />
         </div>
       ) : (
         <p className="scav-hint">
