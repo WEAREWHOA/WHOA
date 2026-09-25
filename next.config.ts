@@ -13,11 +13,10 @@ import type { NextConfig } from "next";
  * link-checker and bookmark sync understands without argument, and these
  * links are old by definition.
  *
- * Old product URLs all land on /shop rather than a specific item: the ids
- * in them are the previous platforms' catalog ids, which have no
- * relationship to the Square ids this site uses. Guessing a mapping would
- * send someone confidently to the wrong product, which is worse than
- * landing them in the shop.
+ * Old product URLs are the exception and are NOT here: they carry a
+ * catalog id that usually still resolves, so they're handled by a route
+ * that looks each one up and sends it to its actual product. See
+ * app/product/[slug]/[legacyId]/route.ts.
  */
 const legacyRedirects = [
   // --- Square Online ---------------------------------------------------
@@ -35,10 +34,12 @@ const legacyRedirects = [
   // take the entire storefront down. Three segments only.
   { source: "/shop/:category/:legacyId", destination: "/shop", statusCode: 301 },
 
-  // Square Online product pages: /product/<slug>/<catalog-id>. Both a
-  // two-segment and a one-segment form appeared, so cover the bare slug too.
-  { source: "/product/:slug/:legacyId", destination: "/shop", statusCode: 301 },
-  { source: "/product/:slug", destination: "/shop", statusCode: 301 },
+  // Square Online product pages (/product/<slug>/<catalog-id>) are NOT
+  // here on purpose. They used to be a blanket 301 to /shop; they're now
+  // handled by app/product/[slug]/[legacyId]/route.ts, which looks the id
+  // up in the catalog and sends each one to its actual product. A rule
+  // here would shadow that route entirely, since redirects run before
+  // filesystem routing.
 
   // --- Wix (the original site) -----------------------------------------
   { source: "/product-page/:slug", destination: "/shop", statusCode: 301 },
