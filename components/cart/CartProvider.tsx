@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useSyncExternalStore, type ReactNode } from "react";
 import type { CartLine } from "@/lib/types";
+import { trackAddToCart } from "@/lib/analytics";
 
 const CART_STORAGE_KEY = "whoa_cart";
 
@@ -69,6 +70,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const lines = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   function addLine(line: Omit<CartLine, "quantity">, quantity = 1) {
+    trackAddToCart(line, quantity);
     const existing = cart.find((l) => l.variationId === line.variationId);
     if (existing) {
       setCart(

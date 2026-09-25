@@ -604,6 +604,7 @@ npm run build
 | `RESEND_API_KEY`                | —          | Resend API key — sends order confirmation and event RSVP/ticket confirmation emails, plus info@wearewhoa.com staff notifications on every `/apply`, `/contact`, and Custom Design submission. `wearewhoa.art` must be a verified sending domain in Resend (see `lib/email.ts`) |
 | `MAILCHIMP_API_KEY`             | —          | Mailchimp API key (Account → Extras → API keys). Its `-<datacenter>` suffix (e.g. `-us21`) is required and is parsed to build the API host — see `lib/mailchimp.ts` |
 | `MAILCHIMP_AUDIENCE_ID`         | —          | The Mailchimp Audience/List ID (Audience → Settings → Audience name and defaults) that the `/events` newsletter signup subscribes into |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | —          | Google Analytics 4 measurement ID (`G-…`, from GA → Admin → Data streams → Web). Set it in **Production only**: unset, no Google tag loads and no events are sent. Page views are tracked automatically (keep Enhanced Measurement's "page changes based on browser history events" on); `lib/analytics.ts` also sends the GA4 ecommerce events `add_to_cart`, `begin_checkout`, and `purchase` |
 
 ## SEO & metadata
 

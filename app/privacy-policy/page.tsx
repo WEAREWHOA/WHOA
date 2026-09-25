@@ -44,8 +44,20 @@ export default function PrivacyPolicyPage() {
             </li>
           </ul>
           <p className="mt-2">
-            We don&apos;t currently run any third-party analytics or advertising trackers on this
-            site.
+            We use <span className="text-foreground">Google Analytics</span> to understand how
+            visitors use the site — which pages are viewed, roughly where visitors come from, and
+            which products are added to carts and purchased. Google Analytics sets its own cookies
+            to do this. We don&apos;t run any advertising trackers. You can opt out of Google
+            Analytics with Google&apos;s{" "}
+            <a
+              href="https://tools.google.com/dlpage/gaoptout"
+              className="text-foreground underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              browser add-on
+            </a>
+            .
           </p>
         </div>
 
@@ -64,7 +76,8 @@ export default function PrivacyPolicyPage() {
           <p className="mt-2">
             We share information only with the vendors that make the store work:{" "}
             <span className="text-foreground">Square</span>, for payment processing and order
-            fulfillment, and <span className="text-foreground">Supabase</span>, our database host.
+            fulfillment, and <span className="text-foreground">Supabase</span>, our database host, and{" "}
+            <span className="text-foreground">Google</span>, for site analytics.
             We don&apos;t sell your personal information to anyone.
           </p>
         </div>
