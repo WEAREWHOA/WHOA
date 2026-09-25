@@ -110,6 +110,17 @@ export default function ProductCard({ product, delay = 0 }: { product: Product; 
           <img
             src={product.imageUrl}
             alt={product.name}
+            // The shop renders one of these per product. Without lazy
+            // loading every photo in the catalogue downloads at once, at
+            // Square's full resolution — which on a phone is most of the
+            // wait before anything is usable.
+            loading="lazy"
+            decoding="async"
+            // The container is already aspect-square, so these only give
+            // the browser the ratio up front; they do not constrain the
+            // rendered size.
+            width={640}
+            height={640}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
