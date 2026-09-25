@@ -5,6 +5,10 @@ import ComingSoonBadge from "@/components/LockedBadge";
 import { isLockedRoute } from "@/lib/lockedRoutes";
 
 export const metadata: Metadata = {
+  // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
+  // Square Online sprayed around consolidate here instead of
+  // competing as separate pages.
+  alternates: { canonical: "/join" },
   title: "Join",
   description: "Join the WHOA community — the ambassador program, the art and music collectives, and the crew that sells at our events.",
 };

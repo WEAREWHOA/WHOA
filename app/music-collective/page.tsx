@@ -5,6 +5,10 @@ import MusicianCard from "@/components/musiccollective/MusicianCard";
 import { MUSICIANS } from "@/lib/musicians";
 
 export const metadata: Metadata = {
+  // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
+  // Square Online sprayed around consolidate here instead of
+  // competing as separate pages.
+  alternates: { canonical: "/music-collective" },
   title: "Music Collective",
   description: "The DJs and producers behind WHOA Wednesday and the WHOADEGA speaker stack.",
 };

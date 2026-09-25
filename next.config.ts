@@ -44,6 +44,18 @@ const legacyRedirects = [
   // --- Wix (the original site) -----------------------------------------
   { source: "/product-page/:slug", destination: "/shop", statusCode: 301 },
 
+  // Wix ran these as single-word pages with no separator. Both were still
+  // 404ing in Search Console, which is the only reason they're named here
+  // rather than guessed at — every rule in this file should come from a
+  // URL somebody actually requested.
+  //
+  // /buckethats goes to the shop rather than a filtered view: the shop
+  // takes /shop?category=<id>, but the id would have to be the current
+  // Square category's, and sending people to a filter that turns up empty
+  // is worse than the full shop.
+  { source: "/buckethats", destination: "/shop", statusCode: 301 },
+  { source: "/eventcalendar", destination: "/events", statusCode: 301 },
+
   // --- Old content pages -----------------------------------------------
   // /about, /events and /podcast kept their paths, so they need nothing.
   // Only /music moved.

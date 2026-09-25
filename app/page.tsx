@@ -3,6 +3,10 @@ import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 import SolarSystem from "@/components/home/SolarSystem";
 
 export const metadata: Metadata = {
+  // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
+  // Square Online sprayed around consolidate here instead of
+  // competing as separate pages.
+  alternates: { canonical: "/" },
   title: "WHOA",
   description:
     "The WHOA universe — shop the WHOADEGA, catch an event, join the crew, and meet the artists and musicians behind it all.",

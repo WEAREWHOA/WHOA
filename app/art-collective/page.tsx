@@ -5,6 +5,10 @@ import ArtCollectiveGrid from "@/components/artcollective/ArtCollectiveGrid";
 import { ARTISTS } from "@/lib/artists";
 
 export const metadata: Metadata = {
+  // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
+  // Square Online sprayed around consolidate here instead of
+  // competing as separate pages.
+  alternates: { canonical: "/art-collective" },
   title: "Art Collective",
   description: "Meet the artists and vendors behind WHOA — shop their work straight from the collective.",
 };

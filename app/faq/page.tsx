@@ -3,6 +3,10 @@ import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 import FaqAccordion from "@/components/faq/FaqAccordion";
 
 export const metadata: Metadata = {
+  // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
+  // Square Online sprayed around consolidate here instead of
+  // competing as separate pages.
+  alternates: { canonical: "/faq" },
   title: "FAQ",
   description: "Answers to common questions about WHOA, WHOADEGA, shipping, returns, and the ambassador program.",
 };
