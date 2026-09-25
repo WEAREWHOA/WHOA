@@ -3,6 +3,10 @@ import type { Metadata } from "next";
 import MysteryDropSpinner from "@/components/games/mystery-drop/MysteryDropSpinner";
 
 export const metadata: Metadata = {
+  // Not indexed: delisted from /games and linked from nowhere.
+  // follow stays true — it shouldn't rank, but the links off it still
+  // pass signal to pages that should.
+  robots: { index: false, follow: true },
   title: "Mystery Drop Spinner",
   description: "Spin to reveal what's in the blind box.",
 };

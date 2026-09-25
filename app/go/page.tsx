@@ -18,6 +18,10 @@ import { getCardState } from "@/lib/scavenger";
  * with a stamp offered above them while a card is still unfilled.
  */
 export const metadata: Metadata = {
+  // Not indexed: behind a sign-up gate, so a crawler only ever sees the door.
+  // follow stays true — it shouldn't rank, but the links off it still
+  // pass signal to pages that should.
+  robots: { index: false, follow: true },
   title: "The SSBD Experience",
   description: "Step through the portal and pick your element — fire, air, earth or water.",
 };

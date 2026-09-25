@@ -2,6 +2,10 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
+  // Not indexed: a confirmation page — nobody searches for it, and the three of them are near-identical to each other.
+  // follow stays true — it shouldn't rank, but the links off it still
+  // pass signal to pages that should.
+  robots: { index: false, follow: true },
   title: "Application Received",
   description: "Your Sell For Us application was submitted.",
 };

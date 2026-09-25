@@ -32,6 +32,16 @@ const STATIC_ROUTES = [
   "/music-collective/apply",
   "/art-collective/apply",
   "/games",
+  // The games that are actually on /games. The six delisted ones are
+  // noindexed instead — what's on the page gets indexed, what was taken
+  // off it doesn't.
+  "/games/incoming",
+  "/games/snake",
+  "/games/beat-pad",
+  "/games/visualizer",
+  "/games/whoa-puzzle",
+  "/oasis",
+  "/custom-design",
   "/same-same-but-whoa",
   "/site-concept",
   "/shipping-policy",

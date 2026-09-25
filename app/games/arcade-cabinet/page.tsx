@@ -2,6 +2,10 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
+  // Not indexed: delisted from /games and linked from nowhere.
+  // follow stays true — it shouldn't rank, but the links off it still
+  // pass signal to pages that should.
+  robots: { index: false, follow: true },
   title: "WHOASIS Arcade Cabinet",
   description: "This whole page, running kiosk-mode in the lounge on real hardware.",
 };
