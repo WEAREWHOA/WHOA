@@ -51,11 +51,11 @@ function ShiftTable({ heading, shifts }: { heading: string; shifts: AreaShift[] 
 // this platform grows should follow this same shape: real crew info, gated
 // by the account's own approved event_sales_signups row rather than a
 // shared password.
-export default function EventDetails({ code }: { code: string }) {
+export default function EventDetails() {
   return (
     <div className="text-left">
       <Link
-        href={`/portal/${code}`}
+        href="/portal"
         className="text-sm text-muted hover:text-foreground"
       >
         ← Back to your dashboard

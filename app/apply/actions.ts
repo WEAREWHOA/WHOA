@@ -41,7 +41,7 @@ export async function applyAction(formData: FormData) {
     });
 
     await createSession(ambassador.code);
-    target = `/portal/${ambassador.code}?new=1`;
+    target = "/portal?new=1";
 
     // Best-effort — staff should hear about every application, but a
     // Resend hiccup must never block the signup that already succeeded.

@@ -107,12 +107,6 @@ export function utmValue(value: string | null | undefined): string | null {
   return clean ? clean : null;
 }
 
-/** utm_* off the landing URL, trimmed to something storable. */
-export function utmValue(value: string | null | undefined): string | null {
-  const clean = value?.trim().slice(0, 120);
-  return clean ? clean : null;
-}
-
 export interface PageViewInput {
   path: string;
   sessionId: string;

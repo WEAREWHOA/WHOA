@@ -443,7 +443,7 @@ async function notifySellerOfDecision(
       decision,
       request,
       note,
-      portalUrl: `${SITE_URL}/portal/${product.ambassadorCode}`,
+      portalUrl: `${SITE_URL}/portal`,
     });
   } catch (err) {
     console.error(`Failed to email decision for product ${product.id}:`, err);

@@ -13,14 +13,15 @@ async function requireEventsAdmin() {
 
   const account = await getByCode(code);
   if (!account || !(account.isSuperAdmin || account.permissions.eventsAdmin)) {
-    redirect(`/portal/${code}`);
+    redirect("/portal");
   }
 
   return account;
 }
 
 export async function reviewWorkSignupAction(formData: FormData) {
-  const account = await requireEventsAdmin();
+  // Gate only — it redirects if this account can't review.
+  await requireEventsAdmin();
 
   const signupId = String(formData.get("signupId") || "").trim();
   const decision = String(formData.get("decision") || "").trim();
@@ -28,5 +29,5 @@ export async function reviewWorkSignupAction(formData: FormData) {
     await reviewWorkSignup(signupId, decision);
   }
 
-  redirect(`/portal/${account.code}`);
+  redirect("/portal/events-admin");
 }

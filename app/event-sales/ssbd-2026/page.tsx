@@ -17,11 +17,11 @@ export default async function Ssbd2026EventDetailsPage() {
   const approvedForThisEvent = signups.some((s) => s.eventId === EVENT_ID && s.status === "approved");
 
   const allowed = account.isSuperAdmin || account.permissions.eventsAdmin || approvedForThisEvent;
-  if (!allowed) redirect(`/portal/${code}`);
+  if (!allowed) redirect("/portal");
 
   return (
     <section className="mx-auto w-full max-w-5xl flex-1 px-6 py-16">
-      <EventDetails code={code} />
+      <EventDetails />
     </section>
   );
 }
