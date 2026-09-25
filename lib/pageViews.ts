@@ -65,12 +65,46 @@ export function referrerHost(referrer: string | null | undefined): string | null
   }
 }
 
+/**
+ * Routes whose dynamic segment identifies a *person or a thing they own*
+ * rather than a piece of content.
+ *
+ * These are collapsed to a template before storage, for two reasons. The
+ * segment is an account code or a ticket id, and neither belongs in a
+ * traffic table. And left alone they shred the report: /portal/AB12 and
+ * /portal/ZZ99 are the same page to everyone except the database, so
+ * "top pages" fills with one row per person and the portal itself never
+ * appears at all.
+ *
+ * Content slugs are deliberately NOT in here. Which product, which
+ * artist and which referral link someone landed on is exactly the kind
+ * of thing this table exists to answer.
+ */
+const IDENTITY_ROUTES: Array<[string, string]> = [
+  ["/portal/", "/portal/:code"],
+  ["/super-admin/", "/super-admin/:code"],
+  ["/checkin/", "/checkin/:ticket"],
+];
+
 /** Drops the query string and trims, so one route is one row group. */
 export function normalizePath(path: string): string | null {
   if (!path || !path.startsWith("/")) return null;
   const clean = path.split("?")[0].split("#")[0];
   if (clean.startsWith("/api/")) return null;
-  return clean.length > 1 ? clean.replace(/\/+$/, "").slice(0, 300) || "/" : "/";
+
+  const trimmed = clean.length > 1 ? clean.replace(/\/+$/, "") || "/" : "/";
+
+  for (const [prefix, template] of IDENTITY_ROUTES) {
+    if (trimmed.startsWith(prefix) && trimmed.length > prefix.length) return template;
+  }
+
+  return trimmed.slice(0, 300);
+}
+
+/** utm_* off the landing URL, trimmed to something storable. */
+export function utmValue(value: string | null | undefined): string | null {
+  const clean = value?.trim().slice(0, 120);
+  return clean ? clean : null;
 }
 
 /** utm_* off the landing URL, trimmed to something storable. */
