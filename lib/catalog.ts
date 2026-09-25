@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import { buildSlugIndex, buildSlugMap, looksLikeSquareId, slugify } from "./productSlug";
 import { isDiscountEligible } from "./discountEligibility";
@@ -172,7 +173,7 @@ async function fetchCatalogItems(options?: { onlineOnly?: boolean }) {
  * inventory lookup. It's what the slug map is built from, so turning a URL
  * into a product no longer costs a full catalog load.
  */
-export async function listCatalogNames(options?: { onlineOnly?: boolean }) {
+async function listCatalogNamesUncached(options?: { onlineOnly?: boolean }) {
   const items = await fetchCatalogItems(options);
   const entries: { id: string; name: string }[] = [];
   for (const item of items) {
@@ -182,7 +183,7 @@ export async function listCatalogNames(options?: { onlineOnly?: boolean }) {
   return entries;
 }
 
-export async function listProducts(options?: { onlineOnly?: boolean }): Promise<Product[]> {
+async function listProductsUncached(options?: { onlineOnly?: boolean }): Promise<Product[]> {
   const square = getSquare();
   const locationId = getSquareLocationId();
 
@@ -689,3 +690,36 @@ export async function resolveProduct(segment: string): Promise<ProductResolution
 
   return { kind: "legacy-id", product: { ...product, slug }, slug };
 }
+
+
+/**
+ * Cross-request caching for the two expensive catalog reads.
+ *
+ * Both of these page Square's whole catalog — 100 items per request
+ * until the cursor runs out — and both were doing it on every single
+ * page view. React's cache() above only dedupes within one render, so a
+ * second visitor a millisecond later paid the full cost again.
+ *
+ * SQUARE_CATALOG_TAG is what keeps a 60-second window honest: the Square
+ * webhook revalidates the tag when the catalog actually changes, so a
+ * price edit shows up immediately rather than up to a minute later. The
+ * TTL is the backstop for changes that arrive without a webhook.
+ *
+ * Only our own mapped types are cached, never raw Square objects —
+ * those carry BigInt money values that won't serialise. Product already
+ * crosses into a client component (ShopGrid), so it is known-safe.
+ */
+export const SQUARE_CATALOG_TAG = "square-catalog";
+const CATALOG_TTL_SECONDS = 60;
+
+export const listCatalogNames = unstable_cache(
+  async (options?: { onlineOnly?: boolean }) => listCatalogNamesUncached(options),
+  ["square-catalog-names"],
+  { revalidate: CATALOG_TTL_SECONDS, tags: [SQUARE_CATALOG_TAG] },
+);
+
+export const listProducts = unstable_cache(
+  async (options?: { onlineOnly?: boolean }) => listProductsUncached(options),
+  ["square-products"],
+  { revalidate: CATALOG_TTL_SECONDS, tags: [SQUARE_CATALOG_TAG] },
+);

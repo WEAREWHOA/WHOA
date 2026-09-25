@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
-import { productPath, resolveProduct } from "@/lib/catalog";
+import { listProducts, productPath, resolveProduct } from "@/lib/catalog";
 import AddToCart from "@/components/shop/AddToCart";
 import ProductGallery from "@/components/shop/ProductGallery";
 import { formatCents } from "@/lib/money";
@@ -9,6 +9,29 @@ import { SITE_URL } from "@/lib/site";
 import type { Product } from "@/lib/types";
 
 export const revalidate = 60;
+
+/**
+ * Prerender every product at build time.
+ *
+ * Without this the route is fully dynamic: the declared revalidate never
+ * applied, so every visit to every product page paged through Square's
+ * whole catalog to resolve one slug and then fetched the item. With it,
+ * a product page is static HTML that refreshes in the background.
+ *
+ * Failing soft on purpose. dynamicParams stays on its default of true,
+ * so an empty list here just means pages render on demand exactly as
+ * they did before — a Square hiccup during a build shouldn't be able to
+ * fail the deploy.
+ */
+export async function generateStaticParams() {
+  try {
+    const products = await listProducts({ onlineOnly: true });
+    return products.map((product) => ({ itemId: product.slug }));
+  } catch (err) {
+    console.error("Couldn't prerender product pages; they'll render on demand:", err);
+    return [];
+  }
+}
 
 // schema.org Product markup — lets Google show price/availability directly
 // in search results instead of a plain link. JSON.stringify's output is

@@ -20,6 +20,13 @@ export default function ProductGallery({ name, imageUrls }: { name: string; imag
         <img
           src={imageUrls[active]}
           alt={name}
+          // The one image that should NOT be lazy: it's the thing the
+          // page is about and it's above the fold.
+          loading="eager"
+          fetchPriority="high"
+          decoding="async"
+          width={800}
+          height={800}
           className="h-full w-full object-cover"
         />
       </div>
@@ -38,7 +45,15 @@ export default function ProductGallery({ name, imageUrls }: { name: string; imag
               }`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt="" className="h-full w-full object-cover" />
+              <img
+                src={url}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                width={96}
+                height={96}
+                className="h-full w-full object-cover"
+              />
             </button>
           ))}
         </div>

@@ -1,4 +1,6 @@
 import { WebhooksHelper } from "square";
+import { revalidateTag } from "next/cache";
+import { SQUARE_CATALOG_TAG } from "@/lib/catalog";
 import { syncFullCatalog, syncInventoryForVariations, syncOrder } from "@/lib/squareSync";
 
 // Full catalog/order resyncs can take longer than the platform default —
@@ -55,6 +57,10 @@ export async function POST(req: Request) {
         // and cheap enough at this catalog size.
         const { variationIds } = await syncFullCatalog();
         await syncInventoryForVariations(variationIds);
+        // The catalog reads are cached for a minute; this is what keeps
+        // that honest. A price or photo edited in Square shows up on the
+        // next request rather than whenever the window happens to lapse.
+        revalidateTag(SQUARE_CATALOG_TAG, "max");
         break;
       }
 
@@ -66,6 +72,7 @@ export async function POST(req: Request) {
           .map((c) => c.catalog_object_id)
           .filter((id): id is string => Boolean(id));
         await syncInventoryForVariations(variationIds);
+        revalidateTag(SQUARE_CATALOG_TAG, "max");
         break;
       }
 
