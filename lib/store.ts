@@ -27,6 +27,7 @@ interface AmbassadorRow {
   perm_art_admin: boolean;
   perm_rsvp_admin: boolean;
   perm_rolodex: boolean;
+  perm_analytics: boolean;
   is_super_admin: boolean;
   square_customer_id: string | null;
   orders?: OrderRow[];
@@ -55,7 +56,7 @@ interface LinkRow {
 const AMBASSADOR_PUBLIC_SELECT =
   "code, name, email, instagram, created_at, payout_method, payout_destination, vendor_slug, " +
   "perm_ambassador, perm_vendor, perm_music, perm_ssbd, perm_events_admin, perm_event_sales, " +
-  "perm_art, perm_art_admin, perm_rsvp_admin, perm_rolodex, is_super_admin, square_customer_id, orders(*), links(*)";
+  "perm_art, perm_art_admin, perm_rsvp_admin, perm_rolodex, perm_analytics, is_super_admin, square_customer_id, orders(*), links(*)";
 
 function mapOrder(row: OrderRow): Order {
   return {
@@ -102,6 +103,7 @@ function mapAmbassador(row: AmbassadorRow): Ambassador {
       artAdmin: row.perm_art_admin,
       rsvpAdmin: row.perm_rsvp_admin,
       rolodex: row.perm_rolodex,
+      analytics: row.perm_analytics,
     },
     isSuperAdmin: row.is_super_admin,
     squareCustomerId: row.square_customer_id ?? undefined,
@@ -220,6 +222,7 @@ export async function createAmbassador(input: {
     perm_art_admin: input.permissions?.artAdmin ?? false,
     perm_rsvp_admin: input.permissions?.rsvpAdmin ?? false,
     perm_rolodex: input.permissions?.rolodex ?? false,
+    perm_analytics: input.permissions?.analytics ?? false,
   });
 
   if (ambassadorError) {
@@ -342,6 +345,7 @@ export async function updatePermissions(
   if (updates.permissions?.artAdmin !== undefined) patch.perm_art_admin = updates.permissions.artAdmin;
   if (updates.permissions?.rsvpAdmin !== undefined) patch.perm_rsvp_admin = updates.permissions.rsvpAdmin;
   if (updates.permissions?.rolodex !== undefined) patch.perm_rolodex = updates.permissions.rolodex;
+  if (updates.permissions?.analytics !== undefined) patch.perm_analytics = updates.permissions.analytics;
   if (updates.isSuperAdmin !== undefined) patch.is_super_admin = updates.isSuperAdmin;
   if (updates.vendorSlug !== undefined) patch.vendor_slug = updates.vendorSlug || null;
   // Clearing this makes the next portal load re-derive it from the

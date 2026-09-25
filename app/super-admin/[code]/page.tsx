@@ -60,6 +60,12 @@ const PERMISSION_ROWS = [
     hint: "ROLODEX tab — the business contact book (retailers, venues, suppliers, press). Holds personal phone numbers, so grant it deliberately. Super Admins already have this.",
   },
   {
+    field: "perm_analytics",
+    permission: "analytics",
+    label: "Analytics",
+    hint: "ANALYTICS tab — traffic, revenue, payouts, funnels and customer journeys for the whole business. The widest view there is, so grant it deliberately. Super Admins already have this.",
+  },
+  {
     field: "perm_rsvp_admin",
     permission: "rsvpAdmin",
     label: "RSVP Admin",

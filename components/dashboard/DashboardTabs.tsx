@@ -10,6 +10,7 @@ const ALL_TABS = [
   { id: "art", label: "ART" },
   { id: "music", label: "MUSIC" },
   { id: "ssbd", label: "SSBD" },
+  { id: "analytics", label: "ANALYTICS" },
   { id: "eventsAdmin", label: "EVENTS ADMIN" },
   { id: "rsvpAdmin", label: "RSVP ADMIN" },
   { id: "rolodex", label: "ROLODEX" },
@@ -30,6 +31,7 @@ export default function DashboardTabs({
   art,
   music,
   ssbd,
+  analytics,
   eventsAdmin,
   rsvpAdmin,
   rolodex,
@@ -45,6 +47,7 @@ export default function DashboardTabs({
   art: ReactNode;
   music: ReactNode;
   ssbd: ReactNode;
+  analytics: ReactNode;
   eventsAdmin: ReactNode;
   rsvpAdmin: ReactNode;
   rolodex: ReactNode;
@@ -56,6 +59,7 @@ export default function DashboardTabs({
   // profile. The rest are unlocked per-account by a Super Admin.
   visible: {
     ambassador: boolean;
+    analytics: boolean;
     vendor: boolean;
     art: boolean;
     music: boolean;
@@ -75,6 +79,7 @@ export default function DashboardTabs({
     art,
     music,
     ssbd,
+    analytics,
     eventsAdmin,
     rsvpAdmin,
     rolodex,
