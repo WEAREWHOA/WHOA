@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
+  // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
+  // Square Online sprayed around consolidate here instead of
+  // competing as separate pages.
+  alternates: { canonical: "/shipping-policy" },
   title: "Shipping Policy",
   description: "WHOA's shipping policy — processing time, rates, tracking, and delivery.",
 };

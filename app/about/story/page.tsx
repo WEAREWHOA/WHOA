@@ -3,6 +3,10 @@ import Link from "next/link";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 
 export const metadata: Metadata = {
+  // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
+  // Square Online sprayed around consolidate here instead of
+  // competing as separate pages.
+  alternates: { canonical: "/about/story" },
   title: "About",
   description:
     "Collector's fashion brand blending streetwear & art, offering rare 1-of-1 pieces, bold apparel & immersive retail experiences.",

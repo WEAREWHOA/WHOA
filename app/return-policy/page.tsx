@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
+  // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
+  // Square Online sprayed around consolidate here instead of
+  // competing as separate pages.
+  alternates: { canonical: "/return-policy" },
   title: "Return Policy",
   description: "WHOA's return & exchange policy — eligibility, process, and refunds.",
 };

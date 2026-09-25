@@ -4,6 +4,10 @@ import PodcastBox from "@/components/about/PodcastBox";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
+  // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
+  // Square Online sprayed around consolidate here instead of
+  // competing as separate pages.
+  alternates: { canonical: "/about" },
   title: "About",
   description: "WHOA's story, mission, the podcast, partnerships, and how to get in touch.",
 };

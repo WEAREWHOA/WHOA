@@ -3,6 +3,10 @@ import Link from "next/link";
 import { PODCAST_INTRO, playableEpisodes, youTubeEmbedUrl } from "@/lib/podcast";
 
 export const metadata: Metadata = {
+  // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
+  // Square Online sprayed around consolidate here instead of
+  // competing as separate pages.
+  alternates: { canonical: "/podcast" },
   title: "Podcast",
   description: PODCAST_INTRO,
 };

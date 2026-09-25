@@ -7,6 +7,10 @@ import Faq from "@/components/landing/Faq";
 import ApplyCta from "@/components/landing/ApplyCta";
 
 export const metadata: Metadata = {
+  // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
+  // Square Online sprayed around consolidate here instead of
+  // competing as separate pages.
+  alternates: { canonical: "/ambassadors" },
   title: "Ambassador Program",
   description: "Join the WHOA ambassador program — give your people 15% off, and earn 10% commission on every sale.",
 };

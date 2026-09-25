@@ -3,6 +3,10 @@ import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 import ContactForm from "@/components/contact/ContactForm";
 
 export const metadata: Metadata = {
+  // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
+  // Square Online sprayed around consolidate here instead of
+  // competing as separate pages.
+  alternates: { canonical: "/contact" },
   title: "Contact",
   description: "Get in touch with WHOA — pricing, wholesale orders, custom designs, or events.",
 };

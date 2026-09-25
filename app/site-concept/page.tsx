@@ -5,6 +5,10 @@ import type { Metadata } from "next";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 
 export const metadata: Metadata = {
+  // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
+  // Square Online sprayed around consolidate here instead of
+  // competing as separate pages.
+  alternates: { canonical: "/site-concept" },
   title: "Site Concept",
   description:
     "Every kind of person who comes to WHOA — customers, event goers, artists, musicians, vendors, ambassadors, sales crew, staff — and the path each one takes through the site.",

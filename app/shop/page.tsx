@@ -9,6 +9,10 @@ import ShopGrid from "@/components/shop/ShopGrid";
 export const revalidate = 60;
 
 export const metadata: Metadata = {
+  // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
+  // Square Online sprayed around consolidate here instead of
+  // competing as separate pages.
+  alternates: { canonical: "/shop" },
   title: "Shop",
   description: "Shop WHOA apparel, art, and gear — straight from the WHOADEGA.",
 };

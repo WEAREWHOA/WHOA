@@ -3,6 +3,10 @@ import type { Metadata } from "next";
 import { applyMusicAction } from "./actions";
 
 export const metadata: Metadata = {
+  // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
+  // Square Online sprayed around consolidate here instead of
+  // competing as separate pages.
+  alternates: { canonical: "/music-collective/apply" },
   title: "Join the Music Collective",
   description: "Apply to join the WHOA Music Collective.",
 };

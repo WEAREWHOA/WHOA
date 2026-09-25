@@ -3,6 +3,10 @@ import type { Metadata } from "next";
 import { applySellForUsAction } from "./actions";
 
 export const metadata: Metadata = {
+  // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
+  // Square Online sprayed around consolidate here instead of
+  // competing as separate pages.
+  alternates: { canonical: "/sell-for-us" },
   title: "Sell For Us",
   description: "Join the WHOA events crew — sign up to work our events and festivals.",
 };
