@@ -8,7 +8,7 @@ export default async function EventSalesWelcomeGuidePage() {
   if (!code) redirect("/login");
 
   const account = await getByCode(code);
-  if (!account?.permissions.eventSales) redirect(`/portal/${code}`);
+  if (!account?.permissions.eventSales) redirect("/portal");
 
   return (
     <section className="mx-auto w-full max-w-4xl flex-1 px-6 py-16">

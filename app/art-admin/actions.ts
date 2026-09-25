@@ -13,14 +13,15 @@ async function requireArtAdmin() {
 
   const account = await getByCode(code);
   if (!account || !(account.isSuperAdmin || account.permissions.artAdmin)) {
-    redirect(`/portal/${code}`);
+    redirect("/portal");
   }
 
   return account;
 }
 
 export async function reviewArtProductAction(formData: FormData) {
-  const account = await requireArtAdmin();
+  // Gate only — it redirects if this account can't review.
+  await requireArtAdmin();
 
   const productId = String(formData.get("productId") || "").trim();
   const decision = String(formData.get("decision") || "").trim();
@@ -28,11 +29,12 @@ export async function reviewArtProductAction(formData: FormData) {
     await reviewArtProduct(productId, decision);
   }
 
-  redirect(`/portal/${account.code}`);
+  redirect("/portal/art-admin");
 }
 
 export async function reviewArtBatchAction(formData: FormData) {
-  const account = await requireArtAdmin();
+  // Gate only — it redirects if this account can't review.
+  await requireArtAdmin();
 
   const batchId = String(formData.get("batchId") || "").trim();
   const decision = String(formData.get("decision") || "").trim();
@@ -40,7 +42,7 @@ export async function reviewArtBatchAction(formData: FormData) {
     await reviewArtBatch(batchId, decision);
   }
 
-  redirect(`/portal/${account.code}`);
+  redirect("/portal/art-admin");
 }
 
 /**
@@ -49,7 +51,8 @@ export async function reviewArtBatchAction(formData: FormData) {
  * it can't be reachable by anyone who isn't staff.
  */
 export async function reviewArtProductRequestAction(formData: FormData) {
-  const account = await requireArtAdmin();
+  // Gate only — it redirects if this account can't review.
+  await requireArtAdmin();
 
   const productId = String(formData.get("productId") || "").trim();
   const decision = String(formData.get("decision") || "").trim();
@@ -57,5 +60,5 @@ export async function reviewArtProductRequestAction(formData: FormData) {
     await reviewArtProductRequest(productId, decision);
   }
 
-  redirect(`/portal/${account.code}?artRequestReviewed=1`);
+  redirect("/portal/art-admin?artRequestReviewed=1");
 }

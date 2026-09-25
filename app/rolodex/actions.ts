@@ -60,7 +60,7 @@ export async function createContactAction(formData: FormData): Promise<void> {
     console.error("createContactAction failed:", err);
   }
 
-  revalidatePath(`/portal/${account.code}`);
+  revalidatePath("/portal/rolodex");
 }
 
 export async function updateContactAction(formData: FormData): Promise<void> {
@@ -77,7 +77,7 @@ export async function updateContactAction(formData: FormData): Promise<void> {
     console.error("updateContactAction failed:", err);
   }
 
-  revalidatePath(`/portal/${account.code}`);
+  revalidatePath("/portal/rolodex");
 }
 
 export async function deleteContactAction(formData: FormData): Promise<void> {
@@ -93,5 +93,5 @@ export async function deleteContactAction(formData: FormData): Promise<void> {
     console.error("deleteContactAction failed:", err);
   }
 
-  revalidatePath(`/portal/${account.code}`);
+  revalidatePath("/portal/rolodex");
 }

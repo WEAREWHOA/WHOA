@@ -92,7 +92,7 @@ export async function checkInByIdAction(formData: FormData): Promise<void> {
     console.error("checkInByIdAction failed:", err);
   }
 
-  revalidatePath(`/portal/${account.code}`);
+  revalidatePath("/portal/rsvp-admin");
   revalidatePath(`/checkin/${rsvpId}`);
 }
 
@@ -110,6 +110,6 @@ export async function undoCheckInAction(formData: FormData): Promise<void> {
     console.error("undoCheckInAction failed:", err);
   }
 
-  revalidatePath(`/portal/${account.code}`);
+  revalidatePath("/portal/rsvp-admin");
   revalidatePath(`/checkin/${rsvpId}`);
 }

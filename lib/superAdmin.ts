@@ -11,7 +11,7 @@ export async function requireSuperAdmin(): Promise<Ambassador> {
   if (!code) redirect("/login");
 
   const account = await getByCode(code);
-  if (!account?.isSuperAdmin) redirect(`/portal/${code}`);
+  if (!account?.isSuperAdmin) redirect("/portal");
 
   return account;
 }

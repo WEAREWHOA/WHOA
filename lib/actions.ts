@@ -1,5 +1,7 @@
 "use server";
 
+import { portalPath, tabForMediaKind, tabForSubmitter } from "./portalNav";
+
 import { redirect, unstable_rethrow } from "next/navigation";
 import {
   createAmbassador,
@@ -68,7 +70,7 @@ export async function loginAction(formData: FormData) {
     }
 
     await createSession(credentials.code);
-    target = `/portal/${credentials.code}`;
+    target = "/portal";
   } catch (err) {
     // redirect()/notFound() work by throwing — let those pass through
     // untouched and only treat genuine failures as errors.
@@ -114,7 +116,7 @@ export async function registerAction(formData: FormData) {
     const ambassador = await createAmbassador({ name, email, passwordHash });
 
     await createSession(ambassador.code);
-    target = `/portal/${ambassador.code}?new=1`;
+    target = "/portal?new=1";
   } catch (err) {
     unstable_rethrow(err);
     console.error("registerAction failed:", err);
@@ -134,11 +136,11 @@ export async function createLinkAction(formData: FormData) {
   }
 
   if (!label) {
-    redirect(`/portal/${code}?error=link`);
+    redirect(portalPath("ambassador", "error=link"));
   }
 
   await createLink(code, label);
-  redirect(`/portal/${code}?linkAdded=1`);
+  redirect(portalPath("ambassador", "linkAdded=1"));
 }
 
 export async function deleteLinkAction(formData: FormData) {
@@ -151,11 +153,11 @@ export async function deleteLinkAction(formData: FormData) {
   }
 
   if (!linkId) {
-    redirect(`/portal/${code}?error=link`);
+    redirect(portalPath("ambassador", "error=link"));
   }
 
   await deleteLink(code, linkId);
-  redirect(`/portal/${code}?linkDeleted=1`);
+  redirect(portalPath("ambassador", "linkDeleted=1"));
 }
 
 export async function updatePayoutAction(formData: FormData) {
@@ -169,7 +171,7 @@ export async function updatePayoutAction(formData: FormData) {
   }
 
   if (!code || !destination || !["venmo", "zelle"].includes(method)) {
-    redirect(`/portal/${code}?error=payout`);
+    redirect(portalPath("ambassador", "error=payout"));
   }
 
   // A Venmo destination is a @handle, not a phone/email like Zelle's — if
@@ -180,7 +182,7 @@ export async function updatePayoutAction(formData: FormData) {
   }
 
   await setPayout(code, { method, destination });
-  redirect(`/portal/${code}?saved=1`);
+  redirect(portalPath("ambassador", "saved=1"));
 }
 
 export async function updateAccountInfoAction(formData: FormData) {
@@ -196,24 +198,24 @@ export async function updateAccountInfoAction(formData: FormData) {
     .toLowerCase();
   const instagram = String(formData.get("instagram") || "").trim();
 
-  if (!name) redirect(`/portal/${code}?settingsError=missing`);
-  if (!email || !email.includes("@")) redirect(`/portal/${code}?settingsError=email`);
+  if (!name) redirect(portalPath("settings", "settingsError=missing"));
+  if (!email || !email.includes("@")) redirect(portalPath("settings", "settingsError=email"));
 
   try {
     // Same "is this email already someone else's" check as registerAction —
     // just allow it when it's already this account's own email.
     const existing = await getByEmail(email);
     if (existing && existing.code.toUpperCase() !== code.toUpperCase()) {
-      redirect(`/portal/${code}?settingsError=email-taken`);
+      redirect(portalPath("settings", "settingsError=email-taken"));
     }
     await updateAccountInfo(code, { name, email, instagram: instagram || null });
   } catch (err) {
     unstable_rethrow(err);
     console.error("updateAccountInfoAction failed:", err);
-    redirect(`/portal/${code}?settingsError=server`);
+    redirect(portalPath("settings", "settingsError=server"));
   }
 
-  redirect(`/portal/${code}?settingsSaved=1`);
+  redirect(portalPath("settings", "settingsSaved=1"));
 }
 
 export async function changePasswordAction(formData: FormData) {
@@ -227,25 +229,25 @@ export async function changePasswordAction(formData: FormData) {
   const newPassword = String(formData.get("newPassword") || "");
   const confirmPassword = String(formData.get("confirmPassword") || "");
 
-  if (newPassword.length < 8) redirect(`/portal/${code}?settingsError=weak-password`);
-  if (newPassword !== confirmPassword) redirect(`/portal/${code}?settingsError=password-mismatch`);
+  if (newPassword.length < 8) redirect(portalPath("settings", "settingsError=weak-password"));
+  if (newPassword !== confirmPassword) redirect(portalPath("settings", "settingsError=password-mismatch"));
 
   try {
     const credentials = await getCredentialsByCode(code);
-    if (!credentials) redirect(`/portal/${code}?settingsError=server`);
+    if (!credentials) redirect(portalPath("settings", "settingsError=server"));
 
     const valid = await verifyPassword(currentPassword, credentials.passwordHash);
-    if (!valid) redirect(`/portal/${code}?settingsError=wrong-password`);
+    if (!valid) redirect(portalPath("settings", "settingsError=wrong-password"));
 
     const passwordHash = await hashPassword(newPassword);
     await updatePasswordHash(code, passwordHash);
   } catch (err) {
     unstable_rethrow(err);
     console.error("changePasswordAction failed:", err);
-    redirect(`/portal/${code}?settingsError=server`);
+    redirect(portalPath("settings", "settingsError=server"));
   }
 
-  redirect(`/portal/${code}?passwordChanged=1`);
+  redirect(portalPath("settings", "passwordChanged=1"));
 }
 
 // Deactivates the login (see lib/store.ts's deactivateAccount) — never a
@@ -264,16 +266,16 @@ export async function deleteAccountAction(formData: FormData) {
 
   try {
     const credentials = await getCredentialsByCode(code);
-    if (!credentials) redirect(`/portal/${code}?settingsError=server`);
+    if (!credentials) redirect(portalPath("settings", "settingsError=server"));
 
     const valid = await verifyPassword(password, credentials.passwordHash);
-    if (!valid) redirect(`/portal/${code}?settingsError=wrong-password`);
+    if (!valid) redirect(portalPath("settings", "settingsError=wrong-password"));
 
     await deactivateAccount(code);
   } catch (err) {
     unstable_rethrow(err);
     console.error("deleteAccountAction failed:", err);
-    redirect(`/portal/${code}?settingsError=server`);
+    redirect(portalPath("settings", "settingsError=server"));
   }
 
   await destroySession();
@@ -294,10 +296,10 @@ export async function signupToWorkEventAction(formData: FormData) {
   }
 
   const account = await getByCode(code);
-  if (!account?.permissions.eventSales) redirect(`/portal/${code}`);
+  if (!account?.permissions.eventSales) redirect("/portal");
 
   const event = EVENTS.find((e) => e.id === eventId);
-  if (!event) redirect(`/portal/${code}`);
+  if (!event) redirect("/portal");
 
   const result = await requestEventWorkSignup(code, eventId);
 
@@ -316,7 +318,7 @@ export async function signupToWorkEventAction(formData: FormData) {
     }
   }
 
-  redirect(`/portal/${code}?workSignup=${result.ok ? "requested" : "error"}`);
+  redirect(portalPath("event-sales", `workSignup=${result.ok ? "requested" : "error"}`));
 }
 
 // Backs the Music tab's profile form — both the initial save right after a
@@ -332,10 +334,10 @@ export async function saveMusicianProfileAction(formData: FormData) {
   }
 
   const account = await getByCode(code);
-  if (!account?.permissions.music) redirect(`/portal/${code}`);
+  if (!account?.permissions.music) redirect("/portal");
 
   const artistName = String(formData.get("artistName") || "").trim();
-  if (!artistName) redirect(`/portal/${code}?musicError=missing`);
+  if (!artistName) redirect(portalPath("music", "musicError=missing"));
 
   const subgenre = String(formData.get("subgenre") || "").trim();
   const tagline = String(formData.get("tagline") || "").trim();
@@ -359,10 +361,10 @@ export async function saveMusicianProfileAction(formData: FormData) {
   } catch (err) {
     unstable_rethrow(err);
     console.error("saveMusicianProfileAction failed:", err);
-    redirect(`/portal/${code}?musicError=server`);
+    redirect(portalPath("music", "musicError=server"));
   }
 
-  redirect(`/portal/${code}?musicSaved=1`);
+  redirect(portalPath("music", "musicSaved=1"));
 }
 
 const ART_LINK_FIELDS: { label: string; field: string }[] = [
@@ -383,10 +385,10 @@ export async function saveArtProfileAction(formData: FormData) {
   }
 
   const account = await getByCode(code);
-  if (!account?.permissions.art) redirect(`/portal/${code}`);
+  if (!account?.permissions.art) redirect("/portal");
 
   const artistName = String(formData.get("artistName") || "").trim();
-  if (!artistName) redirect(`/portal/${code}?artError=missing`);
+  if (!artistName) redirect(portalPath("art", "artError=missing"));
 
   const medium = String(formData.get("medium") || "").trim();
   const tagline = String(formData.get("tagline") || "").trim();
@@ -425,10 +427,10 @@ export async function saveArtProfileAction(formData: FormData) {
   } catch (err) {
     unstable_rethrow(err);
     console.error("saveArtProfileAction failed:", err);
-    redirect(`/portal/${code}?artError=server`);
+    redirect(portalPath("art", "artError=server"));
   }
 
-  redirect(`/portal/${code}?artSaved=1${photoFailed ? "&artPhotoError=1" : ""}`);
+  redirect(portalPath("art", `artSaved=1${photoFailed ? "&artPhotoError=1" : ""}`));
 }
 
 const MAX_ART_PRODUCTS_PER_SUBMISSION = 5;
@@ -449,11 +451,15 @@ export async function submitArtProductsAction(formData: FormData) {
   }
 
   const account = await getByCode(code);
-  if (!account || !canSubmitProducts(account.permissions)) redirect(`/portal/${code}`);
+  if (!account || !canSubmitProducts(account.permissions)) redirect("/portal");
+
+  // Art, music and vendor share this pipeline, so the tab to return to
+  // comes from what this account can actually open.
+  const submitTab = tabForSubmitter(account.permissions);
 
   const retailChoice = String(formData.get("alsoRetailEvents") || "");
   if (retailChoice !== "yes" && retailChoice !== "no") {
-    redirect(`/portal/${code}?artProductError=missing-choice`);
+    redirect(portalPath(submitTab, "artProductError=missing-choice"));
   }
   const alsoRetailEvents = retailChoice === "yes";
 
@@ -470,7 +476,7 @@ export async function submitArtProductsAction(formData: FormData) {
     const priceDollars = parseFloat(String(formData.get(`product-${i}-price`) || ""));
     const priceCents = Math.round(priceDollars * 100);
     if (!Number.isFinite(priceCents) || priceCents <= 0) {
-      redirect(`/portal/${code}?artProductError=invalid-price`);
+      redirect(portalPath(submitTab, "artProductError=invalid-price"));
     }
 
     const files = formData
@@ -511,7 +517,7 @@ export async function submitArtProductsAction(formData: FormData) {
     });
   }
 
-  if (products.length === 0) redirect(`/portal/${code}?artProductError=empty`);
+  if (products.length === 0) redirect(portalPath(submitTab, "artProductError=empty"));
 
   try {
     const inserted = await submitArtProducts(products);
@@ -537,10 +543,10 @@ export async function submitArtProductsAction(formData: FormData) {
   } catch (err) {
     unstable_rethrow(err);
     console.error("submitArtProductsAction failed:", err);
-    redirect(`/portal/${code}?artProductError=server`);
+    redirect(portalPath(submitTab, "artProductError=server"));
   }
 
-  redirect(`/portal/${code}?artProductSubmitted=1${photoFailed ? "&artPhotoError=1" : ""}`);
+  redirect(portalPath(submitTab, `artProductSubmitted=1${photoFailed ? "&artPhotoError=1" : ""}`));
 }
 
 // --- Account media library -------------------------------------------------
@@ -565,14 +571,14 @@ export async function uploadMediaAction(formData: FormData) {
 
   const kindValue = String(formData.get("kind") || "");
   if (!isMediaKind(kindValue) || !canUploadKind(kindValue, account.permissions)) {
-    redirect(`/portal/${code}?mediaError=forbidden`);
+    redirect(portalPath("settings", "mediaError=forbidden"));
   }
   const kind = kindValue as MediaKind;
 
   const files = formData
     .getAll("media")
     .filter((f): f is File => f instanceof File && f.size > 0);
-  if (files.length === 0) redirect(`/portal/${code}?mediaError=empty`);
+  if (files.length === 0) redirect(portalPath(tabForMediaKind(kind), "mediaError=empty"));
 
   let uploaded = 0;
   let firstProblem: string | null = null;
@@ -593,13 +599,16 @@ export async function uploadMediaAction(formData: FormData) {
   }
 
   if (uploaded === 0) {
-    redirect(`/portal/${code}?mediaError=${encodeURIComponent(firstProblem ?? "server")}`);
+    redirect(portalPath(tabForMediaKind(kind), `mediaError=${encodeURIComponent(firstProblem ?? "server")}`));
   }
 
   redirect(
-    `/portal/${code}?mediaUploaded=${uploaded}${
-      firstProblem ? `&mediaError=${encodeURIComponent(firstProblem)}` : ""
-    }`,
+    portalPath(
+      tabForMediaKind(kind),
+      `mediaUploaded=${uploaded}${
+        firstProblem ? `&mediaError=${encodeURIComponent(firstProblem)}` : ""
+      }`,
+    ),
   );
 }
 
@@ -612,20 +621,20 @@ export async function deleteMediaAction(formData: FormData) {
   }
 
   const mediaId = String(formData.get("mediaId") || "").trim();
-  if (!mediaId) redirect(`/portal/${code}?mediaError=missing`);
+  if (!mediaId) redirect(portalPath("settings", "mediaError=missing"));
 
   try {
     // deleteMedia scopes to the owner in its own query too, so this can't
     // reach another account's row even if the id is guessed.
     const removed = await deleteMedia(code, mediaId);
-    if (!removed) redirect(`/portal/${code}?mediaError=missing`);
+    if (!removed) redirect(portalPath("settings", "mediaError=missing"));
   } catch (err) {
     unstable_rethrow(err);
     console.error("deleteMediaAction failed:", err);
-    redirect(`/portal/${code}?mediaError=server`);
+    redirect(portalPath("settings", "mediaError=server"));
   }
 
-  redirect(`/portal/${code}?mediaDeleted=1`);
+  redirect(portalPath("settings", "mediaDeleted=1"));
 }
 
 // --- An artist's own requests against their approved products ------------
@@ -645,12 +654,16 @@ export async function requestArtProductChangeAction(formData: FormData) {
   }
 
   const account = await getByCode(code);
-  if (!account || !canSubmitProducts(account.permissions)) redirect(`/portal/${code}`);
+  if (!account || !canSubmitProducts(account.permissions)) redirect("/portal");
+
+  // Art, music and vendor share this pipeline, so the tab to return to
+  // comes from what this account can actually open.
+  const submitTab = tabForSubmitter(account.permissions);
 
   const productId = String(formData.get("productId") || "").trim();
   const action = String(formData.get("action") || "").trim();
   if (!productId || (action !== "edit" && action !== "removal")) {
-    redirect(`/portal/${code}?artRequestError=invalid`);
+    redirect(portalPath(submitTab, "artRequestError=invalid"));
   }
 
   const note = String(formData.get("note") || "");
@@ -672,13 +685,13 @@ export async function requestArtProductChangeAction(formData: FormData) {
     if (priceRaw) {
       const priceCents = Math.round(parseFloat(priceRaw) * 100);
       if (!Number.isFinite(priceCents) || priceCents <= 0) {
-        redirect(`/portal/${code}?artRequestError=price`);
+        redirect(portalPath(submitTab, "artRequestError=price"));
       }
       changes.price_cents = priceCents;
     }
 
     if (Object.keys(changes).length === 0) {
-      redirect(`/portal/${code}?artRequestError=empty`);
+      redirect(portalPath(submitTab, "artRequestError=empty"));
     }
   }
 
@@ -690,14 +703,14 @@ export async function requestArtProductChangeAction(formData: FormData) {
       changes,
       note,
     );
-    if (!saved) redirect(`/portal/${code}?artRequestError=missing`);
+    if (!saved) redirect(portalPath(submitTab, "artRequestError=missing"));
   } catch (err) {
     unstable_rethrow(err);
     console.error("requestArtProductChangeAction failed:", err);
-    redirect(`/portal/${code}?artRequestError=server`);
+    redirect(portalPath(submitTab, "artRequestError=server"));
   }
 
-  redirect(`/portal/${code}?artRequestSent=1`);
+  redirect(portalPath(submitTab, "artRequestSent=1"));
 }
 
 /** Withdraws an artist's own open request before staff act on it. */
@@ -708,16 +721,21 @@ export async function cancelArtProductRequestAction(formData: FormData) {
     redirect("/login");
   }
 
+  // Loaded for the return tab: art, music and vendor share this pipeline,
+  // so where to send them back to depends on what they can open.
+  const account = await getByCode(code);
+  const submitTab = tabForSubmitter(account?.permissions ?? { art: false, music: false, vendor: false });
+
   const productId = String(formData.get("productId") || "").trim();
-  if (!productId) redirect(`/portal/${code}?artRequestError=invalid`);
+  if (!productId) redirect(portalPath(submitTab, "artRequestError=invalid"));
 
   try {
     await cancelArtProductRequest(code, productId);
   } catch (err) {
     unstable_rethrow(err);
     console.error("cancelArtProductRequestAction failed:", err);
-    redirect(`/portal/${code}?artRequestError=server`);
+    redirect(portalPath(submitTab, "artRequestError=server"));
   }
 
-  redirect(`/portal/${code}?artRequestCancelled=1`);
+  redirect(portalPath(submitTab, "artRequestCancelled=1"));
 }
