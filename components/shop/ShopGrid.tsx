@@ -40,7 +40,11 @@ export default function ShopGrid({ products, artistNames }: { products: Product[
   // shopper back on an unfiltered shop.
   const searchParams = useSearchParams();
   const [categoryId, setCategoryId] = useState<string | null>(() => searchParams.get("category"));
-  const [search, setSearch] = useState("");
+  // ?q= prefills the search, the same way ?category= prefills the filter.
+  // It's what makes an old collection URL like /buckethats land on the
+  // bucket hats rather than the whole shop — the search already matches
+  // name and description, and every hat says so in both.
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
   const [sort, setSort] = useState<SortOption>("featured");
   const [hideSoldOut, setHideSoldOut] = useState(false);
 

@@ -1837,3 +1837,173 @@ body {
     font-size: 20px;
   }
 }
+
+/* ── one customer's journey ───────────────────────────────────────────
+   Nobody is listed until they're searched for: a browsable directory of
+   customers with their page history attached is a different and much
+   worse thing than a lookup. */
+.an-journey-search {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.an-journey-search .an-search {
+  flex: 1 1 240px;
+  width: auto;
+}
+
+.an-journey-matches {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.an-journey-match {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  padding: 10px 14px;
+  text-align: left;
+  transition: border-color 0.2s ease;
+}
+.an-journey-match:hover {
+  border-color: var(--border-strong);
+}
+
+.an-journey-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.an-journey-meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.an-journey {
+  margin-top: 16px;
+}
+
+.an-journey-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.an-journey-title {
+  margin-top: 4px;
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.an-journey-clear {
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  padding: 7px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.an-journey-clear:hover {
+  color: var(--foreground);
+}
+
+.an-journey-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.an-journey-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  padding: 10px 12px;
+}
+
+.an-journey-stat-value {
+  font-size: 1.05rem;
+  font-weight: 800;
+  overflow-wrap: break-word;
+}
+
+.an-journey-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.an-timeline {
+  margin-top: 12px;
+  border-left: 1px solid var(--border-strong);
+  padding-left: 14px;
+}
+
+.an-timeline-row {
+  display: grid;
+  grid-template-columns: auto 92px 74px 1fr;
+  align-items: baseline;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12.5px;
+}
+.an-timeline-row:last-child {
+  border-bottom: 0;
+}
+
+.an-timeline-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  /* Pulled onto the rail, so the kind is readable down the left edge. */
+  margin-left: -18px;
+}
+
+.an-timeline-when,
+.an-timeline-kind {
+  font-size: 11px;
+  color: var(--muted);
+}
+.an-timeline-kind {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.an-timeline-what {
+  overflow-wrap: anywhere;
+}
+
+.an-journey-trim {
+  margin-top: 10px;
+  font-style: italic;
+}
+
+/* At phone width the four columns stop fitting; the time and kind move
+   above the event rather than squeezing it to nothing. */
+@media (max-width: 560px) {
+  .an-timeline-row {
+    grid-template-columns: auto 1fr;
+  }
+  .an-timeline-what {
+    grid-column: 1 / -1;
+  }
+}
