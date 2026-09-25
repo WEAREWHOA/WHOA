@@ -3,6 +3,7 @@
 import { getByCode } from "@/lib/store";
 import { getSessionAmbassadorCode } from "@/lib/auth";
 import { getAnalytics, type AnalyticsSnapshot } from "@/lib/kpiReport";
+import { getJourneyMap, type JourneyMap } from "@/lib/journeys";
 
 const ALLOWED_PERIODS = [7, 30, 90] as const;
 
@@ -13,7 +14,12 @@ const ALLOWED_PERIODS = [7, 30, 90] as const;
  * this returns revenue, payouts and traffic for the whole business, and
  * the tab being hidden is not the same thing as the action being shut.
  */
-export async function loadAnalyticsAction(days: number): Promise<AnalyticsSnapshot | null> {
+export interface AnalyticsPayload {
+  snapshot: AnalyticsSnapshot;
+  journey: JourneyMap;
+}
+
+export async function loadAnalyticsAction(days: number): Promise<AnalyticsPayload | null> {
   const code = await getSessionAmbassadorCode().catch(() => null);
   if (!code) return null;
 
@@ -22,5 +28,6 @@ export async function loadAnalyticsAction(days: number): Promise<AnalyticsSnapsh
   if (!account.isSuperAdmin && !account.permissions.analytics) return null;
 
   const period = (ALLOWED_PERIODS as readonly number[]).includes(days) ? days : 30;
-  return getAnalytics(period);
+  const [snapshot, journey] = await Promise.all([getAnalytics(period), getJourneyMap(period)]);
+  return { snapshot, journey };
 }
