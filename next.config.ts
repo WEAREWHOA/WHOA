@@ -19,6 +19,25 @@ import type { NextConfig } from "next";
  * app/product/[slug]/[legacyId]/route.ts.
  */
 const legacyRedirects = [
+  // --- Apex to www -----------------------------------------------------
+  // Google crawled the apex copies of real product pages
+  // (wearewhoa.art/shop/ocean-beach-whoa-hoodie and friends) and declined
+  // to index them: same page, two hosts, so it picked one and binned the
+  // rest. Without this the whole site exists twice and the crawl budget
+  // is split between the copies.
+  //
+  // .well-known is excluded. Apple fetches the Apple Pay verification
+  // file at the exact registered host and does not follow redirects —
+  // www is registered today, so this would be harmless, but the day
+  // anyone registers the apex instead, a redirect in front of that file
+  // silently breaks Apple Pay.
+  {
+    source: "/:path((?!\\.well-known/).*)",
+    has: [{ type: "host" as const, value: "wearewhoa.art" }],
+    destination: "https://www.wearewhoa.art/:path",
+    statusCode: 301,
+  },
+
   // --- Square Online ---------------------------------------------------
   // Square Online serves its whole store under /s/. The explicit /s/shop
   // comes first for clarity; the catch-all covers /s/order, /s/cart and
@@ -49,12 +68,17 @@ const legacyRedirects = [
   // rather than guessed at — every rule in this file should come from a
   // URL somebody actually requested.
   //
-  // /buckethats goes to the shop rather than a filtered view: the shop
-  // takes /shop?category=<id>, but the id would have to be the current
-  // Square category's, and sending people to a filter that turns up empty
-  // is worse than the full shop.
-  { source: "/buckethats", destination: "/shop", statusCode: 301 },
+  // Singular "bucket hat" on purpose: the shop search is a substring
+  // match over name and description, so it catches "Bucket Hat" and
+  // "Bucket Hats" alike, where the plural would miss every singular one.
+  // A search rather than ?category=: the id would have to be the current
+  // Square category's, and every hat already says "bucket hat" in its
+  // own name.
+  { source: "/buckethats", destination: "/shop?q=bucket+hat", statusCode: 301 },
   { source: "/eventcalendar", destination: "/events", statusCode: 301 },
+  // Square Online's collections index. Crawled and not indexed rather
+  // than 404ing, which is the soft-404 shape again.
+  { source: "/collections", destination: "/shop", statusCode: 301 },
 
   // --- Old content pages -----------------------------------------------
   // /about, /events and /podcast kept their paths, so they need nothing.

@@ -9,6 +9,7 @@ import {
   SplitBar,
   TimeSeries,
 } from "@/components/dashboard/analytics/charts";
+import CustomerJourney from "@/components/dashboard/analytics/CustomerJourney";
 import SolarSystem from "@/components/dashboard/analytics/SolarSystem";
 import type { AnalyticsSnapshot } from "@/lib/kpiReport";
 import type { JourneyMap } from "@/lib/journeys";
@@ -69,6 +70,11 @@ export default function AnalyticsTab({
         id: "journey", title: "Customer journey map", group: "Journeys", wide: true,
         keywords: "journey solar system channels instagram tiktok google direct source attribution path flow where from utm",
         body: <SolarSystem map={journey} />,
+      },
+      {
+        id: "customer-journey", title: "Customer journey", group: "Journeys", wide: true,
+        keywords: "customer journey timeline person account history individual lookup search who what did someone profile",
+        body: <CustomerJourney />,
       },
       {
         id: "views-day", title: "Page views by day", group: "Traffic", wide: true,
