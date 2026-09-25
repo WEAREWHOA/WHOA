@@ -20,6 +20,10 @@ export async function POST(req: NextRequest) {
       path?: unknown;
       sessionId?: unknown;
       referrer?: unknown;
+      utmSource?: unknown;
+      utmMedium?: unknown;
+      utmCampaign?: unknown;
+      isEntry?: unknown;
     };
 
     if (typeof body.path !== "string" || typeof body.sessionId !== "string") {
@@ -33,6 +37,10 @@ export async function POST(req: NextRequest) {
       sessionId: body.sessionId,
       accountCode,
       referrer: typeof body.referrer === "string" ? body.referrer : null,
+      utmSource: typeof body.utmSource === "string" ? body.utmSource : null,
+      utmMedium: typeof body.utmMedium === "string" ? body.utmMedium : null,
+      utmCampaign: typeof body.utmCampaign === "string" ? body.utmCampaign : null,
+      isEntry: body.isEntry === true,
       userAgent: req.headers.get("user-agent"),
       // Set by the CDN edge. Absent in local development, which is fine —
       // country is a nice-to-have, not a key.

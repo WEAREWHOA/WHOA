@@ -1,3 +1,4 @@
+import { classifyChannel } from "./channels";
 import { getSupabase } from "./supabase";
 
 /**
@@ -72,6 +73,12 @@ export function normalizePath(path: string): string | null {
   return clean.length > 1 ? clean.replace(/\/+$/, "").slice(0, 300) || "/" : "/";
 }
 
+/** utm_* off the landing URL, trimmed to something storable. */
+export function utmValue(value: string | null | undefined): string | null {
+  const clean = value?.trim().slice(0, 120);
+  return clean ? clean : null;
+}
+
 export interface PageViewInput {
   path: string;
   sessionId: string;
@@ -79,6 +86,11 @@ export interface PageViewInput {
   referrer?: string | null;
   userAgent?: string | null;
   country?: string | null;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
+  /** True for the first view of a session — see is_entry in 0032. */
+  isEntry?: boolean;
 }
 
 /**
@@ -93,6 +105,10 @@ export async function recordPageView(input: PageViewInput): Promise<void> {
   const sessionId = input.sessionId?.trim().slice(0, 64);
   if (!sessionId) return;
 
+  const host = referrerHost(input.referrer);
+  const utmSource = utmValue(input.utmSource);
+  const utmMedium = utmValue(input.utmMedium);
+
   try {
     await getSupabase()
       .from("page_views")
@@ -100,9 +116,14 @@ export async function recordPageView(input: PageViewInput): Promise<void> {
         path,
         session_id: sessionId,
         account_code: input.accountCode ?? null,
-        referrer_host: referrerHost(input.referrer),
+        referrer_host: host,
         device: deviceFrom(input.userAgent),
         country: input.country?.trim().slice(0, 2).toUpperCase() || null,
+        utm_source: utmSource,
+        utm_medium: utmMedium,
+        utm_campaign: utmValue(input.utmCampaign),
+        channel: classifyChannel({ referrerHost: host, utmSource, utmMedium, path }),
+        is_entry: input.isEntry === true,
       });
   } catch (err) {
     console.error("Failed to record a page view:", err);

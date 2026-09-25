@@ -1693,3 +1693,147 @@ body {
   color: var(--muted);
   opacity: 0.75;
 }
+
+/* ── the journey map ──────────────────────────────────────────────────
+   Orbit guides and page bodies are deliberately neutral: the channel
+   hues are the only identity on screen, and a ring that competes with
+   them makes the arcs harder to follow, not easier. */
+.an-solar {
+  display: block;
+  width: 100%;
+  max-width: 620px;
+  margin: 8px auto 0;
+  overflow: visible;
+}
+
+.an-orbit {
+  fill: none;
+  stroke: rgba(247, 240, 230, 0.08);
+  stroke-width: 1;
+}
+
+.an-sun {
+  fill: #1c1610;
+  stroke: rgba(247, 240, 230, 0.4);
+  stroke-width: 2;
+}
+.an-sun-label {
+  fill: #f7f0e6;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-anchor: middle;
+}
+.an-sun-sub {
+  fill: rgba(247, 240, 230, 0.55);
+  font-size: 12px;
+  text-anchor: middle;
+}
+
+.an-planet {
+  fill: rgba(247, 240, 230, 0.16);
+  /* A 2px surface ring, so a body crossing an arc stays a body. */
+  stroke: #14100c;
+  stroke-width: 2;
+}
+
+.an-star {
+  stroke: #14100c;
+  stroke-width: 2;
+}
+
+.an-body-label {
+  fill: rgba(247, 240, 230, 0.6);
+  font-size: 11px;
+  text-anchor: middle;
+}
+.an-body-label-bright {
+  fill: #f7f0e6;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.an-body-tap {
+  cursor: pointer;
+}
+
+.an-arc {
+  fill: none;
+  stroke-linecap: round;
+  opacity: 0.55;
+  transition: opacity 0.2s ease;
+}
+
+.an-step {
+  fill: none;
+  stroke: rgba(247, 240, 230, 0.22);
+  stroke-linecap: round;
+  transition: opacity 0.2s ease;
+}
+
+.an-faded {
+  opacity: 0.08;
+}
+
+.an-table {
+  width: 100%;
+  margin-top: 16px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.an-table th {
+  padding: 8px 10px 8px 0;
+  border-bottom: 1px solid var(--border-strong);
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.an-table td {
+  padding: 9px 10px 9px 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--foreground);
+  white-space: nowrap;
+}
+.an-table td:first-child {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.an-table-path {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--muted);
+}
+.an-row-on {
+  background: rgba(247, 240, 230, 0.05);
+}
+
+/* The table is the readable form at phone width — the orbit stays, but
+   it stops being the thing you squint at. */
+@media (max-width: 560px) {
+  .an-table {
+    display: block;
+    overflow-x: auto;
+  }
+
+  /* SVG text is in user units, so the viewBox scaling that fits the orbit
+     on a phone takes 12px down to about 5. These are the sizes that come
+     back out at roughly 9-10px on screen. */
+  .an-body-label {
+    font-size: 20px;
+  }
+  .an-body-label-bright {
+    font-size: 23px;
+    font-weight: 800;
+  }
+  .an-sun-label {
+    font-size: 30px;
+  }
+  .an-sun-sub {
+    font-size: 20px;
+  }
+}

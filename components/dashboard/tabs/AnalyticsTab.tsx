@@ -9,7 +9,9 @@ import {
   SplitBar,
   TimeSeries,
 } from "@/components/dashboard/analytics/charts";
+import SolarSystem from "@/components/dashboard/analytics/SolarSystem";
 import type { AnalyticsSnapshot } from "@/lib/kpiReport";
+import type { JourneyMap } from "@/lib/journeys";
 
 /**
  * ANALYTICS — everything the database can honestly report, in one tab.
@@ -33,8 +35,15 @@ interface Panel {
   body: React.ReactNode;
 }
 
-export default function AnalyticsTab({ initial }: { initial: AnalyticsSnapshot }) {
+export default function AnalyticsTab({
+  initial,
+  initialJourney,
+}: {
+  initial: AnalyticsSnapshot;
+  initialJourney: JourneyMap;
+}) {
   const [snapshot, setSnapshot] = useState(initial);
+  const [journey, setJourney] = useState(initialJourney);
   const [period, setPeriod] = useState(initial.periodDays);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState("");
@@ -45,7 +54,10 @@ export default function AnalyticsTab({ initial }: { initial: AnalyticsSnapshot }
     setPeriod(days);
     loadAnalyticsAction(days)
       .then((next) => {
-        if (next) setSnapshot(next);
+        if (next) {
+          setSnapshot(next.snapshot);
+          setJourney(next.journey);
+        }
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -53,6 +65,11 @@ export default function AnalyticsTab({ initial }: { initial: AnalyticsSnapshot }
 
   const panels: Panel[] = useMemo(
     () => [
+      {
+        id: "journey", title: "Customer journey map", group: "Journeys", wide: true,
+        keywords: "journey solar system channels instagram tiktok google direct source attribution path flow where from utm",
+        body: <SolarSystem map={journey} />,
+      },
       {
         id: "views-day", title: "Page views by day", group: "Traffic", wide: true,
         keywords: "traffic views daily trend chart visits",
@@ -131,7 +148,7 @@ export default function AnalyticsTab({ initial }: { initial: AnalyticsSnapshot }
         body: <FunnelChart funnel={funnel} />,
       })),
     ],
-    [snapshot],
+    [snapshot, journey],
   );
 
   const needle = query.trim().toLowerCase();

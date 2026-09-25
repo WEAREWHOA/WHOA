@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getAnalytics } from "@/lib/kpiReport";
+import { getJourneyMap } from "@/lib/journeys";
 import { getByCode, getStats } from "@/lib/store";
 import { getSiteOrigin } from "@/lib/site";
 import { getSessionAmbassadorCode } from "@/lib/auth";
@@ -96,7 +97,12 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
   // anyone else would ship the whole company's numbers in the page's RSC
   // payload, tab hidden or not.
   const canAccessAnalytics = account.isSuperAdmin || account.permissions.analytics;
-  const analyticsSnapshot = canAccessAnalytics ? await getAnalytics(30).catch(() => null) : null;
+  const [analyticsSnapshot, analyticsJourney] = canAccessAnalytics
+    ? await Promise.all([
+        getAnalytics(30).catch(() => null),
+        getJourneyMap(30).catch(() => null),
+      ])
+    : [null, null];
 
   const canAccessRsvpAdmin =
     account.isSuperAdmin || account.permissions.rsvpAdmin || account.permissions.eventsAdmin;
@@ -346,7 +352,11 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
           </>
         }
         ssbd={<SsbdTab />}
-        analytics={analyticsSnapshot ? <AnalyticsTab initial={analyticsSnapshot} /> : null}
+        analytics={
+          analyticsSnapshot && analyticsJourney ? (
+            <AnalyticsTab initial={analyticsSnapshot} initialJourney={analyticsJourney} />
+          ) : null
+        }
         eventsAdmin={eventsAdminOverview ? <EventsAdminTab data={eventsAdminOverview} /> : null}
         rsvpAdmin={canAccessRsvpAdmin ? <RsvpAdminTab events={doorEvents} /> : null}
         rolodex={canAccessRolodex ? <RolodexTab contacts={rolodexContacts} /> : null}
