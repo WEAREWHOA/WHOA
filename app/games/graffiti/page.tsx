@@ -5,6 +5,10 @@ import DrawingThumbnail from "@/components/games/graffiti/DrawingThumbnail";
 import { getRecentDrawings } from "@/lib/graffiti";
 
 export const metadata: Metadata = {
+  // Not indexed: delisted from /games and linked from nowhere.
+  // follow stays true — it shouldn't rank, but the links off it still
+  // pass signal to pages that should.
+  robots: { index: false, follow: true },
   title: "Graffiti Wall",
   description: "Draw on the wall. It saves to the public gallery.",
 };

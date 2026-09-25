@@ -4,6 +4,10 @@ import { listProducts } from "@/lib/catalog";
 import OutfitBuilder from "@/components/games/outfit-builder/OutfitBuilder";
 
 export const metadata: Metadata = {
+  // Not indexed: delisted from /games and linked from nowhere.
+  // follow stays true — it shouldn't rank, but the links off it still
+  // pass signal to pages that should.
+  robots: { index: false, follow: true },
   title: "Outfit Builder",
   description: "Pick real WHOADEGA pieces. Download your fit.",
 };

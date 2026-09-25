@@ -5,6 +5,10 @@ import { getSessionAmbassadorCode } from "@/lib/auth";
 import { getCardState } from "@/lib/scavenger";
 
 export const metadata: Metadata = {
+  // Not indexed: behind a sign-up gate, so a crawler only ever sees the door.
+  // follow stays true — it shouldn't rank, but the links off it still
+  // pass signal to pages that should.
+  robots: { index: false, follow: true },
   title: "The Scavenger",
   description: "Scan the flyers around Creation Station and fill your card.",
 };

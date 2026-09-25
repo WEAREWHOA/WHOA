@@ -3,6 +3,10 @@ import type { Metadata } from "next";
 import QuizGame from "@/components/games/quiz/QuizGame";
 
 export const metadata: Metadata = {
+  // Not indexed: delisted from /games and linked from nowhere.
+  // follow stays true — it shouldn't rank, but the links off it still
+  // pass signal to pages that should.
+  robots: { index: false, follow: true },
   title: "Which WHOA Piece Are You",
   description: "6 questions, one psychedelic result card built to share.",
 };

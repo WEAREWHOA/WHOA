@@ -3,6 +3,10 @@ import type { Metadata } from "next";
 import HuntProgress from "@/components/games/hunt/HuntProgress";
 
 export const metadata: Metadata = {
+  // Not indexed: delisted from /games and linked from nowhere.
+  // follow stays true — it shouldn't rank, but the links off it still
+  // pass signal to pages that should.
+  robots: { index: false, follow: true },
   title: "QR Scavenger Hunt",
   description: "Six hidden codes, one per WHOA branch. Find them all.",
 };
