@@ -7,7 +7,7 @@ import { resolveAccount } from "@/lib/accountAuth";
 import { setSquareCustomerId } from "@/lib/store";
 import { findOrCreateSquareCustomerId } from "@/lib/squareCustomers";
 import { createRsvpRecord } from "@/lib/eventRsvps";
-import { sendEventConfirmationEmail } from "@/lib/email";
+import { sendEventConfirmationEmail, sendTicketRecordFailureAlert } from "@/lib/email";
 import {
   clampTicketQuantity,
   EVENTS,
@@ -188,6 +188,33 @@ export async function eventRsvpAction(input: {
     });
   } catch (err) {
     console.error("Failed to save RSVP/ticket record:", err);
+
+    // A server log is not an alert. When this fires on a paid ticket the
+    // buyer has been charged and has nothing to show for it, and the flow
+    // below deliberately carries on rather than failing in front of them
+    // — so without this email the first anyone hears of it is someone
+    // being turned away at the door.
+    //
+    // Best-effort and awaited: if Resend is also down there is nothing
+    // further to try, but the alert must not itself throw and take out
+    // the rest of a flow whose payment already succeeded.
+    try {
+      await sendTicketRecordFailureAlert({
+        eventId: event.id,
+        eventName: event.title,
+        name,
+        email,
+        phone: input.phone?.trim() || null,
+        quantity,
+        priceCents,
+        squarePaymentId,
+        squareOrderId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    } catch (alertErr) {
+      console.error("Failed to alert staff about the lost ticket record:", alertErr);
+    }
+
     // A paid ticket's payment already succeeded — don't fail the flow over
     // a bookkeeping error the buyer can't do anything about. A free RSVP
     // has nothing else to fall back on, so that one does fail here.

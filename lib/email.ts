@@ -638,3 +638,65 @@ export async function sendProductDecisionNotification(input: {
     throw new Error(`Resend failed to send decision notification: ${error.message}`);
   }
 }
+
+/**
+ * A ticket that was paid for but didn't save.
+ *
+ * This is an incident, not a submission. The payment has already gone
+ * through at Square, so the buyer is out of pocket with no RSVP row, no
+ * QR and no confirmation — and the checkout deliberately doesn't fail in
+ * front of them, because failing wouldn't give them their money back
+ * either. Without this email the only trace is a server log, and the
+ * first anyone would hear of it is someone turned away at the door.
+ *
+ * Everything needed to reconstruct the ticket by hand is in the rows,
+ * and the reply-to is the buyer, so staff can answer them directly.
+ */
+export async function sendTicketRecordFailureAlert(input: {
+  eventId: string;
+  eventName?: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  quantity: number;
+  priceCents: number;
+  squarePaymentId?: string | null;
+  squareOrderId?: string | null;
+  error: string;
+}): Promise<void> {
+  const paid = input.priceCents > 0;
+
+  await sendAdminNotification({
+    subject: paid
+      ? `PAID TICKET NOT SAVED — ${input.eventName ?? input.eventId}`
+      : `RSVP not saved — ${input.eventName ?? input.eventId}`,
+    heading: paid
+      ? "A ticket was paid for but did not save"
+      : "A free RSVP failed to save",
+    rows: [
+      ...(paid
+        ? [
+            {
+              label: "Action needed",
+              value:
+                "Square has taken this payment. There is no ticket record and no QR was sent. Issue the ticket manually or refund.",
+            },
+          ]
+        : []),
+      { label: "Event", value: input.eventName ?? input.eventId },
+      { label: "Name", value: input.name },
+      { label: "Email", value: input.email },
+      ...(input.phone ? [{ label: "Phone", value: input.phone }] : []),
+      { label: "Tickets", value: String(input.quantity) },
+      {
+        label: "Paid",
+        value: paid ? formatCents(input.priceCents * input.quantity) : "Free RSVP",
+      },
+      { label: "Square payment ID", value: input.squarePaymentId || "—" },
+      { label: "Square order ID", value: input.squareOrderId || "—" },
+      { label: "When", value: new Date().toISOString() },
+      { label: "Error", value: input.error },
+    ],
+    replyTo: input.email,
+  });
+}
