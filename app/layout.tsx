@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Bebas_Neue, Inter, Geist_Mono } from "next/font/google";
+import PageViewTracker from "@/components/analytics/PageViewTracker";
 import SiteChrome from "@/components/SiteChrome";
 import { CartProvider } from "@/components/cart/CartProvider";
 import { SITE_URL } from "@/lib/site";
@@ -57,6 +58,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${bebas.variable} ${inter.variable} ${geistMono.variable} h-full antialiased dark`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        {/* Outside SiteChrome so the immersive routes that opt out of the
+            navbar — /, /pos, /oasis, /water, /go — are still counted. */}
+        <PageViewTracker />
         <CartProvider>
           <SiteChrome>{children}</SiteChrome>
         </CartProvider>

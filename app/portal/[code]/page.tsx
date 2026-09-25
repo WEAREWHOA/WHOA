@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { getAnalytics } from "@/lib/analytics";
 import { getByCode, getStats } from "@/lib/store";
 import { getSiteOrigin } from "@/lib/site";
 import { getSessionAmbassadorCode } from "@/lib/auth";
@@ -33,6 +34,7 @@ import VendorTab from "@/components/dashboard/tabs/VendorTab";
 import ArtTab from "@/components/dashboard/tabs/ArtTab";
 import MusicTab from "@/components/dashboard/tabs/MusicTab";
 import SsbdTab from "@/components/dashboard/tabs/SsbdTab";
+import AnalyticsTab from "@/components/dashboard/tabs/AnalyticsTab";
 import EventsAdminTab from "@/components/dashboard/tabs/EventsAdminTab";
 import RsvpAdminTab from "@/components/dashboard/tabs/RsvpAdminTab";
 import RolodexTab from "@/components/dashboard/tabs/RolodexTab";
@@ -89,6 +91,13 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
   // guest's name and email, so it must not be fetched for someone who
   // can't work a door. Events admins and Super Admins keep the door too —
   // nobody who could admit guests before this tab existed loses that.
+  // The widest view in the building: traffic, revenue, payouts and every
+  // funnel. Loaded only for an account that can open it — fetching it for
+  // anyone else would ship the whole company's numbers in the page's RSC
+  // payload, tab hidden or not.
+  const canAccessAnalytics = account.isSuperAdmin || account.permissions.analytics;
+  const analyticsSnapshot = canAccessAnalytics ? await getAnalytics(30).catch(() => null) : null;
+
   const canAccessRsvpAdmin =
     account.isSuperAdmin || account.permissions.rsvpAdmin || account.permissions.eventsAdmin;
   const doorEvents = canAccessRsvpAdmin ? await getDoorEvents() : [];
@@ -337,6 +346,7 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
           </>
         }
         ssbd={<SsbdTab />}
+        analytics={analyticsSnapshot ? <AnalyticsTab initial={analyticsSnapshot} /> : null}
         eventsAdmin={eventsAdminOverview ? <EventsAdminTab data={eventsAdminOverview} /> : null}
         rsvpAdmin={canAccessRsvpAdmin ? <RsvpAdminTab events={doorEvents} /> : null}
         rolodex={canAccessRolodex ? <RolodexTab contacts={rolodexContacts} /> : null}
@@ -380,6 +390,7 @@ export default async function PortalDashboardPage(props: PageProps<"/portal/[cod
           art: account.permissions.art,
           music: account.permissions.music,
           ssbd: account.permissions.ssbd,
+          analytics: canAccessAnalytics,
           eventsAdmin: canAccessEventsAdmin,
           rsvpAdmin: canAccessRsvpAdmin,
           rolodex: canAccessRolodex,

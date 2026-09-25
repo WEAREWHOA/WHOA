@@ -46,6 +46,10 @@ export interface AccountPermissions {
   // ROLODEX tab: the business contact book. Off by default and granted
   // one account at a time — it holds people's personal phone numbers.
   rolodex: boolean;
+  // ANALYTICS tab: traffic, revenue, payouts and funnels for the whole
+  // business in one place. Off by default — it's the widest view of the
+  // company there is, wider than any single admin tab.
+  analytics: boolean;
   // Works the door (RSVP ADMIN tab): scans tickets and admits guests.
   // Separate from `eventsAdmin` on purpose — the people scanning
   // wristbands at 11pm aren't necessarily the people who should see every

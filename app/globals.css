@@ -1255,3 +1255,441 @@ body {
   opacity: 0.6;
   cursor: default;
 }
+
+/* ── ANALYTICS tab ────────────────────────────────────────────────────
+   The categorical series are the validated eight-hue set, in fixed order
+   and never cycled: colour follows the entity, so filtering the page
+   can't repaint what survives. Checked against this surface (#1c1610):
+   worst adjacent CVD ΔE 8.4, worst normal-vision ΔE 19.3, all eight over
+   3:1 contrast. Re-run the check before changing any of them. */
+.an-root {
+  --an-series-1: #3987e5;
+  --an-series-2: #d95926;
+  --an-series-3: #199e70;
+  --an-series-4: #c98500;
+  --an-series-5: #d55181;
+  --an-series-6: #008300;
+  --an-series-7: #9085e9;
+  --an-series-8: #e66767;
+
+  /* Sequential: one hue, dark to light. A magnitude is not an identity,
+     so the heatmap never reaches for a second hue. */
+  --an-heat-1: #1e2a38;
+  --an-heat-2: #24405c;
+  --an-heat-3: #2a5783;
+  --an-heat-4: #316fac;
+  --an-heat-5: #3987e5;
+
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.an-loading {
+  opacity: 0.55;
+  transition: opacity 0.2s ease;
+}
+
+.an-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.an-title {
+  font-size: clamp(1.6rem, 5vw, 2.2rem);
+  letter-spacing: 0.06em;
+}
+
+.an-sub {
+  margin-top: 4px;
+  max-width: 52ch;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.an-periods {
+  display: inline-flex;
+  gap: 4px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  padding: 4px;
+}
+
+.an-period {
+  border-radius: 999px;
+  padding: 7px 15px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.an-period:hover {
+  color: var(--foreground);
+}
+.an-period-on {
+  background: var(--foreground);
+  color: var(--background);
+}
+
+.an-search {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  padding: 13px 16px;
+  font-size: 15px; /* under 16px and iOS zooms the whole tab on focus */
+  color: var(--foreground);
+}
+.an-search::placeholder {
+  color: var(--muted);
+  opacity: 0.8;
+}
+.an-search:focus {
+  outline: none;
+  border-color: var(--foreground);
+}
+
+.an-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(164px, 1fr));
+  gap: 10px;
+}
+
+.an-kpi {
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 14px;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.an-kpi:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+.an-kpi-group {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0.75;
+}
+
+.an-kpi-value {
+  margin-top: 8px;
+  font-size: clamp(1.2rem, 4vw, 1.5rem);
+  font-weight: 800;
+  line-height: 1.15;
+  /* Values wear text ink, never a series colour — the mark carries
+     identity, the number carries the reading. */
+  color: var(--foreground);
+  /* break-word, not anywhere: "anywhere" splits $8,432.00 across two
+     lines mid-number, which reads as two numbers. */
+  overflow-wrap: break-word;
+}
+
+.an-kpi-label {
+  margin-top: 3px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.an-kpi-hint,
+.an-kpi-note {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--muted);
+  opacity: 0.72;
+}
+.an-kpi-note {
+  /* A lifetime number inside a 30-day grid has to say so. */
+  font-style: italic;
+}
+
+.an-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  /* Panels size to their own content. Stretching them to the tallest in
+     the row leaves a void under every short one. */
+  align-items: start;
+  gap: 12px;
+}
+@media (min-width: 900px) {
+  .an-panel-wide {
+    grid-column: span 2;
+  }
+}
+
+.an-panel {
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 16px;
+}
+
+.an-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.an-panel-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.an-panel-group {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.an-panel-blurb {
+  margin-bottom: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* The hover readout doubles as the chart's headline, so the plot needs
+   no number printed on every bar. */
+.an-plot-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-height: 30px;
+}
+.an-plot-value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.an-plot-label {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.an-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px; /* the 2px surface gap that keeps adjacent fills separate */
+  height: 120px;
+  margin-top: 10px;
+}
+
+.an-bar-hit {
+  display: flex;
+  flex: 1 1 0;
+  align-items: flex-end;
+  height: 100%;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  cursor: default;
+}
+
+.an-bar {
+  display: block;
+  width: 100%;
+  border-radius: 4px 4px 0 0; /* rounded data-end, square on the baseline */
+  transition: filter 0.15s ease;
+}
+.an-bar-hit-on .an-bar,
+.an-bar-hit:focus-visible .an-bar {
+  filter: brightness(1.35);
+}
+
+.an-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.an-ranked {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.an-ranked-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 5px;
+}
+
+.an-ranked-label {
+  overflow: hidden;
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--foreground);
+}
+
+.an-ranked-value {
+  flex-shrink: 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.an-ranked-track {
+  display: block;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(247, 240, 230, 0.07);
+}
+
+.an-ranked-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+
+.an-funnel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.an-funnel-drop {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.an-split {
+  display: flex;
+  gap: 2px; /* stacked segments get the same 2px surface gap */
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+}
+.an-split-seg {
+  display: block;
+  height: 100%;
+}
+
+.an-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.an-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.an-legend-value {
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.an-swatch {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+
+.an-heat {
+  margin-top: 10px;
+  overflow-x: auto;
+}
+
+.an-heat-row {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 2px;
+}
+
+.an-heat-day {
+  flex-shrink: 0;
+  width: 30px;
+  font-size: 10px;
+  line-height: 14px;
+  color: var(--muted);
+}
+
+.an-heat-cell {
+  flex: 1 1 0;
+  min-width: 9px;
+  height: 14px;
+  border-radius: 3px;
+  background: rgba(247, 240, 230, 0.05);
+  padding: 0;
+  cursor: default;
+}
+.an-heat-cell[data-step="1"] { background: var(--an-heat-1); }
+.an-heat-cell[data-step="2"] { background: var(--an-heat-2); }
+.an-heat-cell[data-step="3"] { background: var(--an-heat-3); }
+.an-heat-cell[data-step="4"] { background: var(--an-heat-4); }
+.an-heat-cell[data-step="5"] { background: var(--an-heat-5); }
+.an-heat-cell:hover,
+.an-heat-cell:focus-visible {
+  /* A 2px surface ring rather than a colour change, so the cell's own
+     step stays readable while it's hovered. */
+  outline: 2px solid var(--foreground);
+  outline-offset: -2px;
+}
+
+.an-heat-hours {
+  margin-top: 2px;
+}
+.an-heat-hour {
+  flex: 1 1 0;
+  min-width: 9px;
+  font-size: 9px;
+  text-align: left;
+  color: var(--muted);
+  opacity: 0.7;
+}
+
+.an-heat-key {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 12px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.an-heat-key-cell {
+  flex: 0 0 auto;
+  width: 14px;
+  min-width: 0;
+}
+
+.an-empty {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.an-empty-big {
+  padding: 40px 0;
+  text-align: center;
+  font-size: 14px;
+}
+
+.an-foot {
+  font-size: 11px;
+  color: var(--muted);
+  opacity: 0.75;
+}
