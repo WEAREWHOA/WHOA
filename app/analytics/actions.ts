@@ -2,7 +2,7 @@
 
 import { getByCode } from "@/lib/store";
 import { getSessionAmbassadorCode } from "@/lib/auth";
-import { getAnalytics, type AnalyticsSnapshot } from "@/lib/analytics";
+import { getAnalytics, type AnalyticsSnapshot } from "@/lib/kpiReport";
 
 const ALLOWED_PERIODS = [7, 30, 90] as const;
 

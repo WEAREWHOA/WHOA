@@ -17,6 +17,7 @@ import {
 } from "@/lib/squareWeb";
 import { newReferenceId, shopCheckoutDraft, type ShopCheckoutDraft } from "@/lib/checkoutDrafts";
 import type { CheckoutQuote } from "@/lib/checkoutOrder";
+import { trackBeginCheckout, trackPurchase } from "@/lib/analytics";
 
 interface CheckoutFormProps {
   ambassadorCode: string | null;
@@ -102,6 +103,15 @@ function CheckoutFields({
       cancelled = true;
     };
   }, [lines, ambassadorCode]);
+
+  // Once per visit to checkout. The cart reads as empty on the first
+  // (hydration) render and fills in right after, so wait for real lines.
+  const beginCheckoutTracked = useRef(false);
+  useEffect(() => {
+    if (beginCheckoutTracked.current || lines.length === 0) return;
+    beginCheckoutTracked.current = true;
+    trackBeginCheckout(lines, totalCents);
+  }, [lines, totalCents]);
 
   // The Square <Script> tag's onLoad callback only reliably fires the
   // first time it's ever injected — navigating checkout -> cart -> checkout
@@ -265,6 +275,7 @@ function CheckoutFields({
       return;
     }
 
+    trackPurchase(outcome.orderId ?? "", lines, finalCents);
     clear();
     const accountParam = outcome.accountCreated ? "created" : outcome.signedIn ? "signedin" : "";
     const params = new URLSearchParams({ order: outcome.orderId ?? "" });

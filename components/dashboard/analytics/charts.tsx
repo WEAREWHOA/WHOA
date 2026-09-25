@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Funnel, Point } from "@/lib/analytics";
+import type { Funnel, Point } from "@/lib/kpiReport";
 
 /**
  * The chart kit for the ANALYTICS tab.

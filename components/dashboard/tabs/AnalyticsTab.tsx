@@ -9,7 +9,7 @@ import {
   SplitBar,
   TimeSeries,
 } from "@/components/dashboard/analytics/charts";
-import type { AnalyticsSnapshot } from "@/lib/analytics";
+import type { AnalyticsSnapshot } from "@/lib/kpiReport";
 
 /**
  * ANALYTICS — everything the database can honestly report, in one tab.
@@ -149,7 +149,7 @@ export default function AnalyticsTab({ initial }: { initial: AnalyticsSnapshot }
         <div>
           <h2 className="font-display an-title">ANALYTICS</h2>
           <p className="an-sub">
-            Everything measured from our own data — no third-party tracker.
+            Measured from our own database — every number here is first-party.
             {snapshot.truncated && " Showing a capped sample: this window is unusually large."}
           </p>
         </div>

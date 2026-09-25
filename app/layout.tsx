@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from "next";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import { Bebas_Neue, Inter, Geist_Mono } from "next/font/google";
 import PageViewTracker from "@/components/analytics/PageViewTracker";
 import SiteChrome from "@/components/SiteChrome";
 import { CartProvider } from "@/components/cart/CartProvider";
 import { SITE_URL } from "@/lib/site";
+import { GA_MEASUREMENT_ID } from "@/lib/analytics";
 import "./globals.css";
 
 const bebas = Bebas_Neue({
@@ -65,6 +67,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <SiteChrome>{children}</SiteChrome>
         </CartProvider>
       </body>
+      {GA_MEASUREMENT_ID && <GoogleAnalytics gaId={GA_MEASUREMENT_ID} />}
     </html>
   );
 }

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { getAnalytics } from "@/lib/analytics";
+import { getAnalytics } from "@/lib/kpiReport";
 import { getByCode, getStats } from "@/lib/store";
 import { getSiteOrigin } from "@/lib/site";
 import { getSessionAmbassadorCode } from "@/lib/auth";

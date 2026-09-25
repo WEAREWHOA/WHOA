@@ -66,7 +66,7 @@ export const EXPERIENCE_DOORS: ExperienceDoor[] = [
     element: "water",
     name: "STORY OF WHOA",
     blurb: "Where this came from, and who built it.",
-    href: "/about",
+    href: "/about/story",
     accent: "#4fc3e0",
     accentDeep: "#1b6f8c",
   },
