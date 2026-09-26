@@ -46,6 +46,10 @@ export interface AccountPermissions {
   // ROLODEX tab: the business contact book. Off by default and granted
   // one account at a time — it holds people's personal phone numbers.
   rolodex: boolean;
+  // BA ADMIN tab: every Brand Ambassador's numbers, and the payout
+  // ledger. Separate from `ambassador`, which is someone's own view of
+  // their own links — this one sees everybody's, and records payments.
+  baAdmin: boolean;
   // ANALYTICS tab: traffic, revenue, payouts and funnels for the whole
   // business in one place. Off by default — it's the widest view of the
   // company there is, wider than any single admin tab.

@@ -44,6 +44,7 @@ export async function requirePortal(): Promise<PortalAccess> {
       music: p.music,
       ssbd: p.ssbd,
       analytics: admin || p.analytics,
+      "ba-admin": admin || p.baAdmin,
       "events-admin": admin || p.eventsAdmin,
       // Events admins keep the door: nobody who could admit guests before
       // this tab existed loses that.
