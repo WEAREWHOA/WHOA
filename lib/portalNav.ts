@@ -9,8 +9,8 @@
 
 export type PortalTabId =
   | "customer" | "events" | "ambassador" | "vendor" | "art" | "music"
-  | "ssbd" | "analytics" | "events-admin" | "rsvp-admin" | "rolodex"
-  | "event-sales" | "art-admin" | "settings";
+  | "ssbd" | "analytics" | "ba-admin" | "events-admin" | "rsvp-admin"
+  | "rolodex" | "event-sales" | "art-admin" | "settings";
 
 export interface PortalTab {
   id: PortalTabId;
@@ -30,6 +30,7 @@ export const PORTAL_TABS: PortalTab[] = [
   { id: "music", slug: "music", label: "MUSIC" },
   { id: "ssbd", slug: "ssbd", label: "SSBD" },
   { id: "analytics", slug: "analytics", label: "ANALYTICS" },
+  { id: "ba-admin", slug: "ba-admin", label: "BA ADMIN" },
   { id: "events-admin", slug: "events-admin", label: "EVENTS ADMIN" },
   { id: "rsvp-admin", slug: "rsvp-admin", label: "RSVP ADMIN" },
   { id: "rolodex", slug: "rolodex", label: "ROLODEX" },

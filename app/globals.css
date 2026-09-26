@@ -2007,3 +2007,100 @@ body {
     grid-column: 1 / -1;
   }
 }
+
+/* ── BA ADMIN ─────────────────────────────────────────────────────────
+   Shares the analytics shell. The only additions are for the money
+   tables, where the number has to be the loudest thing in the row. */
+.ba-period select {
+  width: auto;
+  min-width: 190px;
+}
+
+.ba-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.ba-controls .an-search {
+  flex: 1 1 220px;
+  width: auto;
+}
+.ba-sort {
+  flex: 0 0 auto;
+  min-width: 150px;
+}
+
+.ba-table td {
+  vertical-align: top;
+  white-space: nowrap;
+}
+.ba-table td:first-child {
+  display: table-cell;
+}
+
+.ba-name {
+  display: block;
+  font-weight: 700;
+}
+
+/* The figure someone is about to send money against. */
+.ba-strong {
+  font-weight: 800;
+  color: var(--foreground);
+}
+
+.ba-tier {
+  display: inline-block;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  padding: 2px 9px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ba-paid {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ecf6d;
+}
+
+/* Not an error — it's why a row can't be paid, and it has to be read
+   before anyone clicks the run-all button. */
+.ba-warn {
+  color: #ff9b7a;
+}
+
+.ba-pay {
+  padding: 7px 14px;
+  font-size: 11px;
+}
+
+.ba-runall {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 18px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.ba-flash {
+  border-radius: 12px;
+  border: 1px solid rgba(158, 207, 109, 0.4);
+  background: rgba(158, 207, 109, 0.09);
+  padding: 11px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+@media (max-width: 720px) {
+  .ba-table {
+    display: block;
+    overflow-x: auto;
+  }
+}
