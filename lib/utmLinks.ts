@@ -149,7 +149,6 @@ export const SUGGESTED_PATHS = [
   "/",
   "/shop",
   "/events",
-  "/oasis",
   "/water",
   "/go",
   "/join",
