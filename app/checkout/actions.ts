@@ -11,9 +11,14 @@ import { findOrCreateSquareCustomerId } from "@/lib/squareCustomers";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { getSupabase } from "@/lib/supabase";
 import { REF_COOKIE, REF_COOKIE_DAYS } from "@/lib/attribution";
-import { buildOrderPricing, type CheckoutQuote } from "@/lib/checkoutOrder";
+import {
+  buildOrderPricing,
+  discountedMerchandiseCents,
+  type CheckoutQuote,
+} from "@/lib/checkoutOrder";
+import { isDomestic, normalizeCountry, shippingRateCents } from "@/lib/shipping";
 import type { CartLine, ShippingAddress } from "@/lib/types";
-import type { Money } from "square";
+import type { Country, Money } from "square";
 
 // A promo code is nothing new — every ambassador's auto-created "Default"
 // link (see ensureDefaultLink, lib/store.ts) already uses their own code
@@ -80,7 +85,12 @@ export async function applyPromoCodeAction(formData: FormData) {
  * it does not work out what tax is owed. Square applies catalog/location
  * taxes; it does not do destination-based US sales tax by ship-to address.
  */
-export async function quoteCheckoutAction(lines: CartLine[]): Promise<CheckoutQuote | null> {
+export async function quoteCheckoutAction(
+  lines: CartLine[],
+  /** Destination, so the quote includes the right postage. Defaults to
+   *  the US until they pick one. */
+  country?: string,
+): Promise<CheckoutQuote | null> {
   if (lines.length === 0) return null;
 
   try {
@@ -103,6 +113,15 @@ export async function quoteCheckoutAction(lines: CartLine[]): Promise<CheckoutQu
         })
       : new Set<string>();
 
+    const shippingCents = shippingRateCents(
+      country,
+      discountedMerchandiseCents({
+        lines,
+        ambassadorCode: ambassador?.code,
+        excludedProductIds,
+      }),
+    );
+
     const response = await getSquare().orders.calculate({
       order: {
         locationId: getSquareLocationId(),
@@ -110,6 +129,7 @@ export async function quoteCheckoutAction(lines: CartLine[]): Promise<CheckoutQu
           lines,
           ambassadorCode: ambassador?.code,
           excludedProductIds,
+          shippingCents,
         }),
       },
     });
@@ -125,6 +145,7 @@ export async function quoteCheckoutAction(lines: CartLine[]): Promise<CheckoutQu
       subtotalCents: lines.reduce((sum, line) => sum + line.priceCents * line.quantity, 0),
       discountCents: cents(order.totalDiscountMoney),
       taxCents: cents(order.totalTaxMoney),
+      shippingCents,
       totalCents: Number(order.totalMoney.amount),
     };
   } catch (err) {
@@ -167,7 +188,17 @@ export async function checkoutAction(input: {
     return { ok: false, error: "Name is required." };
   }
   if (shipping) {
-    if (!shipping.line1?.trim() || !shipping.city?.trim() || !shipping.state?.trim() || !shipping.zip?.trim()) {
+    const country = normalizeCountry(shipping.country) || "US";
+    // A state is required in the US, where Square validates it. Plenty
+    // of countries have no equivalent, and demanding one would make
+    // those addresses unenterable.
+    const needsState = isDomestic(country);
+    if (
+      !shipping.line1?.trim() ||
+      !shipping.city?.trim() ||
+      !shipping.zip?.trim() ||
+      (needsState && !shipping.state?.trim())
+    ) {
       return { ok: false, error: "A complete shipping address is required." };
     }
     if (!shipping.phone?.trim()) {
@@ -281,6 +312,19 @@ export async function checkoutAction(input: {
           lines: input.lines,
           ambassadorCode: ambassador?.code,
           excludedProductIds,
+          // Recomputed here from the address on the order, by the same
+          // function the quote used. Nothing about the postage comes
+          // from the browser.
+          shippingCents: shipping
+            ? shippingRateCents(
+                shipping.country,
+                discountedMerchandiseCents({
+                  lines: input.lines,
+                  ambassadorCode: ambassador?.code,
+                  excludedProductIds,
+                }),
+              )
+            : 0,
         }),
         fulfillments: shipping
           ? [
@@ -295,9 +339,17 @@ export async function checkoutAction(input: {
                       addressLine1: shipping.line1.trim(),
                       addressLine2: shipping.line2?.trim() || undefined,
                       locality: shipping.city.trim(),
-                      administrativeDistrictLevel1: shipping.state.trim(),
+                      // Omitted rather than sent empty where there's no
+                      // state to send: Square validates the field's
+                      // contents, and "" is contents.
+                      administrativeDistrictLevel1: shipping.state.trim() || undefined,
                       postalCode: shipping.zip.trim(),
-                      country: "US",
+                      // Square types this as its own Country union. The
+                      // value is already normalised to two uppercase
+                      // letters, and Square rejects anything that isn't
+                      // a real code — so a bad one fails loudly at the
+                      // API rather than silently shipping somewhere odd.
+                      country: (normalizeCountry(shipping.country) || "US") as Country,
                     },
                   },
                 },

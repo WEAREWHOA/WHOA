@@ -150,9 +150,13 @@ export interface ShippingAddress {
   line1: string;
   line2?: string;
   city: string;
+  /** State for the US; province or region elsewhere. */
   state: string;
   zip: string;
   phone: string;
+  /** ISO-3166 alpha-2. Defaults to US for addresses saved before
+   *  international shipping existed. */
+  country?: string;
 }
 
 export interface CartLine {
