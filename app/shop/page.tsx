@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 import { listProducts } from "@/lib/catalog";
 import { getAllArtProfileNames } from "@/lib/artCollective";
-import { ARTISTS } from "@/lib/artists";
+import { ARTISTS, EXTRA_ARTIST_CATEGORY_NAMES } from "@/lib/artists";
 import ShopGrid from "@/components/shop/ShopGrid";
 
 export const revalidate = 60;
@@ -34,7 +34,7 @@ export default async function ShopPage() {
   // vs. "shop by artist" instead of one long mixed row — best-effort only,
   // a Supabase hiccup here shouldn't take down the whole shop, just fall
   // back to grouping by the static curated list alone.
-  let artistNames: string[] = ARTISTS.map((a) => a.name);
+  let artistNames: string[] = [...ARTISTS.map((a) => a.name), ...EXTRA_ARTIST_CATEGORY_NAMES];
   try {
     const profiles = await getAllArtProfileNames();
     artistNames = Array.from(new Set([...artistNames, ...profiles.map((p) => p.artistName)]));

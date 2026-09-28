@@ -89,6 +89,28 @@ const VENDOR_NAMES = [
   "Youphoria",
 ];
 
+/**
+ * Art Collective categories whose Square names the curated list above
+ * doesn't match — either spelled differently there ("Wook Plugs" vs
+ * "Wook Plugs + Playa Wipes") or created straight in Square.
+ *
+ * This exists only so the shop doesn't list them as product types. The
+ * real test is Square's own hierarchy — an artist category is nested
+ * under "Art Collective" — and anything nested correctly is classified
+ * without needing to be named here. Re-parent one in Square and its
+ * entry here becomes redundant rather than wrong.
+ */
+export const EXTRA_ARTIST_CATEGORY_NAMES = [
+  "Aglowgeo",
+  "Infinote",
+  "Jonathan Jerome",
+  "Kanna",
+  "Second Serve",
+  "Sol Searcher",
+  "Tara's Thrifty Threads",
+  "Wook Plugs",
+] as const;
+
 export const ARTISTS: Artist[] = VENDOR_NAMES.map((name, i) => {
   const { accent, gradient } = PALETTE[i % PALETTE.length];
   return {

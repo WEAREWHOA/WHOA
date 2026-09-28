@@ -118,6 +118,15 @@ export interface ProductOption {
 export interface ProductCategory {
   id: string;
   name: string;
+  /**
+   * The Square category this one sits under, when it has a parent.
+   *
+   * Every Art Collective artist gets their own category nested under the
+   * "Art Collective" umbrella (see getOrCreateArtistCategoryId), so this
+   * is how the shop can tell an artist apart from a product type without
+   * having to recognise the artist's name.
+   */
+  parentId?: string | null;
 }
 
 export interface Product {
