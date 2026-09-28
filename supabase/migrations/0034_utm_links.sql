@@ -20,8 +20,8 @@ create table if not exists utm_links (
   utm_source text not null,
   utm_medium text not null,
   utm_campaign text not null,
-  -- Optional. Read by Google Analytics; page_views doesn't store it, so
-  -- two links differing only by content share one row of portal stats.
+  -- Optional: which post or button. Read by Google Analytics, and by the
+  -- portal once 0035 adds it to page_views.
   utm_content text,
   -- Account code of whoever made it. Not a foreign key, same reasoning as
   -- rolodex_contacts.created_by: accounts get deactivated.

@@ -218,7 +218,7 @@ export default function LinksTab({
   // Tagged traffic arriving from links that aren't in the library: hand-
   // typed tags, old links, typos. The thing this whole tab exists to stop.
   const strays = useMemo(() => {
-    const saved = new Set(library.map((l) => tagKey(l.source, l.medium, l.campaign)));
+    const saved = new Set(library.map((l) => tagKey(l.source, l.medium, l.campaign, l.content)));
     return Object.entries(performance.byTags)
       .filter(([key]) => !saved.has(key))
       .map(([, stats]) => stats)
@@ -365,7 +365,9 @@ export default function LinksTab({
               placeholder="Which post or button, e.g. story-1, reel-0928"
               className={FIELD}
             />
-            <span className="mt-1 block text-xs text-muted">Shows in Google Analytics only.</span>
+            <span className="mt-1 block text-xs text-muted">
+              Tracked separately in Google Analytics and here, so each post gets its own numbers.
+            </span>
           </label>
 
           <label className="block">
@@ -515,7 +517,9 @@ export default function LinksTab({
                             {link.createdBy ? ` · by ${link.createdBy}` : ""}
                           </p>
                           <div className="mt-1">
-                            <StatLine stats={performance.byTags[tagKey(link.source, link.medium, link.campaign)]} />
+                            <StatLine
+                              stats={performance.byTags[tagKey(link.source, link.medium, link.campaign, link.content)]}
+                            />
                           </div>
                         </div>
                         <form action={deleteUtmLinkAction}>
@@ -556,6 +560,7 @@ export default function LinksTab({
                   <th className="px-4 py-2 font-semibold">Source</th>
                   <th className="px-4 py-2 font-semibold">Medium</th>
                   <th className="px-4 py-2 font-semibold">Campaign</th>
+                  <th className="px-4 py-2 font-semibold">Content</th>
                   <th className="px-4 py-2 font-semibold">Counted as</th>
                   <th className="px-4 py-2 text-right font-semibold">Visits</th>
                   <th className="px-4 py-2 text-right font-semibold">Converted</th>
@@ -563,10 +568,14 @@ export default function LinksTab({
               </thead>
               <tbody>
                 {strays.map((s) => (
-                  <tr key={tagKey(s.source, s.medium, s.campaign)} className="border-b border-border last:border-0">
+                  <tr
+                    key={tagKey(s.source, s.medium, s.campaign, s.content)}
+                    className="border-b border-border last:border-0"
+                  >
                     <td className="px-4 py-2 font-mono-code">{s.source || "—"}</td>
                     <td className="px-4 py-2 font-mono-code">{s.medium || "—"}</td>
                     <td className="px-4 py-2 font-mono-code">{s.campaign || "—"}</td>
+                    <td className="px-4 py-2 font-mono-code">{s.content || "—"}</td>
                     <td className="px-4 py-2 text-muted">
                       {channelById(classifyChannel({ utmSource: s.source, utmMedium: s.medium })).label}
                     </td>

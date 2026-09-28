@@ -123,6 +123,7 @@ export interface TagStats {
   source: string;
   medium: string;
   campaign: string;
+  content: string;
   /** Visits that began on a link with these tags. */
   sessions: number;
   /** Of those, visits that went past the first page. */
@@ -134,7 +135,7 @@ export interface TagStats {
 
 export interface UtmPerformance {
   periodDays: number;
-  /** Keyed by tagKey(source, medium, campaign). */
+  /** Keyed by tagKey(source, medium, campaign, content). */
   byTags: Record<string, TagStats>;
   /** Hit the read cap, so counts are a floor rather than exact. */
   truncated: boolean;
@@ -160,22 +161,33 @@ export async function getUtmPerformance(periodDays = 90): Promise<UtmPerformance
   let truncated = false;
 
   try {
-    for (let from = 0; from < ENTRY_CAP; from += PAGE) {
-      const { data, error } = await supabase
+    // Until 0035 is run there's no utm_content to read; fall back to
+    // reading without it rather than showing no stats at all.
+    let columns = "session_id, utm_source, utm_medium, utm_campaign, utm_content, created_at";
+    const entries = (from: number) =>
+      supabase
         .from("page_views")
-        .select("session_id, utm_source, utm_medium, utm_campaign, created_at")
+        .select(columns)
         .eq("is_entry", true)
         .not("utm_source", "is", null)
         .gte("created_at", since)
         .order("created_at", { ascending: false })
         .range(from, from + PAGE - 1);
+
+    for (let from = 0; from < ENTRY_CAP; from += PAGE) {
+      let { data, error } = await entries(from);
+      if (error && from === 0 && error.message.includes("utm_content")) {
+        columns = "session_id, utm_source, utm_medium, utm_campaign, created_at";
+        ({ data, error } = await entries(from));
+      }
       if (error) throw new Error(error.message);
 
-      const rows = (data ?? []) as Array<{
+      const rows = (data ?? []) as unknown as Array<{
         session_id: string;
         utm_source: string | null;
         utm_medium: string | null;
         utm_campaign: string | null;
+        utm_content?: string | null;
         created_at: string;
       }>;
 
@@ -183,12 +195,13 @@ export async function getUtmPerformance(periodDays = 90): Promise<UtmPerformance
         // An entry can be sent twice when storage can't be marked (see
         // PageViewTracker); the first one seen wins.
         if (sessionKey.has(row.session_id)) continue;
-        const key = tagKey(row.utm_source, row.utm_medium, row.utm_campaign);
+        const key = tagKey(row.utm_source, row.utm_medium, row.utm_campaign, row.utm_content);
         sessionKey.set(row.session_id, key);
         const stats = (byTags[key] ??= {
           source: (row.utm_source ?? "").toLowerCase(),
           medium: (row.utm_medium ?? "").toLowerCase(),
           campaign: (row.utm_campaign ?? "").toLowerCase(),
+          content: (row.utm_content ?? "").toLowerCase(),
           sessions: 0,
           engaged: 0,
           converted: 0,

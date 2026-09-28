@@ -203,7 +203,7 @@ export interface UtmTags {
   source: string;
   medium: string;
   campaign: string;
-  /** Optional: which exact post or button. Google Analytics reads it; the portal's traffic table doesn't store it. */
+  /** Optional: which exact post or button. Read by Google Analytics and the portal alike. */
   content?: string;
 }
 
@@ -241,7 +241,16 @@ export function sourceWarning(source: string): string | null {
   return null;
 }
 
-/** The key a set of tags is matched on against page_views. Lowercased: the tags arrive as typed. */
-export function tagKey(source: string | null, medium: string | null, campaign: string | null): string {
-  return [source, medium, campaign].map((v) => (v ?? "").trim().toLowerCase()).join("\u0000");
+/**
+ * The key a set of tags is matched on against page_views. Lowercased: the
+ * tags arrive as typed. Content is part of it, so two stories in the same
+ * campaign are two rows rather than one.
+ */
+export function tagKey(
+  source: string | null,
+  medium: string | null,
+  campaign: string | null,
+  content?: string | null,
+): string {
+  return [source, medium, campaign, content].map((v) => (v ?? "").trim().toLowerCase()).join("\u0000");
 }

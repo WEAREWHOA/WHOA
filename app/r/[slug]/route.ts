@@ -23,10 +23,17 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/r/[slug]">) {
 
   await recordLinkClick(link.slug);
 
-  const response = NextResponse.redirect(
-    new URL(`/shop?tag=${encodeURIComponent(link.slug)}`, req.url),
-    302,
-  );
+  // Campaign tags on the ambassador link ride through to /shop. The
+  // landing page is the only place GA and the traffic beacon read them,
+  // so a redirect that dropped them would file an ambassador's tagged
+  // Instagram link under "Direct".
+  const destination = new URL("/shop", req.url);
+  destination.searchParams.set("tag", link.slug);
+  for (const [key, value] of req.nextUrl.searchParams) {
+    if (key.startsWith("utm_")) destination.searchParams.set(key, value);
+  }
+
+  const response = NextResponse.redirect(destination, 302);
 
   response.cookies.set(REF_COOKIE, link.ambassadorCode, {
     httpOnly: true,

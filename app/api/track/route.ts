@@ -23,6 +23,8 @@ export async function POST(req: NextRequest) {
       utmSource?: unknown;
       utmMedium?: unknown;
       utmCampaign?: unknown;
+      utmContent?: unknown;
+      utmTerm?: unknown;
       isEntry?: unknown;
     };
 
@@ -40,6 +42,8 @@ export async function POST(req: NextRequest) {
       utmSource: typeof body.utmSource === "string" ? body.utmSource : null,
       utmMedium: typeof body.utmMedium === "string" ? body.utmMedium : null,
       utmCampaign: typeof body.utmCampaign === "string" ? body.utmCampaign : null,
+      utmContent: typeof body.utmContent === "string" ? body.utmContent : null,
+      utmTerm: typeof body.utmTerm === "string" ? body.utmTerm : null,
       isEntry: body.isEntry === true,
       userAgent: req.headers.get("user-agent"),
       // Set by the CDN edge. Absent in local development, which is fine —

@@ -67,12 +67,16 @@ export default function PageViewTracker() {
     let utmSource: string | null = null;
     let utmMedium: string | null = null;
     let utmCampaign: string | null = null;
+    let utmContent: string | null = null;
+    let utmTerm: string | null = null;
     if (session.isEntry) {
       try {
         const params = new URLSearchParams(window.location.search);
         utmSource = params.get("utm_source");
         utmMedium = params.get("utm_medium");
         utmCampaign = params.get("utm_campaign");
+        utmContent = params.get("utm_content");
+        utmTerm = params.get("utm_term");
       } catch {
         // A malformed query string is not worth losing the view over.
       }
@@ -85,6 +89,8 @@ export default function PageViewTracker() {
       utmSource,
       utmMedium,
       utmCampaign,
+      utmContent,
+      utmTerm,
       isEntry: session.isEntry,
     });
 
