@@ -63,14 +63,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   try {
     switch (record.kind) {
       case "ambassador_application":
-        // Ambassador access is granted instantly at signup — Approve is
-        // just an acknowledgment; Decline revokes it.
-        if (decision === "declined" && record.subjectCode) {
-          await updatePermissions(record.subjectCode, { permissions: { ambassador: false } });
-          message = "Ambassador access revoked.";
-        } else {
-          message = "Acknowledged — no change needed, they already have ambassador access.";
+        if (record.subjectCode) {
+          await updatePermissions(record.subjectCode, { permissions: { ambassador: decision === "approved" } });
         }
+        message = decision === "approved" ? "Ambassador access granted." : "Application declined.";
         break;
 
       case "event_sales_application":

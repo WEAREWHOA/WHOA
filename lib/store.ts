@@ -167,10 +167,9 @@ async function generateLinkSlug(ambassadorCode: string, label: string): Promise<
 
 // Ensures an ambassador always has at least one trackable link the moment
 // the ambassador permission is on, instead of an empty Links section until
-// they think to add one themselves. createAmbassador covers the common
-// case (ambassador from day one, via /apply); updatePermissions calls this
-// too, for an account promoted to ambassador later from /super-admin,
-// which previously left it with zero links. A no-op if any link already
+// they think to add one themselves. updatePermissions calls this whenever
+// ambassador access is granted (approval email or /super-admin);
+// createAmbassador calls it for an account created with the permission on. A no-op if any link already
 // exists, so re-saving the same permission doesn't create duplicates.
 async function ensureDefaultLink(code: string): Promise<void> {
   const supabase = getSupabase();
@@ -194,9 +193,8 @@ async function ensureDefaultLink(code: string): Promise<void> {
 
 // Creates a backend-portal account. Despite the name, this is used for
 // every signup — a plain customer, not just an ambassador — so the
-// permissions below default to false and only /apply (the dedicated
-// ambassador application) turns `ambassador` on at creation time. A Super
-// Admin can grant any permission afterward from /super-admin.
+// permissions below default to false. Ambassador access is granted only
+// on approval (the email's Approve link or /super-admin), never at signup.
 export async function createAmbassador(input: {
   name: string;
   email: string;

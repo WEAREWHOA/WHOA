@@ -354,15 +354,12 @@ export async function sendAmbassadorApplicationNotification(input: {
   instagram?: string;
   code: string;
 }): Promise<void> {
-  // Ambassador access is granted instantly at signup (see app/apply), so
-  // there's nothing pending to "approve" here — Approve is just an
-  // acknowledgment. Decline is the useful button: it revokes the access
-  // that was already auto-granted, a fast one-click undo for a bad-faith
-  // signup without a trip to Super Admin.
+  // Ambassador access is held until staff approve — Approve grants it
+  // (and creates their referral link), Decline leaves it off.
   const actions = await buildApprovalActions(
     "ambassador_application",
     { code: input.code },
-    { approveLabel: "Looks good", declineLabel: "Revoke access" },
+    { approveLabel: "Approve", declineLabel: "Decline" },
   );
 
   await sendAdminNotification({
@@ -373,7 +370,7 @@ export async function sendAmbassadorApplicationNotification(input: {
       { label: "Email", value: input.email },
       { label: "Instagram", value: input.instagram || "—" },
       { label: "Assigned code", value: input.code },
-      { label: "Status", value: "Already has ambassador access — approval is instant." },
+      { label: "Status", value: "Pending — no ambassador access until approved." },
     ],
     replyTo: input.email,
     actions,

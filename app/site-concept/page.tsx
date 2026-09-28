@@ -75,7 +75,7 @@ const JOURNEYS: Journey[] = [
     entry: "Wants to earn from sending people our way",
     accent: "#ffd23f",
     steps: [
-      { label: "Apply", href: "/apply", note: "approved instantly" },
+      { label: "Apply", href: "/apply", note: "reviewed by staff" },
       { label: "Account + code", note: "e.g. JANEDOE" },
       { label: "Link & promo code", note: "created automatically" },
     ],
