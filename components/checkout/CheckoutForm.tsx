@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useCart } from "@/components/cart/CartProvider";
 import { formatCents } from "@/lib/money";
 import { applyPromoCodeAction, checkoutAction, quoteCheckoutAction } from "@/app/checkout/actions";
-import { SHIPPING_COUNTRIES, isDomestic, nextTierSaving } from "@/lib/shipping";
+import { SHIPPING_COUNTRIES, countryName, isDomestic, nextTierSaving, normalizeCountry } from "@/lib/shipping";
 import { accountSignOutAction, getAccountAction } from "@/app/account/actions";
 import WalletButtons, { type WalletBuyer } from "@/components/checkout/WalletButtons";
 import {
@@ -270,6 +270,23 @@ function CheckoutFields({
       return;
     }
 
+    // Apple Pay and Google Pay let the buyer pick any address in their
+    // wallet, including one in a country the sheet's total wasn't priced
+    // for — and the sheet's total is fixed once it opens. Charging the
+    // recomputed rate anyway would take more than they approved, so the
+    // destination is switched here and they're asked to tap again, this
+    // time against a sheet showing the real number.
+    const chosenCountry = normalizeCountry(shippingAddress.country);
+    if (chosenCountry && chosenCountry !== normalizeCountry(country)) {
+      setCountry(chosenCountry);
+      setError(
+        `Your wallet address is in ${countryName(chosenCountry)}, so shipping has changed. ` +
+          `Check the new total and tap pay again to confirm.`,
+      );
+      setSubmitting(false);
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
 
@@ -288,7 +305,7 @@ function CheckoutFields({
       return;
     }
 
-    trackPurchase(outcome.orderId ?? "", lines, finalCents);
+    trackPurchase(outcome.orderId ?? "", lines, finalCents, shippingCents);
     clear();
     const accountParam = outcome.accountCreated ? "created" : outcome.signedIn ? "signedin" : "";
     const params = new URLSearchParams({ order: outcome.orderId ?? "" });

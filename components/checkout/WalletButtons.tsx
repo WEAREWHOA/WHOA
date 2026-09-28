@@ -44,14 +44,21 @@ function readBuyer(result: SquareTokenResult): WalletBuyer {
   const addressLines = shipping?.addressLines ?? [];
 
   // Only offered as an address if it's complete enough to ship to —
-  // a half-filled one would be worse than falling back to the form.
+  // a half-filled one would be worse than falling back to the form. A
+  // state counts as missing only where one is expected: requiring it
+  // everywhere rejected every wallet address from a country that has no
+  // equivalent, which is most of them.
+  const wantsState = (shipping?.countryCode || "US").toUpperCase() === "US";
   const address =
-    addressLines[0] && shipping?.city && shipping?.state && shipping?.postalCode
+    addressLines[0] &&
+    shipping?.city &&
+    shipping?.postalCode &&
+    (!wantsState || shipping?.state)
       ? {
           line1: addressLines[0],
           line2: addressLines.slice(1).join(", ") || undefined,
           city: shipping.city,
-          state: shipping.state,
+          state: shipping.state ?? "",
           zip: shipping.postalCode,
           country: shipping.countryCode || undefined,
         }

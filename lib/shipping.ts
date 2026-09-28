@@ -410,6 +410,41 @@ export function freeShippingThresholdCents(zoneId: ZoneId = "US"): number | null
   return Math.min(...free.map((t) => t.minSubtotalCents));
 }
 
+const NAME_BY_COUNTRY = new Map(SHIPPING_COUNTRIES.map((c) => [c.code, c.name]));
+
+/** The country's English name, or the bare code if it isn't one we know —
+ *  a receipt saying "ZZ" is still better than one saying nothing. */
+export function countryName(country: string | null | undefined): string {
+  const code = normalizeCountry(country);
+  return NAME_BY_COUNTRY.get(code) ?? code;
+}
+
+/**
+ * A destination as it should read on a receipt.
+ *
+ * The country is spelled out rather than left as a code: "JP" on a
+ * confirmation email tells an international customer nothing about
+ * whether we got their address right.
+ */
+export function formatShipTo(shipping: {
+  line1: string;
+  line2?: string;
+  city: string;
+  state: string;
+  zip: string;
+  country?: string;
+}): string {
+  const street = [shipping.line1.trim(), shipping.line2?.trim()].filter(Boolean).join(", ");
+  const region = [shipping.city.trim(), shipping.state.trim()].filter(Boolean).join(", ");
+  return [
+    street,
+    [region, shipping.zip.trim()].filter(Boolean).join(" "),
+    countryName(shipping.country),
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 /** US states need a real value for Square; elsewhere the field is a
  *  region name and Square accepts it as free text. */
 export function isDomestic(country: string | null | undefined): boolean {

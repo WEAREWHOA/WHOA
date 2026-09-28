@@ -45,11 +45,19 @@ export function trackBeginCheckout(lines: CartLine[], valueCents: number) {
   });
 }
 
-export function trackPurchase(orderId: string, lines: CartLine[], valueCents: number) {
+export function trackPurchase(
+  orderId: string,
+  lines: CartLine[],
+  valueCents: number,
+  shippingCents = 0,
+) {
   track("purchase", {
     transaction_id: orderId,
     currency: "USD",
     value: valueCents / 100,
+    // Reported separately, the way GA4 expects it, so postage doesn't
+    // read as product revenue in any report built on this event.
+    shipping: shippingCents / 100,
     items: lines.map((l) => toItem(l, l.quantity)),
   });
 }
