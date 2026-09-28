@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useCart } from "@/components/cart/CartProvider";
 import { formatCents } from "@/lib/money";
 import { applyPromoCodeAction, checkoutAction, quoteCheckoutAction } from "@/app/checkout/actions";
+import { SHIPPING_COUNTRIES, isDomestic, nextTierSaving } from "@/lib/shipping";
 import { accountSignOutAction, getAccountAction } from "@/app/account/actions";
 import WalletButtons, { type WalletBuyer } from "@/components/checkout/WalletButtons";
 import {
@@ -71,6 +72,7 @@ function CheckoutFields({
   const [line2, setLine2] = useState(draft?.line2 ?? "");
   const [city, setCity] = useState(draft?.city ?? "");
   const [state, setState] = useState(draft?.state ?? "");
+  const [country, setCountry] = useState(draft?.country || "US");
   const [zip, setZip] = useState(draft?.zip ?? "");
   const [phone, setPhone] = useState(draft?.phone ?? "");
 
@@ -82,6 +84,12 @@ function CheckoutFields({
 
   const discountCents = quote ? quote.discountCents : estimatedDiscountCents;
   const taxCents = quote?.taxCents ?? 0;
+  const shippingCents = quote?.shippingCents ?? 0;
+  const domestic = isDomestic(country);
+  // "Spend a bit more and postage drops" — measured off the same
+  // discounted merchandise subtotal the server prices shipping from, so
+  // the nudge can't promise a tier the order won't actually reach.
+  const shippingNudge = nextTierSaving(country, Math.max(0, totalCents - discountCents));
   const finalCents = quote ? quote.totalCents : totalCents - estimatedDiscountCents;
 
   // Ask Square what this cart actually costs — including any tax
@@ -89,7 +97,7 @@ function CheckoutFields({
   // itself. Re-runs when a promo code lands, since that changes the price.
   useEffect(() => {
     let cancelled = false;
-    quoteCheckoutAction(lines)
+    quoteCheckoutAction(lines, country)
       .then((result) => {
         if (!cancelled) setQuoteState({ value: result });
       })
@@ -102,7 +110,7 @@ function CheckoutFields({
     return () => {
       cancelled = true;
     };
-  }, [lines, ambassadorCode]);
+  }, [lines, ambassadorCode, country]);
 
   // Once per visit to checkout. The cart reads as empty on the first
   // (hydration) render and fills in right after, so wait for real lines.
@@ -221,6 +229,7 @@ function CheckoutFields({
       city,
       state,
       zip,
+      country,
       phone,
       referenceId,
     });
@@ -249,8 +258,12 @@ function CheckoutFields({
     // sheet. The typed form is the fallback, and the only source at all
     // for the card path and for Cash App Pay.
     const shippingAddress = buyer?.address
-      ? { ...buyer.address, phone: buyer.phone?.trim() || phone }
-      : { line1, line2, city, state, zip, phone };
+      ? {
+          ...buyer.address,
+          phone: buyer.phone?.trim() || phone,
+          country: buyer.address.country || country,
+        }
+      : { line1, line2, city, state, zip, phone, country };
 
     if (!shippingAddress.line1.trim()) {
       setError("Add your shipping address below, then try again.");
@@ -339,11 +352,6 @@ function CheckoutFields({
           <span>{formatCents(totalCents)}</span>
         </div>
 
-        <div className="mt-2 flex justify-between text-sm">
-          <span className="text-muted">Shipping</span>
-          <span>Free</span>
-        </div>
-
         {ambassadorCode ? (
           <>
             <div className="text-flame-3 mt-2 flex justify-between text-sm">
@@ -373,6 +381,28 @@ function CheckoutFields({
               <p className="text-flame-3 mt-2 text-xs">That promo code isn&apos;t valid.</p>
             )}
           </div>
+        )}
+
+        <div className="mt-2 flex justify-between text-sm">
+          <span className="text-muted">Shipping</span>
+          {/* Only "Free" once Square has actually priced the order. With
+              no quote, shippingCents is a default rather than an answer,
+              and printing "Free" would promise postage the order is
+              still going to be charged for. */}
+          <span>
+            {!quote
+              ? "Calculated at checkout"
+              : shippingCents > 0
+                ? formatCents(shippingCents)
+                : "Free"}
+          </span>
+        </div>
+
+        {quote && shippingNudge && (
+          <p className="mt-1 text-xs text-flame-3">
+            Spend {formatCents(shippingNudge.addCents)} more for{" "}
+            {shippingNudge.newRateCents === 0 ? "free shipping" : `${formatCents(shippingNudge.newRateCents)} shipping`}.
+          </p>
         )}
 
         {taxCents > 0 && (
@@ -494,27 +524,46 @@ function CheckoutFields({
               placeholder="City"
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              className="col-span-3 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
+              /* A two-letter state fits in a sixth of the row; "Region"
+                 doesn't, so the row is split evenly once it's a word
+                 rather than an abbreviation. */
+              className={`${domestic ? "col-span-3" : "col-span-2"} w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2`}
             />
             <input
               type="text"
-              required
-              aria-label="State"
-              placeholder="State"
+              /* Required in the US, where Square validates it. Plenty of
+                 countries have no state, and demanding one would make
+                 those addresses impossible to enter. */
+              required={domestic}
+              aria-label={domestic ? "State" : "Region"}
+              placeholder={domestic ? "State" : "Region"}
               value={state}
               onChange={(e) => setState(e.target.value)}
-              className="col-span-1 w-full rounded-lg border border-border-strong bg-surface-raised px-2 py-3 text-center text-sm outline-none focus:border-flame-2"
+              className={`${domestic ? "col-span-1" : "col-span-2"} w-full rounded-lg border border-border-strong bg-surface-raised px-2 py-3 text-center text-sm outline-none focus:border-flame-2`}
             />
             <input
               type="text"
               required
-              aria-label="ZIP"
-              placeholder="ZIP"
+              aria-label={domestic ? "ZIP" : "Postcode"}
+              placeholder={domestic ? "ZIP" : "Postcode"}
               value={zip}
               onChange={(e) => setZip(e.target.value)}
               className="col-span-2 w-full rounded-lg border border-border-strong bg-surface-raised px-2 py-3 text-center text-sm outline-none focus:border-flame-2"
             />
           </div>
+          <select
+            aria-label="Country"
+            /* Below the ZIP rather than above the street, because almost
+               everyone leaves it on the default and the fields they do
+               have to type shouldn't start below a dropdown. */
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
+            className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
+          >
+            {SHIPPING_COUNTRIES.map((c) => (
+              <option key={c.code} value={c.code}>{c.name}</option>
+            ))}
+          </select>
           <input
             type="tel"
             required
@@ -524,7 +573,10 @@ function CheckoutFields({
             onChange={(e) => setPhone(e.target.value)}
             className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
           />
-          <p className="mt-2 text-xs text-muted">Shipping within the US only, for now.</p>
+          <p className="mt-2 text-xs text-muted">
+            We ship worldwide. Postage is worked out from your country and order
+            total, and shows in the summary above.
+          </p>
         </div>
 
         <div>

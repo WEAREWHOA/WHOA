@@ -3,6 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 
+import { formatCents } from "@/lib/money";
+import { freeShippingThresholdCents } from "@/lib/shipping";
+
+const FREE_US_OVER = freeShippingThresholdCents("US");
+
 interface FaqItem {
   question: string;
   answer: React.ReactNode;
@@ -30,16 +35,21 @@ const FAQS: FaqItem[] = [
   },
   {
     question: "Do you ship internationally?",
-    answer: "Not yet — online orders currently ship within the US only.",
+    answer:
+      "Yes — we ship worldwide. Pick your country at checkout and the shipping cost is worked out from there. Duties and customs charges are set by the destination country and are the recipient's responsibility.",
   },
   {
     question: "How much does shipping cost, and how long does it take?",
     answer: (
       <>
-        Shipping is currently free on every online order (a limited-time offer — rates will
-        eventually be calculated by weight and order amount). Orders are typically processed in
-        3-5 business days (2 weeks to 1 month for custom hand-painted designs), then arrive in
-        another 5-7 business days within the continental US. Full details on the{" "}
+        Shipping is priced by where it&apos;s going and what the order comes to
+        {FREE_US_OVER === null
+          ? ""
+          : ` — US orders of ${formatCents(FREE_US_OVER)} or more ship free`}
+        , and everything else is shown at checkout once you pick your country. Orders are
+        typically processed in 3-5 business days (2 weeks to 1 month for custom
+        hand-painted designs), then arrive in another 5-7 business days within the continental
+        US, or 2-4 weeks internationally. The full rate table is on the{" "}
         <Link href="/shipping-policy" className="text-flame font-medium hover:underline">
           Shipping Policy
         </Link>{" "}

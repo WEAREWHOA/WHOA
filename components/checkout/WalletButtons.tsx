@@ -16,7 +16,17 @@ export interface WalletBuyer {
   name?: string;
   email?: string;
   phone?: string;
-  address?: { line1: string; line2?: string; city: string; state: string; zip: string };
+  address?: {
+    line1: string;
+    line2?: string;
+    city: string;
+    state: string;
+    zip: string;
+    /** ISO-3166 alpha-2, when the wallet told us. Postage depends on it,
+     *  so a missing one falls back to the country picked on the form
+     *  rather than being guessed. */
+    country?: string;
+  };
 }
 
 /**
@@ -43,6 +53,7 @@ function readBuyer(result: SquareTokenResult): WalletBuyer {
           city: shipping.city,
           state: shipping.state,
           zip: shipping.postalCode,
+          country: shipping.countryCode || undefined,
         }
       : undefined;
 

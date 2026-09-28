@@ -97,6 +97,9 @@ export interface ShopCheckoutDraft {
   city: string;
   state: string;
   zip: string;
+  /** ISO-3166 alpha-2. Empty on drafts written before shipping existed —
+   *  the form falls back to US rather than trusting a blank. */
+  country: string;
   phone: string;
   referenceId: string;
 }
@@ -114,6 +117,7 @@ export const shopCheckoutDraft = createSessionDraftStore<ShopCheckoutDraft>(
     city: readString(raw, "city"),
     state: readString(raw, "state"),
     zip: readString(raw, "zip"),
+    country: readString(raw, "country"),
     phone: readString(raw, "phone"),
     referenceId: readString(raw, "referenceId"),
   }),

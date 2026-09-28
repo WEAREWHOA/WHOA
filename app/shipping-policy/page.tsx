@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 
+import { formatCents } from "@/lib/money";
+import { SHIPPING_ZONES } from "@/lib/shipping";
+
 export const metadata: Metadata = {
   // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
   // Square Online sprayed around consolidate here instead of
   // competing as separate pages.
   alternates: { canonical: "/shipping-policy" },
   title: "Shipping Policy",
-  description: "WHOA's shipping policy — processing time, rates, tracking, and delivery.",
+  description:
+    "WHOA's shipping policy — processing time, domestic and international rates, tracking, and delivery.",
 };
 
 export default function ShippingPolicyPage() {
@@ -37,14 +41,71 @@ export default function ShippingPolicyPage() {
         <div>
           <h2 className="font-display text-xl text-foreground">Shipping method &amp; rates</h2>
           <p className="mt-2">
-            We currently offer <span className="font-semibold text-foreground">free shipping</span> on
-            all online orders within the US, shipped via standard shipping unless otherwise
-            specified. Shipping times vary depending on your location.
+            We ship worldwide via standard shipping unless otherwise specified. What you pay
+            depends on where it&apos;s going and what the order comes to before tax — the exact
+            amount is shown at checkout once you pick your country, so there&apos;s nothing to
+            work out from this table.
           </p>
-          <p className="mt-2">
-            Free shipping is a limited-time offer. Going forward, shipping will be calculated
-            based on package weight and order amount once our real-time shipping calculator is
-            live — we&apos;ll post the updated rates here before that change takes effect.
+
+          {/* Rendered from the same rate table the checkout charges from
+              (lib/shipping.ts), so this page cannot quietly go out of date
+              the way a hand-typed one would. */}
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="py-2 pr-4 font-semibold text-foreground">Destination</th>
+                  <th className="py-2 font-semibold text-foreground">Order total</th>
+                  <th className="py-2 pl-4 text-right font-semibold text-foreground">Shipping</th>
+                </tr>
+              </thead>
+              <tbody>
+                {SHIPPING_ZONES.map((zone) => {
+                  // Cheapest threshold first, so each row reads as a
+                  // rising ladder rather than the matching order the
+                  // pricing code needs.
+                  const tiers = [...zone.tiers].sort(
+                    (a, b) => a.minSubtotalCents - b.minSubtotalCents,
+                  );
+                  return tiers.map((tier, i) => {
+                    const next = tiers[i + 1];
+                    return (
+                      <tr key={`${zone.id}-${tier.minSubtotalCents}`} className="border-b border-border/50">
+                        {i === 0 && (
+                          <th
+                            scope="rowgroup"
+                            rowSpan={tiers.length}
+                            className="py-2 pr-4 align-top font-medium text-foreground"
+                          >
+                            {zone.label}
+                          </th>
+                        )}
+                        <td className="py-2">
+                          {next
+                            ? `${formatCents(tier.minSubtotalCents)}\u2013${formatCents(next.minSubtotalCents - 1)}`
+                            : `${formatCents(tier.minSubtotalCents)} and up`}
+                        </td>
+                        <td className="py-2 pl-4 text-right">
+                          {tier.rateCents === 0 ? (
+                            <span className="font-semibold text-flame">Free</span>
+                          ) : (
+                            formatCents(tier.rateCents)
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  });
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <p className="mt-4">
+            &ldquo;Europe &amp; UK&rdquo; covers the countries listed in our rate table at
+            checkout; anywhere not named above ships at the rest-of-world rate. Duties, import
+            VAT and customs charges on international orders are set by the destination country
+            and are the recipient&apos;s responsibility — they aren&apos;t included in the
+            shipping shown at checkout.
           </p>
         </div>
 
@@ -61,7 +122,8 @@ export default function ShippingPolicyPage() {
           <p className="mt-2">
             Delivery times vary depending on your location and the shipping method chosen.
             Typically, orders within the continental United States arrive within 5-7 business days
-            from the shipping date.
+            from the shipping date. International orders usually take 2-4 weeks, and can take
+            longer when a parcel is held in customs — which is outside our control.
           </p>
         </div>
 
