@@ -33,8 +33,8 @@ export default async function ApplyPage(props: PageProps<"/apply">) {
           Apply in <span className="text-flame">30 seconds</span>
         </h1>
         <p className="mt-3 text-sm text-muted">
-          Approval is instant. Your account, code, and link are ready the
-          moment you submit.
+          Every application is reviewed by our team. Once you&apos;re
+          approved, your code and link appear in your portal.
         </p>
 
         {message && (

@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { formatCents } from "./money";
 import { createApprovalLinks, type ApprovalKind } from "./approvalTokens";
+import { SITE_URL } from "./siteUrl";
 
 let client: Resend | null = null;
 
@@ -354,15 +355,12 @@ export async function sendAmbassadorApplicationNotification(input: {
   instagram?: string;
   code: string;
 }): Promise<void> {
-  // Ambassador access is granted instantly at signup (see app/apply), so
-  // there's nothing pending to "approve" here — Approve is just an
-  // acknowledgment. Decline is the useful button: it revokes the access
-  // that was already auto-granted, a fast one-click undo for a bad-faith
-  // signup without a trip to Super Admin.
+  // Ambassador access is held until staff approve — Approve grants it
+  // (and creates their referral link), Decline leaves it off.
   const actions = await buildApprovalActions(
     "ambassador_application",
     { code: input.code },
-    { approveLabel: "Looks good", declineLabel: "Revoke access" },
+    { approveLabel: "Approve", declineLabel: "Decline" },
   );
 
   await sendAdminNotification({
@@ -373,11 +371,64 @@ export async function sendAmbassadorApplicationNotification(input: {
       { label: "Email", value: input.email },
       { label: "Instagram", value: input.instagram || "—" },
       { label: "Assigned code", value: input.code },
-      { label: "Status", value: "Already has ambassador access — approval is instant." },
+      { label: "Status", value: "Pending — no ambassador access until approved." },
     ],
     replyTo: input.email,
     actions,
   });
+}
+
+/**
+ * Tells an applicant their Brand Ambassador application was approved.
+ *
+ * Sent whenever ambassador access goes from off to on — the Approve link
+ * in the staff email, or a Super Admin switching it on by hand. Their
+ * account code doubles as the default link slug (see ensureDefaultLink),
+ * so the link is known without a lookup.
+ */
+export async function sendAmbassadorApprovedEmail(input: {
+  name: string;
+  email: string;
+  code: string;
+}): Promise<void> {
+  const linkUrl = `${SITE_URL}/r/${input.code}`;
+  const portalUrl = `${SITE_URL}/portal/ambassador`;
+
+  const html = wrapEmail(`
+        <p style="margin:0;color:#ff7a00;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;font-weight:600;">
+          Approved
+        </p>
+        <h1 style="margin:8px 0 0;color:#f7f0e6;font-size:26px;">You&rsquo;re a WHOA Brand Ambassador</h1>
+        <p style="margin:12px 0 0;color:#b8ada0;font-size:14px;line-height:1.6;">
+          Hi ${escapeHtml(input.name)} &mdash; your application is approved. Your code and link are live now:
+        </p>
+        <p style="margin:16px 0 0;color:#f7f0e6;font-size:14px;line-height:1.8;">
+          Code: <strong>${escapeHtml(input.code)}</strong><br />
+          Link: <a href="${linkUrl}" style="color:#ff7a00;">${escapeHtml(linkUrl)}</a>
+        </p>
+        <p style="margin:12px 0 0;color:#b8ada0;font-size:14px;line-height:1.6;">
+          Share either one. Your stats, commission, and payout details are in your dashboard.
+        </p>
+        <p style="margin:24px 0 0;">
+          <a href="${portalUrl}" style="display:inline-block;background:#ff7a00;color:#0a0806;font-size:14px;font-weight:600;text-decoration:none;padding:12px 22px;border-radius:999px;">
+            Open your dashboard
+          </a>
+        </p>
+        <p style="margin:20px 0 0;color:#6b6157;font-size:11px;line-height:1.5;">
+          Sent to ${escapeHtml(input.name)} because you applied to be a WHOA Brand Ambassador.
+        </p>`);
+
+  const { error } = await getResend().emails.send({
+    from: FROM_ADDRESS,
+    to: input.email,
+    replyTo: REPLY_TO,
+    subject: "You're approved — welcome to WHOA Brand Ambassadors",
+    html,
+  });
+
+  if (error) {
+    throw new Error(`Resend failed to send ambassador approval email: ${error.message}`);
+  }
 }
 
 export async function sendContactMessageNotification(input: {

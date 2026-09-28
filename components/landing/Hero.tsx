@@ -24,7 +24,7 @@ export default function Hero() {
         </p>
         <div className="mt-10 flex flex-col gap-4 sm:flex-row">
           <Link href="/apply" className="btn-flame rounded-full px-8 py-4 text-center text-base">
-            Apply — instant approval
+            Apply now
           </Link>
           <Link
             href="/login"

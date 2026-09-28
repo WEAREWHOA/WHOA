@@ -9,8 +9,8 @@ export default function ApplyCta() {
           already share?
         </h2>
         <p className="mt-6 max-w-lg text-muted">
-          Applications are approved instantly. Your code and link are ready
-          before you finish reading this sentence.
+          Every application is reviewed by our team. Once you&apos;re
+          approved, your code and link are ready in your portal.
         </p>
         <Link href="/apply" className="btn-flame mt-8 rounded-full px-8 py-4 text-base">
           Apply now

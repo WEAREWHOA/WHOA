@@ -32,16 +32,19 @@ export async function applyAction(formData: FormData) {
     }
 
     const passwordHash = await hashPassword(password);
+    // Ambassador access is NOT granted here — the account is created
+    // without it and stays a plain account until staff approve the
+    // application from the notification email (or /super-admin). No
+    // referral link exists until then either.
     const ambassador = await createAmbassador({
       name,
       email,
       instagram,
       passwordHash,
-      permissions: { ambassador: true },
     });
 
     await createSession(ambassador.code);
-    target = "/portal?new=1";
+    target = "/portal?applied=1";
 
     // Best-effort — staff should hear about every application, but a
     // Resend hiccup must never block the signup that already succeeded.

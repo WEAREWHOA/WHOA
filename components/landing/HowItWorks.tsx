@@ -2,7 +2,7 @@ const steps = [
   {
     number: "01",
     title: "Apply",
-    body: "Fill out a quick form with your name, email, and Instagram. Approval is instant — no waiting on a review team.",
+    body: "Fill out a quick form with your name, email, and Instagram. Our team reviews every application.",
   },
   {
     number: "02",
