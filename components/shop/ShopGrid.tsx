@@ -17,6 +17,7 @@ const ART_COLLECTIVE_CATEGORY_NAME = "art collective";
 interface CategoryPill {
   id: string;
   name: string;
+  parentId?: string | null;
 }
 
 const SORT_LABELS: Record<SortOption, string> = {
@@ -52,23 +53,40 @@ export default function ShopGrid({ products, artistNames }: { products: Product[
   const artistNameSet = useMemo(() => new Set(artistNames.map((name) => name.toLowerCase())), [artistNames]);
 
   // Every Art Collective product carries both the umbrella "Art Collective"
-  // category and its own artist's category directly (see
-  // getOrCreateArtistCategoryId in lib/catalog.ts) — split those out from
-  // regular product-type categories (Apparel, Hats, etc.) into their own
-  // row, since otherwise a dozen-plus artist names get mixed in with a
-  // handful of real categories in one long pill list.
+  // category and its own artist's category (see getOrCreateArtistCategoryId
+  // in lib/catalog.ts) — keep those out of the product-type row, which is
+  // meant to be Apparel, Hats and the like rather than a dozen-plus artist
+  // names.
+  //
+  // The test is Square's own hierarchy: an artist's category is nested
+  // under Art Collective, so it's recognised by its parent rather than by
+  // its name. Matching on names alone missed anyone spelled differently in
+  // Square from the curated list, or added there by hand, and let them
+  // through as if they were a kind of product. Names are still checked as
+  // a fallback for a category that hasn't been re-parented yet.
   const { productCategories, artistCategories } = useMemo(() => {
-    const byId = new Map<string, string>();
+    const byId = new Map<string, CategoryPill>();
     for (const product of products) {
-      for (const category of product.categories) byId.set(category.id, category.name);
+      for (const category of product.categories) {
+        byId.set(category.id, {
+          id: category.id,
+          name: category.name,
+          parentId: category.parentId ?? null,
+        });
+      }
     }
-    const all = Array.from(byId, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+    const all = [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+
+    const isUmbrella = (c: CategoryPill) =>
+      c.name.trim().toLowerCase() === ART_COLLECTIVE_CATEGORY_NAME;
+    const umbrellaIds = new Set(all.filter(isUmbrella).map((c) => c.id));
 
     const productCategories: CategoryPill[] = [];
     const artistCategories: CategoryPill[] = [];
     for (const category of all) {
       const key = category.name.trim().toLowerCase();
-      if (key === ART_COLLECTIVE_CATEGORY_NAME || artistNameSet.has(key)) {
+      const nested = category.parentId != null && umbrellaIds.has(category.parentId);
+      if (nested || isUmbrella(category) || artistNameSet.has(key)) {
         artistCategories.push(category);
       } else {
         productCategories.push(category);

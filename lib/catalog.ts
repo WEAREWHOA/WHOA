@@ -213,6 +213,7 @@ async function listProductsUncached(options?: { onlineOnly?: boolean }): Promise
 
   const imageUrlById = new Map<string, string>();
   const categoryNameById = new Map<string, string>();
+  const categoryParentById = new Map<string, string | null>();
   const optionMetaById = new Map<string, ItemOptionMeta>();
   const optionValueMetaById = new Map<string, ItemOptionValueMeta>();
   const lookupIds = [...imageIds, ...categoryIds, ...optionIds, ...optionValueIds];
@@ -223,6 +224,7 @@ async function listProductsUncached(options?: { onlineOnly?: boolean }): Promise
         imageUrlById.set(obj.id, obj.imageData.url);
       } else if (obj.type === "CATEGORY" && obj.id && obj.categoryData?.name) {
         categoryNameById.set(obj.id, obj.categoryData.name);
+        categoryParentById.set(obj.id, obj.categoryData.parentCategory?.id ?? null);
       } else if (obj.type === "ITEM_OPTION" && obj.id && obj.itemOptionData) {
         optionMetaById.set(obj.id, {
           name: obj.itemOptionData.displayName || obj.itemOptionData.name || "Option",
@@ -277,7 +279,9 @@ async function listProductsUncached(options?: { onlineOnly?: boolean }): Promise
     for (const category of data.categories ?? []) {
       if (!category.id) continue;
       const name = categoryNameById.get(category.id);
-      if (name) categories.push({ id: category.id, name });
+      if (name) {
+        categories.push({ id: category.id, name, parentId: categoryParentById.get(category.id) ?? null });
+      }
     }
 
     products.push({
@@ -342,6 +346,7 @@ export async function getProduct(itemId: string): Promise<Product | undefined> {
 
   const imageUrlById = new Map<string, string>();
   const categoryNameById = new Map<string, string>();
+  const categoryParentById = new Map<string, string | null>();
   const optionMetaById = new Map<string, ItemOptionMeta>();
   const optionValueMetaById = new Map<string, ItemOptionValueMeta>();
   for (const obj of response.relatedObjects ?? []) {
@@ -349,6 +354,7 @@ export async function getProduct(itemId: string): Promise<Product | undefined> {
       imageUrlById.set(obj.id, obj.imageData.url);
     } else if (obj.type === "CATEGORY" && obj.id && obj.categoryData?.name) {
       categoryNameById.set(obj.id, obj.categoryData.name);
+      categoryParentById.set(obj.id, obj.categoryData.parentCategory?.id ?? null);
     } else if (obj.type === "ITEM_OPTION" && obj.id && obj.itemOptionData) {
       optionMetaById.set(obj.id, {
         name: obj.itemOptionData.displayName || obj.itemOptionData.name || "Option",
@@ -393,7 +399,9 @@ export async function getProduct(itemId: string): Promise<Product | undefined> {
   for (const category of data.categories ?? []) {
     if (!category.id) continue;
     const name = categoryNameById.get(category.id);
-    if (name) categories.push({ id: category.id, name });
+    if (name) {
+      categories.push({ id: category.id, name, parentId: categoryParentById.get(category.id) ?? null });
+    }
   }
 
   return {
