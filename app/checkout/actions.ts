@@ -11,12 +11,13 @@ import { findOrCreateSquareCustomerId } from "@/lib/squareCustomers";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { getSupabase } from "@/lib/supabase";
 import { REF_COOKIE, REF_COOKIE_DAYS } from "@/lib/attribution";
+import { commissionForOrder } from "@/lib/tiers";
 import {
   buildOrderPricing,
   discountedMerchandiseCents,
   type CheckoutQuote,
 } from "@/lib/checkoutOrder";
-import { isDomestic, normalizeCountry, shippingRateCents } from "@/lib/shipping";
+import { formatShipTo, isDomestic, normalizeCountry, shippingRateCents } from "@/lib/shipping";
 import type { CartLine, ShippingAddress } from "@/lib/types";
 import type { Country, Money } from "square";
 
@@ -299,6 +300,20 @@ export async function checkoutAction(input: {
       })
     : new Set<string>();
 
+  // Worked out once, here, because two things need it: the order Square
+  // charges, and the commission below, which must not pay an ambassador
+  // 10% of the postage.
+  const shippingCents = shipping
+    ? shippingRateCents(
+        shipping.country,
+        discountedMerchandiseCents({
+          lines: input.lines,
+          ambassadorCode: ambassador?.code,
+          excludedProductIds,
+        }),
+      )
+    : 0;
+
   let orderId: string;
   let totalMoney: Money;
 
@@ -312,19 +327,10 @@ export async function checkoutAction(input: {
           lines: input.lines,
           ambassadorCode: ambassador?.code,
           excludedProductIds,
-          // Recomputed here from the address on the order, by the same
-          // function the quote used. Nothing about the postage comes
-          // from the browser.
-          shippingCents: shipping
-            ? shippingRateCents(
-                shipping.country,
-                discountedMerchandiseCents({
-                  lines: input.lines,
-                  ambassadorCode: ambassador?.code,
-                  excludedProductIds,
-                }),
-              )
-            : 0,
+          // Recomputed server-side from the address on the order, by the
+          // same function the quote used. Nothing about the postage
+          // comes from the browser.
+          shippingCents,
         }),
         fulfillments: shipping
           ? [
@@ -401,6 +407,8 @@ export async function checkoutAction(input: {
         quantity: line.quantity,
         totalCents: line.priceCents * line.quantity,
       })),
+      shippingCents: shipping ? shippingCents : undefined,
+      shipTo: shipping ? formatShipTo(shipping) : undefined,
       totalCents: Number(totalMoney.amount),
     }).catch((err) => {
       console.error("Failed to send order confirmation email", err);
@@ -408,8 +416,10 @@ export async function checkoutAction(input: {
   }
 
   if (ambassador) {
-    const saleAmount = Number(totalMoney.amount) / 100;
-    const commission = Math.round(saleAmount * 0.1 * 100) / 100;
+    const { saleAmount, commission } = commissionForOrder(
+      Number(totalMoney.amount),
+      shippingCents,
+    );
 
     const { error } = await getSupabase().from("orders").insert({
       id: `sq_${orderId}`,

@@ -11,6 +11,28 @@ export interface TierDef {
 export const COMMISSION_RATE = 0.1;
 export const CUSTOMER_DISCOUNT = 0.15;
 
+/**
+ * What an ambassador earns on one order, and what gets recorded as the
+ * sale it was earned on — both in dollars, which is how the orders table
+ * stores them.
+ *
+ * Postage comes off first. It's money WHOA hands to a carrier, not
+ * revenue, so paying 10% of it would mean a $30 order to Australia
+ * earning commission on $60. Tax, where Square is configured to charge
+ * any, is still included — that predates shipping and changing it would
+ * move every ambassador's historical numbers.
+ */
+export function commissionForOrder(totalCents: number, shippingCents = 0): {
+  saleAmount: number;
+  commission: number;
+} {
+  const saleAmount = Math.max(0, Math.round(totalCents) - Math.max(0, Math.round(shippingCents))) / 100;
+  return {
+    saleAmount,
+    commission: Math.round(saleAmount * COMMISSION_RATE * 100) / 100,
+  };
+}
+
 export const TIERS: TierDef[] = [
   {
     id: "rookie",

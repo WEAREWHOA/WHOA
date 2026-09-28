@@ -55,6 +55,8 @@ function buildOrderHtml(input: {
   customerName: string;
   orderId: string;
   lines: OrderConfirmationLine[];
+  shippingCents?: number;
+  shipTo?: string;
   totalCents: number;
 }): string {
   const rows = input.lines
@@ -67,6 +69,29 @@ function buildOrderHtml(input: {
     )
     .join("");
 
+  // The line items and the total have to reconcile. Once postage is part
+  // of the total, a receipt that lists only the goods reads as an
+  // overcharge — so the row is shown whenever there was a shipment,
+  // including when it came to nothing.
+  const shippingRow =
+    input.shippingCents === undefined
+      ? ""
+      : `
+          <tr>
+            <td style="padding:12px 0 0;color:#b8ada0;font-size:14px;">Shipping</td>
+            <td style="padding:12px 0 0;color:#b8ada0;font-size:14px;text-align:right;">${
+              input.shippingCents > 0 ? formatCents(input.shippingCents) : "Free"
+            }</td>
+          </tr>`;
+
+  const shipToBlock = input.shipTo
+    ? `
+        <p style="margin:20px 0 0;color:#6b6157;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;">Shipping to</p>
+        <p style="margin:4px 0 0;color:#b8ada0;font-size:13px;line-height:1.5;">${escapeHtml(
+          input.shipTo,
+        ).replace(/\n/g, "<br/>")}</p>`
+    : "";
+
   return wrapEmail(`
         <p style="margin:0;color:#ff7a00;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;font-weight:600;">Order confirmed</p>
         <h1 style="margin:8px 0 0;color:#f7f0e6;font-size:28px;">Thanks, ${escapeHtml(input.customerName)}</h1>
@@ -77,11 +102,13 @@ function buildOrderHtml(input: {
           ${rows}
         </table>
         <table style="width:100%;border-collapse:collapse;border-top:1px solid #2a231b;margin-top:8px;">
+          ${shippingRow}
           <tr>
             <td style="padding:12px 0 0;color:#f7f0e6;font-size:15px;font-weight:600;">Total</td>
             <td style="padding:12px 0 0;color:#f7f0e6;font-size:15px;font-weight:600;text-align:right;">${formatCents(input.totalCents)}</td>
           </tr>
         </table>
+        ${shipToBlock}
         <p style="margin:24px 0 0;color:#6b6157;font-size:12px;font-family:monospace;">Order ${escapeHtml(input.orderId)}</p>
         <p style="margin:24px 0 0;color:#b8ada0;font-size:13px;line-height:1.5;">
           Questions about your order? Just reply to this email.
@@ -162,6 +189,10 @@ export async function sendOrderConfirmationEmail(input: {
   customerName: string;
   orderId: string;
   lines: OrderConfirmationLine[];
+  /** Omitted for the POS register, where there's no shipment at all. */
+  shippingCents?: number;
+  /** Where it's going, already formatted for display. */
+  shipTo?: string;
   totalCents: number;
 }): Promise<void> {
   const resend = getResend();
