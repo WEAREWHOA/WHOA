@@ -4,6 +4,10 @@ const faqs = [
     a: "A flat 10% commission on every sale that comes through your code or link — at every tier. Tiers unlock perks and recognition, not a better rate.",
   },
   {
+    q: "What is the 10% calculated on?",
+    a: "The goods, at the price the customer actually paid. Your 15% discount comes off first, then tax and shipping come out — tax goes to the state and shipping goes to the carrier, so neither is WHOA's to share. A $100 order with your code is $85 of goods, and you earn $8.50 on it.",
+  },
+  {
     q: "How much discount does my code give?",
     a: "15% off for anyone who checks out with your code or clicks your special link.",
   },
