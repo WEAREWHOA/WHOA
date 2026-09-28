@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { Product } from "@/lib/types";
 import ProductCard from "./ProductCard";
@@ -163,12 +164,20 @@ export default function ShopGrid({ products, artistNames }: { products: Product[
             )}
 
             {artistCategories.length > 0 && (
-              <CategoryPillRow
-                label="Shop by artist"
-                categories={artistCategories}
-                activeId={categoryId}
-                onSelect={(id) => setCategoryId(categoryId === id ? null : id)}
-              />
+              // One link, not a pill per artist. The roster page introduces
+              // each artist with their work and their story, which a row of
+              // bare names on a product grid can't — and that row grew a
+              // pill for every artist who ever joined, duplicates included.
+              <Link
+                href="/art-collective"
+                className="rounded-full border border-white/20 px-5 py-2 text-xs font-semibold tracking-wide text-white/70 uppercase transition-colors hover:border-flame-2/50 hover:text-white"
+              >
+                Shop by artist
+                {/* This one leaves the page while every pill beside it
+                    filters in place — the arrow is the only thing saying
+                    so before it's clicked. */}
+                <span aria-hidden="true"> →</span>
+              </Link>
             )}
           </div>
         )}
