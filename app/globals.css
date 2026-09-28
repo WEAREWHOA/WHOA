@@ -1312,10 +1312,16 @@ body {
 
 .an-periods {
   display: inline-flex;
+  /* Wraps rather than running off the side: BA ADMIN and CUSTOMER ADMIN
+     both carry four tabs, which is wider than a phone. The pill ring
+     follows the rows down, so a wrapped second row still reads as part
+     of the same control. */
+  flex-wrap: wrap;
   gap: 4px;
   border-radius: 999px;
   border: 1px solid var(--border-strong);
   padding: 4px;
+  max-width: 100%;
 }
 
 .an-period {
@@ -2116,6 +2122,54 @@ body {
   font-size: 13px;
   line-height: 1.6;
   color: var(--muted);
+}
+
+/* CUSTOMER ADMIN — a directory row opens in place rather than navigating,
+   so it has to look like it can be pressed. */
+.cust-row {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.cust-row:hover,
+.cust-row:focus-visible {
+  background: var(--surface-raised);
+  outline: none;
+}
+.cust-row[aria-expanded="true"] {
+  background: var(--surface-raised);
+}
+
+.cust-detail {
+  padding: 4px 0 16px;
+  /* The detail sits in a table cell, so on a phone its own contents —
+     a nested order table, a long Square id — would otherwise push the
+     whole page wider than the viewport. */
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.cust-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  margin: 0 0 10px;
+}
+.cust-facts div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cust-facts dt {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.cust-facts dd {
+  margin: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 /**

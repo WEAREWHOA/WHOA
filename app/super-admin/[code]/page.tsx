@@ -66,6 +66,12 @@ const PERMISSION_ROWS = [
     hint: "BA ADMIN tab — every Brand Ambassador's numbers, the leaderboard, and recording payouts. Sees everyone's commission and payout details, so grant it deliberately. Super Admins already have this.",
   },
   {
+    field: "perm_customer_admin",
+    permission: "customerAdmin",
+    label: "Customer Admin",
+    hint: "CUSTOMER ADMIN tab — the searchable directory of every customer, from Square as well as this site. Shows everyone's email, phone and address, so grant it deliberately. Super Admins already have this.",
+  },
+  {
     field: "perm_analytics",
     permission: "analytics",
     label: "Analytics",

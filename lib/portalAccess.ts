@@ -48,6 +48,7 @@ export async function requirePortal(): Promise<PortalAccess> {
       // same people who read them.
       links: admin || p.analytics,
       "ba-admin": admin || p.baAdmin,
+      "customer-admin": admin || p.customerAdmin,
       "events-admin": admin || p.eventsAdmin,
       // Events admins keep the door: nobody who could admit guests before
       // this tab existed loses that.

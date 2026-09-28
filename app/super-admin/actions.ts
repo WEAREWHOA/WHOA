@@ -28,6 +28,7 @@ export async function updateAccountPermissionsAction(formData: FormData) {
       rolodex: formData.get("perm_rolodex") === "on",
       analytics: formData.get("perm_analytics") === "on",
       baAdmin: formData.get("perm_ba_admin") === "on",
+      customerAdmin: formData.get("perm_customer_admin") === "on",
     },
     isSuperAdmin: formData.get("is_super_admin") === "on",
     vendorSlug: String(formData.get("vendor_slug") || "").trim(),
