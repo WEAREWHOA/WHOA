@@ -1,9 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { loadBaAdminAction, recordPayRunAction, recordPayoutAction } from "@/app/ba-admin/actions";
+import {
+  applyCommissionBackfillAction,
+  loadBaAdminAction,
+  previewCommissionBackfillAction,
+  recordPayRunAction,
+  recordPayoutAction,
+} from "@/app/ba-admin/actions";
 import { payoutDueLabel, periodLabel, recentPeriods } from "@/lib/baPeriods";
 import type { BaAdminData, BaRow } from "@/lib/baAdmin";
+import type { BackfillReport } from "@/lib/commissionBackfill";
 
 /**
  * BA ADMIN — every ambassador, what they earned, and what they're owed.
@@ -17,6 +24,10 @@ import type { BaAdminData, BaRow } from "@/lib/baAdmin";
 
 const money = (cents: number) =>
   `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+// "-$1.15", not "$-1.15". A minus wedged after the dollar sign reads as
+// a typo on a screen full of money.
+const signed = (cents: number) => `${cents < 0 ? "-" : cents > 0 ? "+" : ""}${money(Math.abs(cents))}`;
 
 const shortDate = (iso: string | null) =>
   iso
@@ -33,7 +44,13 @@ export default function BaAdmin({ initial }: { initial: BaAdminData }) {
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortKey>("sales");
-  const [view, setView] = useState<"run" | "roster" | "history">("run");
+  const [view, setView] = useState<"run" | "roster" | "history" | "recalc">("run");
+  const [report, setReport] = useState<BackfillReport | null>(null);
+  const [recalcBusy, setRecalcBusy] = useState(false);
+  // An apply is only offered against a report already on screen, so
+  // nobody can rewrite every commission figure without first reading
+  // exactly which ones move and by how much.
+  const [confirming, setConfirming] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   const [paying, setPaying] = useState<string | null>(null);
 
@@ -173,7 +190,12 @@ export default function BaAdmin({ initial }: { initial: BaAdminData }) {
       {flash && <p className="ba-flash">{flash}</p>}
 
       <div className="an-periods" role="tablist" aria-label="View">
-        {([["run", "PAY RUN"], ["roster", "ROSTER"], ["history", "PAYOUT HISTORY"]] as const).map(([id, label]) => (
+        {([
+          ["run", "PAY RUN"],
+          ["roster", "ROSTER"],
+          ["history", "PAYOUT HISTORY"],
+          ["recalc", "RECALCULATE"],
+        ] as const).map(([id, label]) => (
           <button
             key={id}
             type="button"
@@ -371,6 +393,154 @@ export default function BaAdmin({ initial }: { initial: BaAdminData }) {
                 ))}
               </tbody>
             </table>
+          )}
+        </section>
+      )}
+
+      {view === "recalc" && (
+        <section className="an-panel">
+          <header className="an-panel-head">
+            <h3 className="an-panel-title">Recalculate commissions</h3>
+            <span className="an-panel-group">post-promo, pre-tax, excluding shipping</span>
+          </header>
+
+          <p className="ba-note">
+            Older orders were recorded before the rule settled — some earned commission on
+            tax, and some on postage. This reads the original order back from Square, works
+            the figure out again, and corrects the rows that are wrong. Nothing is changed
+            until you say so, and running it twice does nothing the second time.
+          </p>
+
+          <div className="ba-actions">
+            <button
+              type="button"
+              className="ba-btn"
+              disabled={recalcBusy}
+              onClick={() => {
+                setRecalcBusy(true);
+                setConfirming(false);
+                previewCommissionBackfillAction()
+                  .then((r) => {
+                    setReport(r);
+                    setRecalcBusy(false);
+                  })
+                  .catch(() => {
+                    setReport(null);
+                    setRecalcBusy(false);
+                  });
+              }}
+            >
+              {recalcBusy ? "CHECKING…" : "CHECK WHAT WOULD CHANGE"}
+            </button>
+          </div>
+
+          {report && !report.ok && <p className="ba-caution">{report.error}</p>}
+
+          {report?.ok && (
+            <>
+              <p className="ba-note">
+                {report.applied ? "Corrected " : "Would correct "}
+                <strong>{report.changes.length}</strong> of {report.checked} orders
+                {report.unchanged > 0 && ` — ${report.unchanged} already correct`}
+                {report.skipped.length > 0 && `, ${report.skipped.length} skipped`}.
+                {report.changes.length > 0 && (
+                  <>
+                    {" "}Commission across all ambassadors moves by{" "}
+                    <strong>{signed(report.deltaCommissionCents)}</strong>.
+                  </>
+                )}
+              </p>
+
+              {report.settledPeriods.length > 0 && (
+                <p className="ba-caution">
+                  {report.settledPeriods.length === 1 ? "One month has" : `${report.settledPeriods.length} months have`}{" "}
+                  already been paid out at the old figure. Correcting the order rows does not
+                  undo a payout — settle any difference with the ambassador directly:{" "}
+                  {report.settledPeriods
+                    .map((p) => `${p.ambassadorCode} ${periodLabel(p.period)} (${signed(p.deltaCommissionCents)})`)
+                    .join(", ")}
+                  .
+                </p>
+              )}
+
+              {report.changes.length > 0 && (
+                <table className="an-table ba-table">
+                  <thead>
+                    <tr>
+                      <th>Order</th><th>Ambassador</th><th>Date</th>
+                      <th>Was</th><th>Now</th><th>Change</th><th>Came off</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {report.changes.map((c) => (
+                      <tr key={c.id}>
+                        <td className="an-table-path">{c.id}</td>
+                        <td>
+                          <span className="ba-name">{c.ambassadorCode}</span>
+                          {c.alreadyPaid && <span className="an-journey-meta"> · paid</span>}
+                        </td>
+                        <td className="an-journey-meta">{shortDate(c.orderDate)}</td>
+                        <td className="an-journey-meta">{money(c.oldCommissionCents)}</td>
+                        <td className="ba-strong">{money(c.newCommissionCents)}</td>
+                        <td className="an-journey-meta">{signed(c.deltaCommissionCents)}</td>
+                        <td className="an-journey-meta">
+                          {[
+                            c.taxCents > 0 ? `${money(c.taxCents)} tax` : null,
+                            c.shippingCents > 0 ? `${money(c.shippingCents)} shipping` : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" + ") || "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {report.skipped.length > 0 && (
+                <p className="ba-note">
+                  Skipped: {report.skipped.map((s) => `${s.id} (${s.reason})`).join(", ")}.
+                </p>
+              )}
+
+              {!report.applied && report.changes.length > 0 && (
+                <div className="ba-actions">
+                  {confirming ? (
+                    <>
+                      <button
+                        type="button"
+                        className="prize-btn"
+                        disabled={recalcBusy}
+                        onClick={() => {
+                          setRecalcBusy(true);
+                          applyCommissionBackfillAction()
+                            .then((r) => {
+                              setReport(r);
+                              setConfirming(false);
+                              setRecalcBusy(false);
+                            })
+                            .catch(() => {
+                              setConfirming(false);
+                              setRecalcBusy(false);
+                            });
+                        }}
+                      >
+                        {recalcBusy
+                          ? "CORRECTING…"
+                          : `YES — CORRECT ${report.changes.length} ORDER${report.changes.length === 1 ? "" : "S"}`}
+                      </button>
+                      <button type="button" className="ba-btn" onClick={() => setConfirming(false)}>
+                        CANCEL
+                      </button>
+                    </>
+                  ) : (
+                    <button type="button" className="ba-btn" onClick={() => setConfirming(true)}>
+                      APPLY THESE CORRECTIONS
+                    </button>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </section>
       )}
