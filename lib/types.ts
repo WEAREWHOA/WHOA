@@ -50,6 +50,11 @@ export interface AccountPermissions {
   // ledger. Separate from `ambassador`, which is someone's own view of
   // their own links — this one sees everybody's, and records payments.
   baAdmin: boolean;
+  // CUSTOMER ADMIN tab: the directory of everyone who has ever bought
+  // from WHOA, from Square's customer directory as well as this app's
+  // own accounts. Off by default — it's every customer's email, phone
+  // and address in one searchable list.
+  customerAdmin: boolean;
   // ANALYTICS tab: traffic, revenue, payouts and funnels for the whole
   // business in one place. Off by default — it's the widest view of the
   // company there is, wider than any single admin tab.
