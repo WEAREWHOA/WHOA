@@ -16,17 +16,32 @@ export const CUSTOMER_DISCOUNT = 0.15;
  * sale it was earned on — both in dollars, which is how the orders table
  * stores them.
  *
- * Postage comes off first. It's money WHOA hands to a carrier, not
- * revenue, so paying 10% of it would mean a $30 order to Australia
- * earning commission on $60. Tax, where Square is configured to charge
- * any, is still included — that predates shipping and changing it would
- * move every ambassador's historical numbers.
+ * The rule is: **post-promo, pre-tax, excluding shipping.** What's left
+ * is the goods at the price the customer actually paid for them.
+ *
+ * - Discounts and promo codes come off first, because they already have
+ *   — `totalCents` is Square's own net total, so a 15% ambassador
+ *   discount has been applied before this ever sees it.
+ * - Tax comes off, because it's collected on WHOA's behalf and remitted
+ *   to the state. None of it is WHOA's to share.
+ * - Postage comes off, because it's handed to a carrier. Otherwise a $30
+ *   order to Australia would earn commission on $60.
  */
-export function commissionForOrder(totalCents: number, shippingCents = 0): {
-  saleAmount: number;
-  commission: number;
-} {
-  const saleAmount = Math.max(0, Math.round(totalCents) - Math.max(0, Math.round(shippingCents))) / 100;
+export function commissionForOrder({
+  totalCents,
+  taxCents = 0,
+  shippingCents = 0,
+}: {
+  /** Square's own total for the order: net of discounts, with tax and
+   *  postage in it. */
+  totalCents: number;
+  /** Square's `totalTaxMoney` — whatever it actually charged, rather
+   *  than anything worked out here. */
+  taxCents?: number;
+  shippingCents?: number;
+}): { saleAmount: number; commission: number } {
+  const cents = (n: number) => Math.max(0, Math.round(n));
+  const saleAmount = Math.max(0, cents(totalCents) - cents(taxCents) - cents(shippingCents)) / 100;
   return {
     saleAmount,
     commission: Math.round(saleAmount * COMMISSION_RATE * 100) / 100,

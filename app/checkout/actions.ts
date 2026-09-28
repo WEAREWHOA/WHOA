@@ -316,6 +316,10 @@ export async function checkoutAction(input: {
 
   let orderId: string;
   let totalMoney: Money;
+  // Square's own tax figure, kept for the commission below. Whatever it
+  // charged is the number that matters — tax is configured per item in
+  // Square, so nothing here could work it out independently.
+  let orderTaxCents = 0;
 
   try {
     const orderResponse = await square.orders.create({
@@ -371,6 +375,7 @@ export async function checkoutAction(input: {
 
     orderId = orderResponse.order.id;
     totalMoney = orderResponse.order.totalMoney;
+    orderTaxCents = Number(orderResponse.order.totalTaxMoney?.amount ?? 0);
   } catch (err) {
     console.error("Square order creation failed", err);
     return { ok: false, error: "Couldn't create the order. Please try again." };
@@ -416,10 +421,11 @@ export async function checkoutAction(input: {
   }
 
   if (ambassador) {
-    const { saleAmount, commission } = commissionForOrder(
-      Number(totalMoney.amount),
+    const { saleAmount, commission } = commissionForOrder({
+      totalCents: Number(totalMoney.amount),
+      taxCents: orderTaxCents,
       shippingCents,
-    );
+    });
 
     const { error } = await getSupabase().from("orders").insert({
       id: `sq_${orderId}`,
