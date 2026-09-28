@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { consumeApprovalToken, getApprovalToken } from "@/lib/approvalTokens";
-import { updatePermissions } from "@/lib/store";
+import { getByCode, updatePermissions } from "@/lib/store";
+import { sendAmbassadorApprovedEmail } from "@/lib/email";
 import { reviewWorkSignup } from "@/lib/eventSales";
 import { reviewArtProduct } from "@/lib/artCollective";
 
@@ -24,6 +25,16 @@ function htmlPage(title: string, message: string): string {
 
 function respond(title: string, message: string, status = 200): NextResponse {
   return new NextResponse(htmlPage(title, message), { status, headers: { "Content-Type": "text/html" } });
+}
+
+// Best-effort — access is already granted; a Resend hiccup mustn't turn
+// the staff member's click into an error page.
+async function notifyAmbassadorApproved(account: { name: string; email: string; code: string }): Promise<void> {
+  try {
+    await sendAmbassadorApprovedEmail(account);
+  } catch (err) {
+    console.error("sendAmbassadorApprovedEmail failed:", err);
+  }
 }
 
 // One-click Approve/Decline links from staff notification emails (see
@@ -64,9 +75,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     switch (record.kind) {
       case "ambassador_application":
         if (record.subjectCode) {
+          const before = await getByCode(record.subjectCode);
           await updatePermissions(record.subjectCode, { permissions: { ambassador: decision === "approved" } });
+          if (decision === "approved" && before && !before.permissions.ambassador) {
+            await notifyAmbassadorApproved(before);
+          }
         }
-        message = decision === "approved" ? "Ambassador access granted." : "Application declined.";
+        message = decision === "approved" ? "Ambassador access granted — they've been emailed." : "Application declined.";
         break;
 
       case "event_sales_application":

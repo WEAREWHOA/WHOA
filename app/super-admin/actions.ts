@@ -2,7 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { requireSuperAdmin } from "@/lib/superAdmin";
-import { updatePermissions } from "@/lib/store";
+import { getByCode, updatePermissions } from "@/lib/store";
+import { sendAmbassadorApprovedEmail } from "@/lib/email";
 
 export async function updateAccountPermissionsAction(formData: FormData) {
   await requireSuperAdmin();
@@ -10,9 +11,12 @@ export async function updateAccountPermissionsAction(formData: FormData) {
   const code = String(formData.get("code") || "").trim();
   if (!code) redirect("/super-admin");
 
+  const before = await getByCode(code);
+  const ambassador = formData.get("perm_ambassador") === "on";
+
   await updatePermissions(code, {
     permissions: {
-      ambassador: formData.get("perm_ambassador") === "on",
+      ambassador,
       vendor: formData.get("perm_vendor") === "on",
       music: formData.get("perm_music") === "on",
       ssbd: formData.get("perm_ssbd") === "on",
@@ -29,6 +33,16 @@ export async function updateAccountPermissionsAction(formData: FormData) {
     vendorSlug: String(formData.get("vendor_slug") || "").trim(),
     squareCustomerId: String(formData.get("square_customer_id") || "").trim(),
   });
+
+  // Switching ambassador on here is an approval too — tell them, same as
+  // the Approve link in the application email. Best-effort.
+  if (ambassador && before && !before.permissions.ambassador) {
+    try {
+      await sendAmbassadorApprovedEmail(before);
+    } catch (err) {
+      console.error("sendAmbassadorApprovedEmail failed:", err);
+    }
+  }
 
   redirect(`/super-admin/${code}?saved=1`);
 }
