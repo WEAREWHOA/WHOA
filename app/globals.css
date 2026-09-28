@@ -2118,6 +2118,48 @@ body {
   color: var(--muted);
 }
 
+/**
+ * "Shop by artist" on the shop's filter row.
+ *
+ * Deliberately the brightest thing in that row. It's the one control
+ * there that goes somewhere rather than filtering in place, and it's the
+ * way into the Art Collective — so it reads as an invitation, not as one
+ * more pill. The amber end of the flame ramp keeps it clear of the
+ * red-to-orange "Add to cart" buttons further down the page.
+ */
+.shop-artist-link {
+  border-radius: 999px;
+  border: 1px solid rgba(255, 184, 0, 0.6);
+  background-image: linear-gradient(100deg, var(--flame-2) 0%, var(--flame-3) 100%);
+  /* A size up from the filter pills beside it, so it carries on a busy
+     background without needing a second row to itself. */
+  padding: 13px 28px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #1a0b00;
+  box-shadow: 0 0 26px rgba(255, 138, 0, 0.5);
+  transition: box-shadow 0.2s ease, filter 0.2s ease, transform 0.2s ease;
+}
+.shop-artist-link:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 0 32px rgba(255, 184, 0, 0.7);
+}
+
+/* The glow is decoration; a reader who asked for less motion and less
+   flash shouldn't get a pulsing halo, but the button must still read as
+   the bright one. */
+@media (prefers-reduced-motion: reduce) {
+  .shop-artist-link {
+    transition: none;
+  }
+  .shop-artist-link:hover {
+    transform: none;
+  }
+}
+
 .ba-actions {
   display: flex;
   flex-wrap: wrap;

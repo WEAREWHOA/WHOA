@@ -33,12 +33,9 @@ export default function Footer() {
           <Link href="/join" className="transition-colors hover:text-foreground">
             Apply
           </Link>
-          <Link href="/site-concept" className="transition-colors hover:text-foreground">
-            Site Concept
-          </Link>
-          <Link href="/oasis" className="text-flame-3 transition-colors hover:text-foreground">
-            Oasis Catalogue
-          </Link>
+          {/* Site Concept is still live at /site-concept for anyone with
+              the link — it's just not something the footer offers a
+              shopper. The Oasis catalogue has been taken down entirely. */}
         </nav>
       </div>
       <div className="border-t border-border py-4 text-center text-xs text-muted">

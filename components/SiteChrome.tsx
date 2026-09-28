@@ -9,13 +9,10 @@ import BottomNav from "@/components/BottomNav";
 export default function SiteChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   // The POS register is a standalone app screen, not a marketing page — no
-  // site nav/footer wrapped around it, same as the home hub. The Oasis
-  // catalogue is the same idea: its own place, entered from the footer,
-  // with its own header and no WHOA chrome around it.
+  // site nav/footer wrapped around it, same as the home hub.
   const isImmersive =
     pathname === "/" ||
     pathname?.startsWith("/pos") ||
-    pathname?.startsWith("/oasis") ||
     // /water is the QR landing on an H2WHOA bottle, /go is the SSBD
     // experience — both get their own ways into the site rather than a
     // navbar wrapped around them.
