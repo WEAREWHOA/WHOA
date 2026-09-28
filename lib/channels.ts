@@ -93,6 +93,25 @@ const SOURCE_RULES: Array<[string, string]> = [
   ["sticker", "qr"],
 ];
 
+/**
+ * Which source rule a utm_source value trips, and whether it tripped it
+ * exactly or only by containing it. The link builder uses this to warn
+ * before a link goes out: "digital" contains "ig" and would be filed as
+ * Instagram, which nobody means.
+ */
+export function sourceRuleFor(
+  utmSource: string,
+): { needle: string; channelId: string; exact: boolean } | null {
+  const source = utmSource.trim().toLowerCase();
+  if (!source) return null;
+  for (const [needle, id] of SOURCE_RULES) {
+    if (source === needle || source.includes(needle)) {
+      return { needle, channelId: id, exact: source === needle };
+    }
+  }
+  return null;
+}
+
 /** Landing pages that exist to be reached by a printed code. */
 const PRINTED_LANDINGS = ["/go", "/water"];
 

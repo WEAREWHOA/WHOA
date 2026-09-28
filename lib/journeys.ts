@@ -69,7 +69,7 @@ const OUTCOME_PAGES = [
   "/oasis/checkout",
 ];
 
-function isOutcome(path: string): boolean {
+export function isOutcome(path: string): boolean {
   return OUTCOME_PAGES.includes(path) || path.startsWith("/checkin/");
 }
 
