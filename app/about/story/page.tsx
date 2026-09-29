@@ -47,8 +47,7 @@ export default function AboutPage() {
           <h2 className="font-display text-2xl tracking-wide">Giving back</h2>
           <p className="mt-3 text-sm leading-relaxed text-muted">
             As an investment in our future, the future of our planet, and future generations to
-            come, we&apos;ve donated{" "}
-            <span className="font-semibold text-foreground">$888</span> to{" "}
+            come, we donate to{" "}
             <a
               href="https://www.surfrider.org/"
               target="_blank"
@@ -57,7 +56,7 @@ export default function AboutPage() {
             >
               The Surfrider Foundation USA
             </a>{" "}
-            and <span className="font-semibold text-foreground">$500</span> to{" "}
+            and{" "}
             <a
               href="https://www.children.org/"
               target="_blank"
