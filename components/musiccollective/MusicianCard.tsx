@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRef, type PointerEvent } from "react";
 import type { Musician } from "@/lib/musicians";
@@ -24,6 +25,7 @@ export default function MusicianCard({ musician, delay = 0 }: { musician: Musici
 
   const [c1, c2, c3] = musician.gradient;
   const seed = musician.patternSeed;
+  const photo = musician.photos?.[0];
 
   return (
     <Link
@@ -40,7 +42,11 @@ export default function MusicianCard({ musician, delay = 0 }: { musician: Musici
       }
       className="artist-card event-float group relative block w-full max-w-sm shrink-0 overflow-hidden rounded-2xl border border-white/15 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.8)] transition-shadow duration-300 hover:shadow-[0_25px_65px_-15px_var(--accent)]"
     >
-      <div className="relative h-44 w-full overflow-hidden" aria-hidden>
+      {/* Taller than it was, because it holds a photograph now rather
+          than a wash of colour. The gradient stays underneath: it's what
+          an artist without photos still gets, and what fills the frame
+          while a photo loads. */}
+      <div className="relative h-56 w-full overflow-hidden" aria-hidden>
         <div className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${c1}, ${c3})` }} />
         <div
           className="absolute rounded-full blur-2xl"
@@ -64,6 +70,20 @@ export default function MusicianCard({ musician, delay = 0 }: { musician: Musici
             opacity: 0.7,
           }}
         />
+        {photo && (
+          <Image
+            src={photo}
+            alt=""
+            fill
+            // The card is max-w-sm, so one column's worth on any screen.
+            sizes="(max-width: 640px) 100vw, 384px"
+            // Biased above centre: these are portraits and press shots,
+            // and a face sits in the upper third of nearly all of them.
+            // Dead centre crops foreheads.
+            className="object-cover object-[center_30%]"
+            priority={false}
+          />
+        )}
         <div className="event-card-noise absolute inset-0" />
       </div>
 
