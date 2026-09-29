@@ -53,6 +53,27 @@ export default async function MusicianPage(props: PageProps<"/music-collective/[
 
       <div className="mx-auto w-full max-w-4xl px-6 py-12">
         <p className="max-w-2xl text-lg text-foreground/90">{musician.tagline}</p>
+
+        {/* Above the bio on purpose: someone who lands here wants to
+            hear the music first, and reading about it is what they do
+            once they've pressed play. */}
+        <h2 className="font-display mt-10 text-3xl tracking-wide">Listen & Follow</h2>
+        <div className="mt-6 flex flex-wrap gap-3">
+          {musician.links.map((link) => (
+            <a
+              key={link.label}
+              href={link.url}
+              // "Shop WHOA" is on this site; only off-site links open a new tab.
+              target={link.url.startsWith("/") ? undefined : "_blank"}
+              rel={link.url.startsWith("/") ? undefined : "noreferrer"}
+              style={{ borderColor: musician.accent, "--accent": musician.accent } as React.CSSProperties}
+              className="inline-flex items-center gap-2 rounded-full border-2 px-5 py-2.5 text-sm font-semibold tracking-wide uppercase transition-shadow hover:shadow-[0_0_30px_-8px_var(--accent)]"
+            >
+              {link.label}
+            </a>
+          ))}
+        </div>
+
         <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted">{musician.bio}</p>
 
         {/* Every block below renders only when the artist has that kind of
@@ -136,22 +157,6 @@ export default async function MusicianPage(props: PageProps<"/music-collective/[
           </>
         )}
 
-        <h2 className="font-display mt-14 text-3xl tracking-wide">Listen & Follow</h2>
-        <div className="mt-6 flex flex-wrap gap-3">
-          {musician.links.map((link) => (
-            <a
-              key={link.label}
-              href={link.url}
-              // "Shop WHOA" is on this site; only off-site links open a new tab.
-              target={link.url.startsWith("/") ? undefined : "_blank"}
-              rel={link.url.startsWith("/") ? undefined : "noreferrer"}
-              style={{ borderColor: musician.accent, "--accent": musician.accent } as React.CSSProperties}
-              className="inline-flex items-center gap-2 rounded-full border-2 px-5 py-2.5 text-sm font-semibold tracking-wide uppercase transition-shadow hover:shadow-[0_0_30px_-8px_var(--accent)]"
-            >
-              {link.label}
-            </a>
-          ))}
-        </div>
       </div>
     </section>
   );
