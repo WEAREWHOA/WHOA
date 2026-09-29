@@ -31,6 +31,9 @@ export default function robots(): MetadataRoute.Robots {
         "/checkin/",
       ],
     },
-    sitemap: `${SITE_URL}/sitemap.xml`,
+    // Both are listed so a crawler that only reads robots.txt still
+    // finds the catalogue: the sitemap for the pages, the feed for the
+    // products themselves with prices, stock and postage.
+    sitemap: [`${SITE_URL}/sitemap.xml`, `${SITE_URL}/product-feed.xml`],
   };
 }

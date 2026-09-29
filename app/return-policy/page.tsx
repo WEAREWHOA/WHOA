@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+import { RETURN_WINDOW_DAYS } from "@/lib/returns";
+
 export const metadata: Metadata = {
   // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
   // Square Online sprayed around consolidate here instead of
@@ -25,7 +27,7 @@ export default function ReturnPolicyPage() {
           <ul className="mt-2 list-disc space-y-2 pl-5">
             <li>
               Returns and exchanges are accepted for items in new, unused condition, with all
-              original tags and packaging, received within 14 days of purchase.
+              original tags and packaging, received within {RETURN_WINDOW_DAYS} days of purchase.
             </li>
             <li>
               Customized or personalized items can&apos;t be returned unless there&apos;s a
