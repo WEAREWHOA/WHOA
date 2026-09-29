@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -64,16 +65,27 @@ export default async function MusicianPage(props: PageProps<"/music-collective/[
         ))}
 
         {musician.photos && musician.photos.length > 0 && (
+          // next/image rather than a plain <img>: these are 2400px
+          // originals straight off a camera, and seven of them unresized
+          // is several megabytes for a page someone opened to read a bio.
+          // Local files need no remotePatterns config to be optimised.
+          //
+          // One aspect ratio for the whole grid, with object-cover, so a
+          // square press shot and a 2:3 live photo still line up in rows.
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {musician.photos.map((src) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <div
                 key={src}
-                src={src}
-                alt={`${musician.name} performing`}
-                loading="lazy"
-                className="w-full rounded-2xl border border-border object-cover"
-              />
+                className="relative aspect-[3/4] overflow-hidden rounded-2xl border border-border"
+              >
+                <Image
+                  src={src}
+                  alt={`${musician.name}`}
+                  fill
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  className="object-cover"
+                />
+              </div>
             ))}
           </div>
         )}
