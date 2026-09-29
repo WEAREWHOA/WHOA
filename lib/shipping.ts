@@ -12,11 +12,11 @@
  * keep one rate table without that.
  *
  * ──────────────────────────────────────────────────────────────────────
- * THE NUMBERS BELOW ARE PLACEHOLDERS. They are plausible for a small
- * apparel brand shipping from San Diego, and they are not quotes. Check
- * them against what you actually pay at the counter before going live —
- * especially the international ones, where a heavy order can cost more
- * to post than the tier charges.
+ * The US rates are WHOA's own, set deliberately. THE INTERNATIONAL ONES
+ * ARE STILL PLACEHOLDERS: plausible for a small apparel brand shipping
+ * from San Diego, but not quotes. Check them against what you actually
+ * pay at the counter before relying on them, especially where a heavy
+ * order can cost more to post than the tier charges.
  * ──────────────────────────────────────────────────────────────────────
  */
 
@@ -43,9 +43,10 @@ export const SHIPPING_ZONES: ShippingZone[] = [
     label: "United States",
     countries: ["US"],
     tiers: [
-      { minSubtotalCents: 10000, rateCents: 0 },
-      { minSubtotalCents: 5000, rateCents: 495 },
-      { minSubtotalCents: 0, rateCents: 695 },
+      { minSubtotalCents: 20000, rateCents: 0 },
+      { minSubtotalCents: 10000, rateCents: 1999 },
+      { minSubtotalCents: 5000, rateCents: 1499 },
+      { minSubtotalCents: 0, rateCents: 999 },
     ],
   },
   {
@@ -118,7 +119,16 @@ export function shippingRateCents(
 }
 
 /** How much more to spend for the next tier down, or null if there
- *  isn't one. Drives the "spend $12 more for free shipping" nudge. */
+ *  isn't one. Drives the "spend $12 more for free shipping" nudge.
+ *
+ * Only the NEXT threshold counts, and only if it's cheaper. The US
+ * ladder rises before it drops ($9.99, $14.99, $19.99, then free at
+ * $200), so a basket at $40 does have a cheaper tier ahead of it, but
+ * reaching it means crossing two dearer ones first. Telling that
+ * shopper "spend $160 more for free shipping" invites them to add a
+ * $10 item and pay $5 more postage for it, which is worse than saying
+ * nothing. So the nudge appears only where the very next step down in
+ * price is also the very next threshold up in spend. */
 export function nextTierSaving(
   country: string | null | undefined,
   merchandiseSubtotalCents: number,
@@ -127,13 +137,12 @@ export function nextTierSaving(
   const zone = zoneFor(country);
   const current = shippingRateCents(country, subtotal);
 
-  const better = zone.tiers
-    .filter((t) => t.minSubtotalCents > subtotal && t.rateCents < current)
+  const next = zone.tiers
+    .filter((t) => t.minSubtotalCents > subtotal)
     .sort((a, b) => a.minSubtotalCents - b.minSubtotalCents)[0];
 
-  return better
-    ? { addCents: better.minSubtotalCents - subtotal, newRateCents: better.rateCents }
-    : null;
+  if (!next || next.rateCents >= current) return null;
+  return { addCents: next.minSubtotalCents - subtotal, newRateCents: next.rateCents };
 }
 
 /**

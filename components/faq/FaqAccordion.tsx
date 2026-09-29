@@ -17,17 +17,17 @@ const FAQS: FaqItem[] = [
   {
     question: "What is WHOA?",
     answer:
-      "WHOA is a collector's fashion brand blending streetwear and art — one-of-a-kind bleached and hand-painted pieces, made by independent artists, not mass-produced.",
+      "WHOA is a collector's fashion brand blending streetwear and art: one-of-a-kind bleached and hand-painted pieces, made by independent artists, not mass-produced.",
   },
   {
     question: "What is WHOADEGA?",
     answer:
-      "WHOADEGA is WHOA's community hub in Ocean Beach, San Diego — part shop, part gallery, part event space, with weekly gatherings, live DJ sets, and art events from the WHOA collective.",
+      "WHOADEGA is WHOA's community hub in Ocean Beach, San Diego. Part shop, part gallery, part event space, with weekly gatherings, live DJ sets, and art events from the WHOA collective.",
   },
   {
     question: "Are your pieces really one-of-a-kind?",
     answer:
-      "Yes. Most WHOA apparel is individually hand-bleached or hand-painted, so no two pieces are exactly alike — expect natural variation in color, pattern, and finish from what's pictured.",
+      "Yes. Most WHOA apparel is individually hand-bleached or hand-painted, so no two pieces are exactly alike, so expect natural variation in color, pattern, and finish from what's pictured.",
   },
   {
     question: "What payment methods do you accept?",
@@ -36,20 +36,20 @@ const FAQS: FaqItem[] = [
   {
     question: "Do you ship internationally?",
     answer:
-      "Yes — we ship worldwide. Pick your country at checkout and the shipping cost is worked out from there. Duties and customs charges are set by the destination country and are the recipient's responsibility.",
+      "Yes, we ship worldwide. Pick your country at checkout and the shipping cost is worked out from there. Duties and customs charges are set by the destination country and are the recipient's responsibility.",
   },
   {
     question: "How much does shipping cost, and how long does it take?",
     answer: (
       <>
-        Shipping is priced by where it&apos;s going and what the order comes to
+        Shipping is priced by where it&apos;s going and what the order comes to.
         {FREE_US_OVER === null
           ? ""
-          : ` — US orders of ${formatCents(FREE_US_OVER)} or more ship free`}
-        , and everything else is shown at checkout once you pick your country. Orders are
-        typically processed in 3-5 business days (2 weeks to 1 month for custom
-        hand-painted designs), then arrive in another 5-7 business days within the continental
-        US, or 2-4 weeks internationally. The full rate table is on the{" "}
+          : ` US orders of ${formatCents(FREE_US_OVER)} or more ship free.`}{" "}
+        Everything else is shown at checkout once you pick your country. Orders are typically
+        processed in 3-5 business days (2 weeks to 1 month for custom hand-painted designs),
+        then arrive in another 5-7 business days within the continental US, or 2-4 weeks
+        internationally. The full rate table is on the{" "}
         <Link href="/shipping-policy" className="text-flame font-medium hover:underline">
           Shipping Policy
         </Link>{" "}
@@ -71,9 +71,9 @@ const FAQS: FaqItem[] = [
     ),
   },
   {
-    question: "My bleached item looks a little different than the photo — is that normal?",
+    question: "My bleached item looks a little different than the photo. Is that normal?",
     answer:
-      "Yes. Bleaching breaks down fabric dye in a way that's never perfectly repeatable, so color, hue, and tone will vary slightly piece to piece and from what's shown online — that's part of the charm, not a defect.",
+      "Yes. Bleaching breaks down fabric dye in a way that's never perfectly repeatable, so color, hue, and tone will vary slightly piece to piece and from what's shown online. That's part of the charm, not a defect.",
   },
   {
     question: "How do I become a WHOA ambassador?",
@@ -84,7 +84,7 @@ const FAQS: FaqItem[] = [
           Apply
         </Link>{" "}
         page. Ambassadors get a personal referral link that gives their audience a discount and
-        earns them a commission on resulting sales — details on the{" "}
+        earns them a commission on resulting sales. Details are on the{" "}
         <Link href="/ambassadors" className="text-flame font-medium hover:underline">
           Ambassador Program
         </Link>{" "}
