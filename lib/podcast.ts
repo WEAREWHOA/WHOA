@@ -24,17 +24,24 @@ export interface PodcastEpisode {
 export const PODCAST_INTRO =
   "Conversations with the artists, musicians and makers in the WHOA world — how they got here, what they're building, and what they're making next.";
 
+/**
+ * Newest first, oldest last — the order they're listed in is the order
+ * they're shown in. A new episode goes at the TOP of this array, not the
+ * bottom; someone arriving at the podcast page should land on the most
+ * recent conversation rather than scroll past a year of back catalogue
+ * to reach it.
+ */
 export const PODCAST_EPISODES: PodcastEpisode[] = [
   // Titles and blurbs can be filled in any time — add `title: "..."` to a
   // line and it appears under that player. The timestamps some of these
   // links carried (&t=1007s) are dropped on purpose: an episode listing
   // should start an episode at the beginning.
-  { youtube: "https://www.youtube.com/watch?v=UltX0q0yUIA" },
-  { youtube: "https://www.youtube.com/watch?v=fC7DCycgkw4&t=1007s" },
-  { youtube: "https://www.youtube.com/watch?v=qb3_-c1DTpc&t=1s" },
-  { youtube: "https://www.youtube.com/watch?v=AFXJaH6yj1I" },
-  { youtube: "https://www.youtube.com/watch?v=mAe10CCJmjs" },
   { youtube: "https://www.youtube.com/watch?v=BpcKNoaz7XE" },
+  { youtube: "https://www.youtube.com/watch?v=mAe10CCJmjs" },
+  { youtube: "https://www.youtube.com/watch?v=AFXJaH6yj1I" },
+  { youtube: "https://www.youtube.com/watch?v=qb3_-c1DTpc&t=1s" },
+  { youtube: "https://www.youtube.com/watch?v=fC7DCycgkw4&t=1007s" },
+  { youtube: "https://www.youtube.com/watch?v=UltX0q0yUIA" },
 ];
 
 /**
