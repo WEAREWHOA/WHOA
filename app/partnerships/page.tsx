@@ -24,7 +24,7 @@ const DONATIONS = [
   {
     org: "The Surfrider Foundation USA",
     href: "https://www.surfrider.org/",
-    what: "Protecting the ocean, waves and beaches — the coast this whole thing was made on.",
+    what: "Protecting the ocean, waves and beaches. The coast this whole thing was made on.",
   },
   {
     org: "Children International",
@@ -35,8 +35,8 @@ const DONATIONS = [
 
 /**
  * Written as aims rather than certifications on purpose. Every line here
- * is something the way WHOA already works makes possible — made to
- * order, painted by hand, short runs — not a claim about an audited
+ * is something the way WHOA already works makes possible: made to
+ * order, painted by hand, short runs. None of it claims an audited
  * supply chain, and it shouldn't be dressed up as one.
  */
 const ECO_AIMS = [
@@ -50,7 +50,7 @@ const ECO_AIMS = [
   },
   {
     title: "One of a kind by design",
-    body: "A piece meant to be the only one of its kind gets kept. Fast fashion depends on things being replaceable — the opposite of what we're trying to make.",
+    body: "A piece meant to be the only one of its kind gets kept. Fast fashion depends on things being replaceable, which is the opposite of what we're trying to make.",
   },
   {
     title: "Repair before replace",
@@ -103,16 +103,16 @@ export default function PartnershipsPage() {
         Want to point us at a cause, or partner on one? Tell us about it on the{" "}
         <Link href="/contact" className="text-flame font-medium hover:underline">
           contact page
-        </Link>{" "}
-        — we read everything that comes in.
+        </Link>
+        . We read everything that comes in.
       </p>
 
       <h2 className="font-display mt-14 text-2xl tracking-wide">
         Trying to be <span className="text-flame">eco-friendly</span>, in as many ways as we can
       </h2>
       <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted">
-        These are aims, not certifications — the ways making things this way already wastes
-        less, and the places we&apos;re still pushing.
+        These are things we aim for, not certifications we hold. Some of it is already how we
+        work. The rest is what we&apos;re working toward.
       </p>
       <ul className="mt-6 grid gap-4 sm:grid-cols-2">
         {ECO_AIMS.map((aim) => (
@@ -130,8 +130,8 @@ export default function PartnershipsPage() {
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted">
           Second-hand and deadstock garments, bleached and painted by hand into something nobody
           else owns. Same idea as everything else we make, with the part that usually gets
-          manufactured already accounted for — and because each piece starts from whatever came
-          through the door, no two are the same and there&apos;s rarely more than one.
+          manufactured already accounted for. Because each piece starts from whatever came through
+          the door, no two are the same and there&apos;s rarely more than one.
         </p>
         <Link
           href="/shop?q=upcycled"
@@ -144,7 +144,7 @@ export default function PartnershipsPage() {
       <h2 className="font-display mt-14 text-2xl tracking-wide">Artists &amp; musicians</h2>
       <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted">
         We partner directly with independent artists and musicians through the Art Collective and
-        the Music Collective — both opening soon.{" "}
+        the Music Collective. Both opening soon.{" "}
         <ComingSoonBadge className="align-middle text-muted" />
       </p>
 
