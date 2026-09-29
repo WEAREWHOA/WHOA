@@ -22,13 +22,11 @@ export const metadata: Metadata = {
 
 const DONATIONS = [
   {
-    amount: "$888",
     org: "The Surfrider Foundation USA",
     href: "https://www.surfrider.org/",
     what: "Protecting the ocean, waves and beaches — the coast this whole thing was made on.",
   },
   {
-    amount: "$500",
     org: "Children International",
     href: "https://www.children.org/",
     what: "Health, education and job training for kids growing up in poverty.",
@@ -64,7 +62,7 @@ const ECO_AIMS = [
   },
   {
     title: "Giving a cut away",
-    body: "The donations above came out of what we sold. Growing the business and giving some of it away are meant to be the same motion.",
+    body: "What we give to the organisations above comes out of what we sold. Growing the business and giving some of it away are meant to be the same motion.",
   },
 ];
 
@@ -79,23 +77,25 @@ export default function PartnershipsPage() {
       </h1>
       <p className="mt-4 max-w-xl text-sm leading-relaxed text-muted">
         An investment in our future, the future of our planet, and future generations to come.
-        Here&apos;s where that actually goes.
+        Here&apos;s who that goes to.
       </p>
 
       <h2 className="font-display mt-12 text-2xl tracking-wide">Donations</h2>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         {DONATIONS.map((d) => (
           <div key={d.org} className="card-surface rounded-2xl border border-border p-6">
-            <p className="font-display text-flame text-3xl">{d.amount}</p>
+            {/* The organisation is the heading now. It used to sit under a
+                large figure, which made the amount the point of the card
+                rather than who it went to. */}
             <a
               href={d.href}
               target="_blank"
               rel="noreferrer"
-              className="mt-2 inline-block font-medium hover:underline"
+              className="font-display text-flame text-xl leading-snug hover:underline"
             >
               {d.org} ↗
             </a>
-            <p className="mt-2 text-sm leading-relaxed text-muted">{d.what}</p>
+            <p className="mt-3 text-sm leading-relaxed text-muted">{d.what}</p>
           </div>
         ))}
       </div>
