@@ -8,7 +8,7 @@ export interface PastShow {
   name: string;
   /** City and state, or country. Omitted where the name already says it. */
   location?: string;
-  /** "2022 - 2025" for a residency or a run of years. */
+  /** "2022 - 2026" for a residency or a run of years. */
   years?: string;
 }
 
@@ -65,7 +65,7 @@ export const MUSICIANS: Musician[] = [
       "Opened a storefront in San Diego called WHOADEGA featuring 20 local artists and hosting community events",
     ],
     pastShows: [
-      { name: "Same Same But Different Music Festival", years: "2022 - 2025" },
+      { name: "Same Same But Different Music Festival", years: "2022 - 2026" },
       { name: "Bang Bang", location: "San Diego, CA" },
       { name: "Wicked West", location: "San Diego, CA" },
       { name: "The Observatory", location: "Santa Ana, CA" },
@@ -75,11 +75,24 @@ export const MUSICIANS: Musician[] = [
       { name: "House Of Blues", location: "Anaheim, CA" },
     ],
     bookingEmail: "wearewhoa247@gmail.com",
+    photos: [
+      "/music/wasani-1.jpg",
+      "/music/wasani-2.webp",
+      "/music/wasani-3.jpg",
+      "/music/wasani-4.webp",
+      "/music/wasani-5.webp",
+      "/music/wasani-6.jpg",
+      "/music/wasani-7.webp",
+    ],
     accent: "#ff7a00",
     gradient: ["#2a0a05", "#8a2a15", "#ff7a00"],
     rotate: -2,
     patternSeed: 7,
-    links: [{ label: "Shop WHOA", url: "/shop" }],
+    links: [
+      { label: "SoundCloud", url: "https://soundcloud.com/wasani" },
+      { label: "Bandcamp", url: "https://wearewhoa.bandcamp.com/" },
+      { label: "Shop WHOA", url: "/shop" },
+    ],
   },
   {
     slug: "lamel",
@@ -91,12 +104,14 @@ export const MUSICIANS: Musician[] = [
     story: [
       "Inglewood CA native Lamel is a Rapper and Founder of the music collective 99Percenters. He has slowly been making a name for himself in the underground hip hop scene. His creative and unique style gives you an insight on who he is and what he represents. He pulls elements from Contemporary R&B, Pop and a variety of Hip-Hop branches that ultimately makes up his sound. Through his musical ventures, he's gained the opportunity to open up for other musical acts such as Curren$y, Too Short, E-40, Waka Flocka, and Wiz Khalifa. His ability to compose songs has also allowed him to expand his reach and write for other up and coming artist.",
     ],
+    photos: ["/music/lamel-1.jpg"],
     accent: "#29e6ff",
     gradient: ["#0a1a2e", "#1a4a6b", "#29e6ff"],
     rotate: 2,
     patternSeed: 8,
     links: [
       { label: "Spotify", url: "https://open.spotify.com/artist/53QkKRpLSsprPcOciMo4Rs" },
+      { label: "SoundCloud", url: "https://soundcloud.com/lamel310" },
     ],
   },
   {
@@ -110,6 +125,7 @@ export const MUSICIANS: Musician[] = [
       "Dr. Play is a genre-less artist redefining the boundaries of modern sound. Blending atmospheric melodies with soothing rhythms, Dr. Play crafts immersive sonic experiences that balance serenity & intensity, guiding listeners on journeys of reflection & transformation.",
       "Dr. Play unveils the Alchemy in 2026, an exploration of the fundamental elements: air, earth, water, and fire. Each track is designed to evoke introspection, connection, and growth, turning electronic music into a vessel for discovery. With a sound that defies convention and a vision rooted in unity, Dr. Play continues to push the evolution of sonic storytelling.",
     ],
+    photos: ["/music/dr-play-1.png"],
     accent: "#7b2ff7",
     gradient: ["#0d0a2a", "#3a2a7b", "#7b2ff7"],
     rotate: -1,
