@@ -8,7 +8,7 @@ export interface PastShow {
   name: string;
   /** City and state, or country. Omitted where the name already says it. */
   location?: string;
-  /** "2022 - 2025" for a residency or a run of years. */
+  /** "2022 - 2026" for a residency or a run of years. */
   years?: string;
 }
 
@@ -65,7 +65,7 @@ export const MUSICIANS: Musician[] = [
       "Opened a storefront in San Diego called WHOADEGA featuring 20 local artists and hosting community events",
     ],
     pastShows: [
-      { name: "Same Same But Different Music Festival", years: "2022 - 2025" },
+      { name: "Same Same But Different Music Festival", years: "2022 - 2026" },
       { name: "Bang Bang", location: "San Diego, CA" },
       { name: "Wicked West", location: "San Diego, CA" },
       { name: "The Observatory", location: "Santa Ana, CA" },
@@ -88,7 +88,11 @@ export const MUSICIANS: Musician[] = [
     gradient: ["#2a0a05", "#8a2a15", "#ff7a00"],
     rotate: -2,
     patternSeed: 7,
-    links: [{ label: "Shop WHOA", url: "/shop" }],
+    links: [
+      { label: "SoundCloud", url: "https://soundcloud.com/wasani" },
+      { label: "Bandcamp", url: "https://wearewhoa.bandcamp.com/" },
+      { label: "Shop WHOA", url: "/shop" },
+    ],
   },
   {
     slug: "lamel",
@@ -107,6 +111,7 @@ export const MUSICIANS: Musician[] = [
     patternSeed: 8,
     links: [
       { label: "Spotify", url: "https://open.spotify.com/artist/53QkKRpLSsprPcOciMo4Rs" },
+      { label: "SoundCloud", url: "https://soundcloud.com/lamel310" },
     ],
   },
   {
