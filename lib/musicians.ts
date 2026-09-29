@@ -100,6 +100,25 @@ export const MUSICIANS: Musician[] = [
     ],
   },
   {
+    slug: "dr-play",
+    name: "Dr. Play",
+    subgenre: "Genre-less Electronic",
+    tagline:
+      "Atmospheric melodies and soothing rhythms, balancing serenity and intensity.",
+    bio: "Dr. Play is a genre-less artist building immersive electronic sets that move between calm and force, made to be travelled through rather than just heard.",
+    story: [
+      "Dr. Play is a genre-less artist redefining the boundaries of modern sound. Blending atmospheric melodies with soothing rhythms, Dr. Play crafts immersive sonic experiences that balance serenity & intensity, guiding listeners on journeys of reflection & transformation.",
+      "Dr. Play unveils the Alchemy in 2026, an exploration of the fundamental elements: air, earth, water, and fire. Each track is designed to evoke introspection, connection, and growth, turning electronic music into a vessel for discovery. With a sound that defies convention and a vision rooted in unity, Dr. Play continues to push the evolution of sonic storytelling.",
+    ],
+    accent: "#7b2ff7",
+    gradient: ["#0d0a2a", "#3a2a7b", "#7b2ff7"],
+    rotate: -1,
+    patternSeed: 9,
+    links: [
+      { label: "Spotify", url: "https://open.spotify.com/artist/0CPZBWD9IzdrTTyt921HsG" },
+    ],
+  },
+  {
     slug: "kaleidosonic",
     name: "Kaleidosonic",
     subgenre: "Bass / Dubstep",
