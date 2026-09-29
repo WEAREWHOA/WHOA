@@ -82,7 +82,7 @@ export default async function MusicCollectiveApplyPage(props: PageProps<"/music-
               name="artistName"
               type="text"
               required
-              placeholder="Kaleidosonic"
+              placeholder="Your artist or DJ name"
               className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
             />
           </div>
