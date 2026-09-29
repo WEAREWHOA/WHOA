@@ -40,6 +40,7 @@ const STATIC_ROUTES = [
   "/games/beat-pad",
   "/games/visualizer",
   "/games/whoa-puzzle",
+  "/partnerships",
   "/custom-design",
   "/same-same-but-whoa",
   "/site-concept",

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import ComingSoonBadge from "@/components/LockedBadge";
 import PodcastBox from "@/components/about/PodcastBox";
 import type { Metadata } from "next";
 
@@ -52,34 +51,23 @@ export default function AboutPage() {
 
         <PodcastBox />
 
-        <div className="card-surface rounded-2xl border border-border p-6 sm:col-span-2">
+        {/* The fourth card, so the four close a square. It used to be a
+            wide bar under the other three holding every donation figure
+            and both collectives — too much to read in a summary grid, so
+            the detail moved to /partnerships. */}
+        <Link
+          href="/partnerships"
+          className="card-surface group rounded-2xl border border-border p-6 transition-colors hover:border-flame-2/50"
+        >
           <h2 className="font-display text-2xl">Partnerships</h2>
-          <p className="mt-2 max-w-2xl text-sm text-muted">
-            As an investment in our future, the future of our planet, and future generations to
-            come, we&apos;ve donated <span className="font-semibold text-foreground">$888</span>{" "}
-            to{" "}
-            <a
-              href="https://www.surfrider.org/"
-              target="_blank"
-              rel="noreferrer"
-              className="text-flame font-medium hover:underline"
-            >
-              The Surfrider Foundation USA
-            </a>{" "}
-            and <span className="font-semibold text-foreground">$500</span> to{" "}
-            <a
-              href="https://www.children.org/"
-              target="_blank"
-              rel="noreferrer"
-              className="text-flame font-medium hover:underline"
-            >
-              Children International
-            </a>
-            . We also partner directly with independent artists and musicians through the Art
-            Collective and the Music Collective — both opening soon.{" "}
-            <ComingSoonBadge className="align-middle text-muted" />
+          <p className="mt-2 text-sm text-muted">
+            Where our donations go, how we try to keep this eco-friendly, and the artists and
+            musicians we work with.
           </p>
-        </div>
+          <span className="text-flame mt-4 inline-block text-xs font-semibold tracking-wide uppercase">
+            See who we support →
+          </span>
+        </Link>
       </div>
 
       <h2 className="font-display mt-14 text-2xl tracking-wide">More info</h2>
