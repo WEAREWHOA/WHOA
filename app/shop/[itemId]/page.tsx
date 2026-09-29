@@ -6,6 +6,9 @@ import AddToCart from "@/components/shop/AddToCart";
 import ProductGallery from "@/components/shop/ProductGallery";
 import { formatCents } from "@/lib/money";
 import { SITE_URL } from "@/lib/site";
+import { BRAND } from "@/lib/productFeed";
+import { RETURN_WINDOW_DAYS } from "@/lib/returns";
+import { SHIPPING_ZONES, shippingRateCents } from "@/lib/shipping";
 import type { Product } from "@/lib/types";
 
 export const revalidate = 60;
@@ -33,16 +36,85 @@ export async function generateStaticParams() {
   }
 }
 
-// schema.org Product markup — lets Google show price/availability directly
-// in search results instead of a plain link. JSON.stringify's output is
-// escaped (</script> in a Square-sourced name/description could otherwise
-// terminate the tag early) before being injected as raw HTML.
+/**
+ * schema.org Product markup.
+ *
+ * This is what makes a product eligible for Google's free Shopping
+ * listings and what AI shopping surfaces read when they summarise an
+ * item. The bar is higher than "some markup": Google treats brand,
+ * a product identifier, condition, price, availability, shipping and a
+ * return policy as required, and an offer missing them is ineligible
+ * rather than merely plainer.
+ *
+ * One Offer per variation rather than a single AggregateOffer, because
+ * a shopper buys a size. AggregateOffer says "something here costs
+ * between $45 and $85", which cannot be listed as a product.
+ *
+ * Everything here is generated from the same sources the page and the
+ * checkout use, so it can't advertise a price, a stock state or a
+ * postage rate the customer won't actually get. JSON.stringify's output
+ * is escaped (a </script> in a Square-sourced name could otherwise
+ * terminate the tag early) before being injected as raw HTML.
+ */
 function buildProductJsonLd(product: Product, canonicalPath: string): string {
-  const prices = product.variations.map((v) => v.priceCents);
-  const lowPrice = prices.length > 0 ? Math.min(...prices) : 0;
-  const highPrice = prices.length > 0 ? Math.max(...prices) : 0;
-  const totalStock = product.variations.reduce((sum, v) => sum + (v.inStock ?? 1), 0);
-  const inStock = product.variations.length === 0 || totalStock > 0;
+  const url = `${SITE_URL}${canonicalPath}`;
+
+  // Google wants a date the price is good until. A year out is honest
+  // for a made-to-order brand and stops the offer going stale, which
+  // reads as "no longer for sale".
+  const priceValidUntil = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+
+  const returnPolicy = {
+    "@type": "MerchantReturnPolicy",
+    applicableCountry: "US",
+    returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
+    merchantReturnDays: RETURN_WINDOW_DAYS,
+    returnMethod: "https://schema.org/ReturnByMail",
+    returnFees: "https://schema.org/ReturnShippingFees",
+    merchantReturnLink: `${SITE_URL}/return-policy`,
+  };
+
+  // Postage quoted at this item's own price, since the rates are tiered
+  // by order value. A bigger basket only ever pays less.
+  const shippingDetails = (priceCents: number) =>
+    SHIPPING_ZONES.flatMap((zone) =>
+      zone.countries.map((country) => ({
+        "@type": "OfferShippingDetails",
+        shippingRate: {
+          "@type": "MonetaryAmount",
+          value: (shippingRateCents(country, priceCents) / 100).toFixed(2),
+          currency: "USD",
+        },
+        shippingDestination: {
+          "@type": "DefinedRegion",
+          addressCountry: country,
+        },
+      })),
+    );
+
+  const variations = product.variations.filter((v) => v.priceCents > 0);
+  const offers = (variations.length > 0 ? variations : product.variations).map((variation) => ({
+    "@type": "Offer",
+    url,
+    // Square's variation id is the identifier the till and the feed both
+    // use, so the three agree on what a given size is.
+    sku: variation.id,
+    priceCurrency: "USD",
+    price: (variation.priceCents / 100).toFixed(2),
+    priceValidUntil,
+    itemCondition: "https://schema.org/NewCondition",
+    // Null means Square doesn't track this variation, which is
+    // unlimited rather than sold out.
+    availability:
+      variation.inStock == null || variation.inStock > 0
+        ? "https://schema.org/InStock"
+        : "https://schema.org/OutOfStock",
+    seller: { "@type": "Organization", name: BRAND },
+    hasMerchantReturnPolicy: returnPolicy,
+    shippingDetails: shippingDetails(variation.priceCents),
+  }));
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -50,15 +122,11 @@ function buildProductJsonLd(product: Product, canonicalPath: string): string {
     name: product.name,
     description: product.description || undefined,
     image: product.imageUrls.length > 0 ? product.imageUrls : undefined,
-    url: `${SITE_URL}${canonicalPath}`,
-    offers: {
-      "@type": "AggregateOffer",
-      priceCurrency: "USD",
-      lowPrice: (lowPrice / 100).toFixed(2),
-      highPrice: (highPrice / 100).toFixed(2),
-      offerCount: Math.max(product.variations.length, 1),
-      availability: inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-    },
+    url,
+    sku: product.id,
+    mpn: product.id,
+    brand: { "@type": "Brand", name: BRAND },
+    offers: offers.length === 1 ? offers[0] : offers,
   };
 
   return JSON.stringify(jsonLd).replace(/</g, "\\u003c");
