@@ -169,6 +169,40 @@ function PlanetBody({ planet }: { planet: Planet }) {
   );
 }
 
+/**
+ * Where each planet and ring sits before any JavaScript has run.
+ *
+ * The positions used to be applied only inside the effect below, which
+ * meant the server sent six planets with no transform at all: every one
+ * of them stacked on the sun, overlapping, unreadable and impossible to
+ * tap. Anyone whose JavaScript was slow, blocked or broken saw that pile
+ * and reasonably concluded the site was down. So did any crawler that
+ * doesn't run scripts.
+ *
+ * Expressed in vw/vh rather than px. The server has no viewport to
+ * measure, so the radii are worked out once against DEFAULT_SIZE and then
+ * turned into a fraction of it: at 1200x800 that reproduces the measured
+ * layout exactly, and on a phone it scales down instead of flinging three
+ * of the six planets off the side of the screen. The effect re-measures
+ * on mount and corrects it, so this only has to be usable, not exact.
+ *
+ * Rounded to 2dp: Math.cos on the server and in the browser can differ in
+ * the last bits, and React calls that a hydration mismatch.
+ */
+const INITIAL_RADII = orbitRadii(DEFAULT_SIZE, DEFAULT_SUN_RADIUS, DEFAULT_PLANET_RADIUS);
+
+/** A px radius from the default layout, as a share of the viewport. */
+const asVw = (px: number) => (px / DEFAULT_SIZE.width) * 100;
+const asVh = (px: number) => (px / DEFAULT_SIZE.height) * 100;
+
+function initialTransform(i: number): string {
+  const angle = (i / PLANETS.length) * Math.PI * 2;
+  const { radiusX, radiusY } = INITIAL_RADII[i];
+  const x = (Math.cos(angle) * asVw(radiusX)).toFixed(2);
+  const y = (Math.sin(angle) * asVh(radiusY)).toFixed(2);
+  return `translate(${x}vw, ${y}vh)`;
+}
+
 export default function SolarSystem() {
   const containerRef = useRef<HTMLDivElement>(null);
   const sunRef = useRef<HTMLAnchorElement>(null);
@@ -257,7 +291,13 @@ export default function SolarSystem() {
           }}
           aria-hidden
           className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[50%] border"
-          style={{ borderColor: `${planet.accent}26` }}
+          // Sized here as well as in measure(), for the same reason the
+          // planets are: without it a ring is 0x0 until the effect runs.
+          style={{
+            borderColor: `${planet.accent}26`,
+            width: `${asVw(INITIAL_RADII[i].radiusX * 2).toFixed(2)}vw`,
+            height: `${asVh(INITIAL_RADII[i].radiusY * 2).toFixed(2)}vh`,
+          }}
         />
       ))}
 
@@ -292,7 +332,10 @@ export default function SolarSystem() {
             planetRefs.current[i] = el;
           }}
           className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-          style={{ width: `calc(var(--whoa-planet) * ${planet.scale})` }}
+          style={{
+            width: `calc(var(--whoa-planet) * ${planet.scale})`,
+            transform: initialTransform(i),
+          }}
         >
           {/* The link's own box is just the planet body, so the body lands
               exactly on its orbit ring; the label hangs off it absolutely,
