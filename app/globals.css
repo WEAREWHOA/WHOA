@@ -1333,7 +1333,12 @@ body {
   color: var(--muted);
   transition: background 0.2s ease, color 0.2s ease;
 }
-.an-period:hover {
+/* Not on the selected pill. ".an-period:hover" is a class plus a
+   pseudo-class, so it outranks ".an-period-on" whatever the order, and
+   hovering the tab you're already on painted cream text onto the cream
+   background: the label vanished under the cursor. Affects every tab row
+   using these classes, not just one tab. */
+.an-period:hover:not(.an-period-on) {
   color: var(--foreground);
 }
 .an-period-on {

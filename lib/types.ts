@@ -55,6 +55,9 @@ export interface AccountPermissions {
   // own accounts. Off by default — it's every customer's email, phone
   // and address in one searchable list.
   customerAdmin: boolean;
+  // NEWSLETTER tab: the subscriber list and the campaigns sent to it.
+  // Off by default -- it can email everyone who ever signed up.
+  newsletter: boolean;
   // ANALYTICS tab: traffic, revenue, payouts and funnels for the whole
   // business in one place. Off by default — it's the widest view of the
   // company there is, wider than any single admin tab.

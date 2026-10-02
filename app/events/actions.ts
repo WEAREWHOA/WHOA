@@ -16,7 +16,7 @@ import {
   requiresDamageWaiver,
 } from "@/lib/events";
 import { SITE_URL } from "@/lib/site";
-import { subscribeToNewsletter } from "@/lib/mailchimp";
+import { subscribe } from "@/lib/newsletter";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -282,9 +282,18 @@ export async function subscribeEventsNewsletterAction(input: {
   if (!EMAIL_PATTERN.test(email)) return { ok: false, error: "Enter a valid email." };
 
   try {
-    return await subscribeToNewsletter({ email, firstName, lastName, phone, tags: ["event"] });
+    // Resend's contact record has no phone field, so the number collected
+    // here is no longer stored. Left on the form rather than removed:
+    // taking a field away mid-migration is a visible change to a page
+    // that works, and the number can be captured properly later.
+    void phone;
+    const result = await subscribe({ email, firstName, lastName, source: "events" });
+    // Someone already on the list is thanked, not told they're already on
+    // it: whether a given address is subscribed isn't a fact a public form
+    // should hand out.
+    return { ok: result.ok, error: result.error };
   } catch (err) {
     console.error("subscribeEventsNewsletterAction failed:", err);
-    return { ok: false, error: "Newsletter signup isn't set up yet — try again later." };
+    return { ok: false, error: "Newsletter signup isn't set up yet. Try again later." };
   }
 }

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useCart } from "@/components/cart/CartProvider";
 import { formatCents } from "@/lib/money";
 import { applyPromoCodeAction, checkoutAction, quoteCheckoutAction } from "@/app/checkout/actions";
+import { subscribeCheckoutAction } from "@/app/newsletter/actions";
 import { SHIPPING_COUNTRIES, countryName, isDomestic, nextTierSaving, normalizeCountry } from "@/lib/shipping";
 import { accountSignOutAction, getAccountAction } from "@/app/account/actions";
 import WalletButtons, { type WalletBuyer } from "@/components/checkout/WalletButtons";
@@ -65,6 +66,8 @@ function CheckoutFields({
   const [name, setName] = useState(draft?.name ?? "");
   const [email, setEmail] = useState(draft?.email ?? "");
   const [password, setPassword] = useState("");
+  // Unticked by default, always. A pre-ticked box is not consent.
+  const [joinList, setJoinList] = useState(false);
   const [account, setAccount] = useState<{ name: string; email: string } | null>(null);
   const [accountChecked, setAccountChecked] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -305,6 +308,19 @@ function CheckoutFields({
       return;
     }
 
+    if (joinList) {
+      // After the sale, not before: a card that declines must not leave
+      // someone subscribed. Fire-and-forget for the same reason the
+      // confirmation email is -- the order is already paid for, and a
+      // newsletter hiccup is not worth showing this customer an error.
+      const [first, ...rest] = (buyer?.name?.trim() || name).trim().split(/\s+/);
+      void subscribeCheckoutAction({
+        email: buyer?.email?.trim() || email,
+        firstName: first || undefined,
+        lastName: rest.join(" ") || undefined,
+      }).catch(() => {});
+    }
+
     trackPurchase(outcome.orderId ?? "", lines, finalCents, shippingCents);
     clear();
     const accountParam = outcome.accountCreated ? "created" : outcome.signedIn ? "signedin" : "";
@@ -475,6 +491,19 @@ function CheckoutFields({
             className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
           />
         </div>
+
+        <label className="flex cursor-pointer items-start gap-3 text-sm">
+          <input
+            type="checkbox"
+            checked={joinList}
+            onChange={(e) => setJoinList(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--flame-2)]"
+          />
+          <span className="text-muted">
+            Email me new drops and events.{" "}
+            <span className="text-xs">Unsubscribe any time.</span>
+          </span>
+        </label>
 
         {account ? (
           <div className="flex items-center justify-between rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm">
