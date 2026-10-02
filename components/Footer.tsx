@@ -1,14 +1,19 @@
 import Link from "next/link";
 
+import FooterSignup from "@/components/newsletter/FooterSignup";
+
 export default function Footer() {
   return (
     <footer className="border-t border-border">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-6 py-10 sm:flex-row sm:items-center sm:justify-between">
-        <div className="font-display text-xl tracking-wide">
-          WHOA<span className="text-flame">.</span>
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-10 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-6">
+          <div className="font-display text-xl tracking-wide">
+            WHOA<span className="text-flame">.</span>
+          </div>
+          <FooterSignup />
         </div>
 
-        <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
+        <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted lg:justify-end">
           <Link href="/about" className="transition-colors hover:text-foreground">
             About
           </Link>

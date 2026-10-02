@@ -72,6 +72,12 @@ const PERMISSION_ROWS = [
     hint: "CUSTOMER ADMIN tab — the searchable directory of every customer, from Square as well as this site. Shows everyone's email, phone and address, so grant it deliberately. Super Admins already have this.",
   },
   {
+    field: "perm_newsletter",
+    permission: "newsletter",
+    label: "Newsletter",
+    hint: "NEWSLETTER tab -- the subscriber list and the campaigns sent to it. Can email everyone who ever signed up, so grant it deliberately. Super Admins already have this.",
+  },
+  {
     field: "perm_analytics",
     permission: "analytics",
     label: "Analytics",
