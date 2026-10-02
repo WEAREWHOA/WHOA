@@ -83,7 +83,15 @@ function buildJsonLd(locations: StoreLocation[]): string {
         // about who is there unless the markup says one is inside the
         // other.
         ...(location.insideOf
-          ? { containedInPlace: { "@type": "Store", name: location.insideOf } }
+          ? {
+              containedInPlace: {
+                "@type": "Store",
+                name: location.insideOf,
+                // Their own site, so the host business resolves to a
+                // real entity rather than just a name we assert.
+                ...(location.website ? { url: location.website } : {}),
+              },
+            }
           : {}),
         parentOrganization: { "@type": "Organization", name: "WHOA", url: SITE_URL },
       },

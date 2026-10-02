@@ -162,6 +162,16 @@ export default function StoreLocator({ locations }: { locations: StoreLocation[]
                   </button>
                 </>
               )}
+              {location.website && (
+                <a
+                  href={location.website}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-full border border-border-strong px-5 py-2.5 text-xs font-semibold tracking-wide uppercase text-muted transition-colors hover:border-flame-2/50 hover:text-foreground"
+                >
+                  Visit website
+                </a>
+              )}
               {location.phone && (
                 <a
                   href={`tel:${location.phone}`}

@@ -69,6 +69,13 @@ export interface StoreLocation {
    * street address as a conflict about who is really there.
    */
   insideOf?: string;
+  /**
+   * That host business's own site. A followed link, not nofollow: it is
+   * a real shop we are really inside, and the markup already names them
+   * as the place that contains us, so the link and the structured data
+   * tell a search engine the same true thing.
+   */
+  website?: string;
   /** Where to read more on this site. */
   href?: string;
   /** The event this pop-up is part of, for the derived ones. */
@@ -133,6 +140,7 @@ export const PERMANENT_LOCATIONS: StoreLocation[] = [
       country: "US",
     },
     insideOf: "Pangaea Outpost",
+    website: "https://www.pangaeaoutpost.com/",
   },
 ];
 
