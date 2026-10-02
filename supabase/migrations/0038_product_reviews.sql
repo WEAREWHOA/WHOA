@@ -85,3 +85,15 @@ create unique index if not exists product_reviews_one_per_person_idx
 -- Rate limiting counts recent rows by hash and by address.
 create index if not exists product_reviews_recent_idx
   on product_reviews (created_at desc);
+
+-- Row level security, as on every other table here.
+--
+-- No policies, on purpose. This app reaches Supabase only through the
+-- service role key, from server code, and the service role bypasses RLS
+-- entirely. So "RLS on, nothing allowed" is exactly right: the app keeps
+-- working and anon or authenticated keys can read nothing at all.
+--
+-- It matters more on this table than most. Every row carries a
+-- customer's email address alongside what they wrote, and rows sit in
+-- pending for as long as it takes somebody to read them.
+alter table product_reviews enable row level security;
