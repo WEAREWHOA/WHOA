@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import StoreKindIcon from "@/components/stores/StoreKindIcon";
 import {
   directionsUrl,
   formatAddress,
@@ -83,7 +84,10 @@ export default function StoreLocator({ locations }: { locations: StoreLocation[]
                       : "border-border-strong text-muted hover:border-flame-2/50 hover:text-foreground"
                   }`}
                 >
-                  {l.name}
+                  <span className="flex items-center gap-2">
+                    <StoreKindIcon kind={l.kind} className="h-3.5 w-3.5" />
+                    {l.name}
+                  </span>
                 </button>
               ))}
             </div>
@@ -102,7 +106,8 @@ export default function StoreLocator({ locations }: { locations: StoreLocation[]
           >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <span className="text-flame-2 text-[0.65rem] font-semibold tracking-[0.15em] uppercase">
+                <span className="text-flame-2 flex items-center gap-1.5 text-[0.65rem] font-semibold tracking-[0.15em]">
+                  <StoreKindIcon kind={location.kind} className="h-4 w-4 shrink-0" />
                   {STORE_KIND_LABELS[location.kind]}
                 </span>
                 <h3 className="font-display mt-1 text-2xl">{location.name}</h3>
@@ -120,6 +125,9 @@ export default function StoreLocator({ locations }: { locations: StoreLocation[]
               // A real <address>, so the street is marked up as one for
               // anything reading the page rather than looking at it.
               <address className="mt-4 text-sm not-italic text-foreground/90">
+                {location.insideOf && (
+                  <span className="block text-muted">Inside {location.insideOf}</span>
+                )}
                 {formatAddress(location.address)}
               </address>
             ) : (
@@ -167,7 +175,7 @@ export default function StoreLocator({ locations }: { locations: StoreLocation[]
                   href={location.href}
                   className="rounded-full border border-border-strong px-5 py-2.5 text-xs font-semibold tracking-wide uppercase text-muted transition-colors hover:border-flame-2/50 hover:text-foreground"
                 >
-                  {location.kind === "event-popup" ? "Event details" : "What's on"}
+                  {location.kind === "event-popup" ? "Event details" : "Upcoming events"}
                 </Link>
               )}
             </div>
