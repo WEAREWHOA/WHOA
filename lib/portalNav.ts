@@ -33,7 +33,7 @@ export const PORTAL_TABS: PortalTab[] = [
   { id: "links", slug: "links", label: "UTM LINKS" },
   { id: "ba-admin", slug: "ba-admin", label: "BA ADMIN" },
   { id: "customer-admin", slug: "customer-admin", label: "CUSTOMER ADMIN" },
-  { id: "newsletter", slug: "newsletter", label: "NEWSLETTER" },
+  { id: "newsletter", slug: "email", label: "EMAIL/TEXT" },
   { id: "reviews", slug: "reviews", label: "REVIEWS" },
   { id: "events-admin", slug: "events-admin", label: "EVENTS ADMIN" },
   { id: "rsvp-admin", slug: "rsvp-admin", label: "RSVP ADMIN" },

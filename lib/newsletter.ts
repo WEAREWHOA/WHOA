@@ -133,6 +133,12 @@ export async function subscribe(input: SubscribeInput): Promise<SubscribeResult>
   return { ok: true, alreadySubscribed };
 }
 
+// Set once, if the EMAIL/TEXT migration has not been run yet. Same
+// reasoning as the account lookup: a column that does not exist yet
+// rejects the whole write, and losing a subscriber over a column is a
+// worse outcome than losing one flag on them.
+let optinColumnMissing = false;
+
 async function mirror(row: {
   email: string;
   firstName?: string;
@@ -149,6 +155,10 @@ async function mirror(row: {
         last_name: row.lastName ?? null,
         source: row.source,
         account_code: row.accountCode ?? null,
+        // Somebody filling in a form IS the opt-in record, and it is the
+        // one fact no later import can reconstruct: a CSV can tell you
+        // an address was on a list, never that its owner asked to be.
+        ...(optinColumnMissing ? {} : { optin_recorded: true }),
       },
       // Keep the ORIGINAL source on a repeat signup: where someone first
       // came from is the useful fact, and overwriting it would make every
@@ -156,126 +166,18 @@ async function mirror(row: {
       // in a form.
       { onConflict: "email", ignoreDuplicates: true },
     );
-  if (error) throw new Error(error.message);
-}
-
-export interface Subscriber {
-  email: string;
-  firstName: string | null;
-  lastName: string | null;
-  source: SignupSource | null;
-  accountCode: string | null;
-  subscribedAt: string | null;
-  /** From Resend, which is the only place that knows. */
-  unsubscribed: boolean;
-}
-
-export interface NewsletterList {
-  subscribers: Subscriber[];
-  total: number;
-  subscribedCount: number;
-  unsubscribedCount: number;
-  /** Set when Resend couldn't be reached; the mirror is still listed. */
-  resendError: string | null;
-  configured: boolean;
-}
-
-interface MirrorRow {
-  email: string;
-  first_name: string | null;
-  last_name: string | null;
-  source: string | null;
-  account_code: string | null;
-  created_at: string | null;
+  if (error) {
+    const unknownColumn = error.code === "42703" || /column .* does not exist/i.test(error.message);
+    if (unknownColumn && !optinColumnMissing) {
+      optinColumnMissing = true;
+      return mirror(row);
+    }
+    throw new Error(error.message);
+  }
 }
 
 /**
- * The list, for the portal.
- *
- * Resend is the authority on who is still subscribed, so its contacts
- * decide that column. Our mirror supplies the things Resend doesn't
- * store: where they came from and which account they belong to.
+ * Reading the list lives in lib/audience.ts now, with the tags, phone
+ * numbers and statuses the EMAIL/TEXT tab needs. This module is the
+ * write side: the signup forms, and nothing else.
  */
-export async function getNewsletterList(): Promise<NewsletterList> {
-  const empty: NewsletterList = {
-    subscribers: [],
-    total: 0,
-    subscribedCount: 0,
-    unsubscribedCount: 0,
-    resendError: null,
-    configured: isNewsletterConfigured(),
-  };
-  if (!empty.configured) return empty;
-
-  const [mirrorRows, resendResult] = await Promise.all([
-    getSupabase()
-      .from("newsletter_subscribers")
-      .select("email, first_name, last_name, source, account_code, created_at")
-      .then(({ data, error }) => {
-        if (error) {
-          console.error("Newsletter: couldn't read the mirror:", error.message);
-          return [] as MirrorRow[];
-        }
-        return (data ?? []) as MirrorRow[];
-      }),
-    getResend()
-      .contacts.list({ audienceId: getSegmentId() })
-      .catch((err) => {
-        console.error("Newsletter: couldn't list Resend contacts:", err);
-        return null;
-      }),
-  ]);
-
-  const contacts = resendResult?.data?.data ?? [];
-  const resendError = resendResult
-    ? null
-    : "Resend couldn't be reached, so subscribe/unsubscribe status may be out of date.";
-
-  const mirrorByEmail = new Map(mirrorRows.map((r) => [r.email.toLowerCase(), r]));
-  const subscribers: Subscriber[] = [];
-  const seen = new Set<string>();
-
-  for (const contact of contacts) {
-    const email = (contact.email ?? "").toLowerCase();
-    if (!email) continue;
-    seen.add(email);
-    const local = mirrorByEmail.get(email);
-    subscribers.push({
-      email,
-      firstName: contact.first_name || local?.first_name || null,
-      lastName: contact.last_name || local?.last_name || null,
-      source: (local?.source as SignupSource | null) ?? null,
-      accountCode: local?.account_code ?? null,
-      subscribedAt: contact.created_at ?? local?.created_at ?? null,
-      unsubscribed: Boolean(contact.unsubscribed),
-    });
-  }
-
-  // Anyone in the mirror that Resend doesn't have. Shown rather than
-  // hidden: it means a signup reached our database but never reached
-  // Resend, which is a real problem someone should see.
-  for (const row of mirrorRows) {
-    const email = row.email.toLowerCase();
-    if (seen.has(email)) continue;
-    subscribers.push({
-      email,
-      firstName: row.first_name,
-      lastName: row.last_name,
-      source: (row.source as SignupSource | null) ?? null,
-      accountCode: row.account_code,
-      subscribedAt: row.created_at,
-      unsubscribed: false,
-    });
-  }
-
-  subscribers.sort((a, b) => (b.subscribedAt ?? "").localeCompare(a.subscribedAt ?? ""));
-
-  return {
-    subscribers,
-    total: subscribers.length,
-    subscribedCount: subscribers.filter((s) => !s.unsubscribed).length,
-    unsubscribedCount: subscribers.filter((s) => s.unsubscribed).length,
-    resendError,
-    configured: true,
-  };
-}
