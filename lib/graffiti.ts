@@ -56,7 +56,14 @@ export async function saveDrawing(strokes: Stroke[]): Promise<{ ok: boolean; err
   if (clean.length === 0) return { ok: false, error: "Nothing to save." };
 
   const { error } = await getSupabase().from("graffiti_drawings").insert({ strokes: clean });
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    // The message goes to the log, not to the wall. Postgres says things
+    // like 'relation "graffiti_drawings" does not exist', which tells a
+    // visitor who drew something nothing useful and tells anyone else
+    // the name of a table and the shape of the stack behind it.
+    console.error("Failed to save a graffiti drawing:", error.message);
+    return { ok: false, error: "Couldn't save that drawing. Please try again." };
+  }
   return { ok: true };
 }
 
