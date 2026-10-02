@@ -30,6 +30,7 @@ export async function updateAccountPermissionsAction(formData: FormData) {
       baAdmin: formData.get("perm_ba_admin") === "on",
       customerAdmin: formData.get("perm_customer_admin") === "on",
       newsletter: formData.get("perm_newsletter") === "on",
+      reviews: formData.get("perm_reviews") === "on",
     },
     isSuperAdmin: formData.get("is_super_admin") === "on",
     vendorSlug: String(formData.get("vendor_slug") || "").trim(),

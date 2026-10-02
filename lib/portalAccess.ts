@@ -50,6 +50,7 @@ export async function requirePortal(): Promise<PortalAccess> {
       "ba-admin": admin || p.baAdmin,
       "customer-admin": admin || p.customerAdmin,
       newsletter: admin || p.newsletter,
+      reviews: admin || p.reviews,
       "events-admin": admin || p.eventsAdmin,
       // Events admins keep the door: nobody who could admit guests before
       // this tab existed loses that.

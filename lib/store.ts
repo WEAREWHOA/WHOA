@@ -29,8 +29,11 @@ interface AmbassadorRow {
   perm_rolodex: boolean;
   perm_analytics: boolean;
   perm_ba_admin: boolean;
-  perm_customer_admin: boolean;
-  perm_newsletter: boolean;
+  // Optional in the type because they are optional in the database until
+  // their migration has been run. See OPTIONAL_PERMISSION_COLUMNS.
+  perm_customer_admin?: boolean;
+  perm_newsletter?: boolean;
+  perm_reviews?: boolean;
   is_super_admin: boolean;
   square_customer_id: string | null;
   orders?: OrderRow[];
@@ -56,10 +59,118 @@ interface LinkRow {
 // Explicit column list (no password_hash) — this is the select used
 // everywhere an Ambassador is returned to the app. Credentials are only
 // ever fetched separately, by the two getCredentials* functions below.
-const AMBASSADOR_PUBLIC_SELECT =
+const AMBASSADOR_CORE_SELECT =
   "code, name, email, instagram, created_at, payout_method, payout_destination, vendor_slug, " +
   "perm_ambassador, perm_vendor, perm_music, perm_ssbd, perm_events_admin, perm_event_sales, " +
-  "perm_art, perm_art_admin, perm_rsvp_admin, perm_rolodex, perm_analytics, perm_ba_admin, perm_customer_admin, perm_newsletter, is_super_admin, square_customer_id, orders(*), links(*)";
+  "perm_art, perm_art_admin, perm_rsvp_admin, perm_rolodex, perm_analytics, perm_ba_admin, " +
+  "is_super_admin, square_customer_id, orders(*), links(*)";
+
+/**
+ * Permission columns a deploy can reach production ahead of.
+ *
+ * Code ships the moment a branch merges; the SQL runs when a person runs
+ * it. Those are not the same moment, and a select naming a column the
+ * database doesn't have yet is rejected WHOLE: not "that field comes back
+ * null" but "this query failed". Every account lookup goes through this
+ * select, so the gap between the two used to be a total outage of the
+ * portal, the login and every tab, from one unrun migration.
+ *
+ * So these are asked for optimistically and dropped on the one error that
+ * says they aren't there yet. The account still loads; the permission
+ * they gate reads false until the migration runs, which costs one tab
+ * instead of the whole site. A column stays dropped for the life of the
+ * process, so the double query happens once rather than per request.
+ *
+ * A column can be moved into AMBASSADOR_CORE_SELECT once its migration
+ * has definitely run everywhere. Leaving it here forever is harmless.
+ */
+const OPTIONAL_PERMISSION_COLUMNS = [
+  "perm_customer_admin",
+  "perm_newsletter",
+  "perm_reviews",
+] as const;
+
+const missingColumns = new Set<string>();
+
+function ambassadorSelect(): string {
+  const optional = OPTIONAL_PERMISSION_COLUMNS.filter((c) => !missingColumns.has(c));
+  return optional.length > 0
+    ? `${AMBASSADOR_CORE_SELECT}, ${optional.join(", ")}`
+    : AMBASSADOR_CORE_SELECT;
+}
+
+interface SelectResult {
+  data: unknown;
+  error: { message: string; code?: string } | null;
+}
+
+/**
+ * Which optional columns an error is complaining about.
+ *
+ * Postgres says 42703 and names the column, which PostgREST passes
+ * through. When the message names optional columns, only those are
+ * dropped. When it doesn't name one we recognise, every optional column
+ * goes, because a lookup that works without a permission beats a lookup
+ * that doesn't work: the alternative to guessing here is the outage.
+ *
+ * Returns null for anything that isn't an unknown-column error, so a
+ * genuine failure (bad key, network, timeout) is still raised as itself.
+ */
+function unknownOptionalColumns(error: { message: string; code?: string }): string[] | null {
+  const message = error.message ?? "";
+  const isUnknownColumn =
+    error.code === "42703" || /column .* does not exist/i.test(message);
+  if (!isUnknownColumn) return null;
+
+  const named = OPTIONAL_PERMISSION_COLUMNS.filter(
+    (c) => !missingColumns.has(c) && message.includes(c),
+  );
+  const dropping =
+    named.length > 0
+      ? named
+      : OPTIONAL_PERMISSION_COLUMNS.filter((c) => !missingColumns.has(c));
+
+  return dropping.length > 0 ? [...dropping] : null;
+}
+
+/**
+ * Run an account query, and survive a migration that hasn't been run.
+ *
+ * A loop rather than a single retry, because Postgres reports only the
+ * FIRST unknown column in a select. With two migrations outstanding at
+ * once -- which has happened here, with 0036 and 0037 going out together
+ * -- one retry drops the column named in the error and then fails on the
+ * next one, which is the outage again with extra steps.
+ *
+ * Each pass drops at least one column and never adds one back, so the
+ * optional set strictly shrinks and the loop runs at most as many times
+ * as there are optional columns. The bound is belt and braces.
+ */
+async function selectAmbassador(
+  run: (select: string) => PromiseLike<SelectResult>,
+): Promise<SelectResult> {
+  for (let attempt = 0; attempt <= OPTIONAL_PERMISSION_COLUMNS.length; attempt++) {
+    const result = await run(ambassadorSelect());
+    if (!result.error) return result;
+
+    const dropping = unknownOptionalColumns(result.error);
+    // Not an unknown-column error, or nothing left to drop: this is a
+    // real failure and belongs to the caller.
+    if (!dropping) return result;
+
+    for (const column of dropping) missingColumns.add(column);
+    console.error(
+      `ambassadors.${dropping.join(", ambassadors.")} not found in the database, so the ` +
+        "permissions they carry will read false until the migration that adds them has been " +
+        "run. Accounts still load. See supabase/migrations/.",
+    );
+  }
+
+  // Unreachable while the loop bound exceeds the number of optional
+  // columns, but a query rather than a throw keeps the failure shaped
+  // like every other one here.
+  return run(AMBASSADOR_CORE_SELECT);
+}
 
 function mapOrder(row: OrderRow): Order {
   return {
@@ -108,8 +219,13 @@ function mapAmbassador(row: AmbassadorRow): Ambassador {
       rolodex: row.perm_rolodex,
       analytics: row.perm_analytics,
       baAdmin: row.perm_ba_admin,
-      customerAdmin: row.perm_customer_admin,
-      newsletter: row.perm_newsletter,
+      // ?? false, not a bare read: these columns are dropped from the
+      // select when their migration hasn't run, so the field is absent
+      // rather than false. An absent permission is a permission you don't
+      // have, which is the safe way round.
+      customerAdmin: row.perm_customer_admin ?? false,
+      newsletter: row.perm_newsletter ?? false,
+      reviews: row.perm_reviews ?? false,
     },
     isSuperAdmin: row.is_super_admin,
     squareCustomerId: row.square_customer_id ?? undefined,
@@ -230,6 +346,7 @@ export async function createAmbassador(input: {
     perm_ba_admin: input.permissions?.baAdmin ?? false,
     perm_customer_admin: input.permissions?.customerAdmin ?? false,
     perm_newsletter: input.permissions?.newsletter ?? false,
+    perm_reviews: input.permissions?.reviews ?? false,
   });
 
   if (ambassadorError) {
@@ -250,11 +367,13 @@ export async function createAmbassador(input: {
 }
 
 export async function getByCode(code: string): Promise<Ambassador | undefined> {
-  const { data, error } = await getSupabase()
-    .from("ambassadors")
-    .select(AMBASSADOR_PUBLIC_SELECT)
-    .eq("code", code.trim().toUpperCase())
-    .maybeSingle();
+  const { data, error } = await selectAmbassador((select) =>
+    getSupabase()
+      .from("ambassadors")
+      .select(select)
+      .eq("code", code.trim().toUpperCase())
+      .maybeSingle(),
+  );
 
   // Surface a broken Supabase connection (e.g. a stale service-role key) as
   // a real error instead of silently looking like "account not found" and
@@ -265,11 +384,13 @@ export async function getByCode(code: string): Promise<Ambassador | undefined> {
 }
 
 export async function getByEmail(email: string): Promise<Ambassador | undefined> {
-  const { data, error } = await getSupabase()
-    .from("ambassadors")
-    .select(AMBASSADOR_PUBLIC_SELECT)
-    .eq("email", email.trim().toLowerCase())
-    .maybeSingle();
+  const { data, error } = await selectAmbassador((select) =>
+    getSupabase()
+      .from("ambassadors")
+      .select(select)
+      .eq("email", email.trim().toLowerCase())
+      .maybeSingle(),
+  );
 
   if (error) throw new Error(`Failed to look up account by email: ${error.message}`);
 
@@ -318,16 +439,18 @@ export async function searchAccounts(query: string): Promise<Ambassador[]> {
   const q = query.trim();
   if (!q) return [];
 
-  const { data, error } = await getSupabase()
-    .from("ambassadors")
-    .select(AMBASSADOR_PUBLIC_SELECT)
-    .or(`name.ilike.%${q}%,email.ilike.%${q}%,code.ilike.%${q}%`)
-    .order("created_at", { ascending: false })
-    .limit(25);
+  const { data, error } = await selectAmbassador((select) =>
+    getSupabase()
+      .from("ambassadors")
+      .select(select)
+      .or(`name.ilike.%${q}%,email.ilike.%${q}%,code.ilike.%${q}%`)
+      .order("created_at", { ascending: false })
+      .limit(25),
+  );
 
   if (error) throw new Error(`Failed to search accounts: ${error.message}`);
 
-  return (data ?? []).map((row) => mapAmbassador(row as unknown as AmbassadorRow));
+  return ((data ?? []) as unknown[]).map((row) => mapAmbassador(row as AmbassadorRow));
 }
 
 // Super Admin permission edits. `permissions` is a partial patch — only the
@@ -358,6 +481,7 @@ export async function updatePermissions(
     patch.perm_customer_admin = updates.permissions.customerAdmin;
   if (updates.permissions?.newsletter !== undefined)
     patch.perm_newsletter = updates.permissions.newsletter;
+  if (updates.permissions?.reviews !== undefined) patch.perm_reviews = updates.permissions.reviews;
   if (updates.isSuperAdmin !== undefined) patch.is_super_admin = updates.isSuperAdmin;
   if (updates.vendorSlug !== undefined) patch.vendor_slug = updates.vendorSlug || null;
   // Clearing this makes the next portal load re-derive it from the

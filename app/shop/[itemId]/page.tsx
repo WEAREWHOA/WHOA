@@ -4,10 +4,13 @@ import type { Metadata } from "next";
 import { listProducts, productPath, resolveProduct } from "@/lib/catalog";
 import AddToCart from "@/components/shop/AddToCart";
 import ProductGallery from "@/components/shop/ProductGallery";
+import ProductReviews from "@/components/shop/ProductReviews";
+import Stars from "@/components/shop/Stars";
 import { formatCents } from "@/lib/money";
 import { SITE_URL } from "@/lib/site";
 import { BRAND } from "@/lib/productFeed";
 import { RETURN_WINDOW_DAYS } from "@/lib/returns";
+import { getApprovedReviews, reviewJsonLd, summarize, type ProductReview } from "@/lib/reviews";
 import { SHIPPING_ZONES, shippingRateCents } from "@/lib/shipping";
 import type { Product } from "@/lib/types";
 
@@ -56,7 +59,11 @@ export async function generateStaticParams() {
  * is escaped (a </script> in a Square-sourced name could otherwise
  * terminate the tag early) before being injected as raw HTML.
  */
-function buildProductJsonLd(product: Product, canonicalPath: string): string {
+function buildProductJsonLd(
+  product: Product,
+  canonicalPath: string,
+  reviews: ProductReview[],
+): string {
   const url = `${SITE_URL}${canonicalPath}`;
 
   // Google wants a date the price is good until. A year out is honest
@@ -127,6 +134,14 @@ function buildProductJsonLd(product: Product, canonicalPath: string): string {
     mpn: product.id,
     brand: { "@type": "Brand", name: BRAND },
     offers: offers.length === 1 ? offers[0] : offers,
+    // Only ever from reviews a person approved, and only when there are
+    // any. An aggregateRating with no reviews behind it is the exact
+    // thing Google's guidelines were tightened against in July 2026, and
+    // the penalty is a manual action rather than a quieter snippet.
+    //
+    // Built from the same array the page below renders, so the markup
+    // cannot claim a rating the reader can't see for themselves.
+    ...reviewJsonLd(reviews),
   };
 
   return JSON.stringify(jsonLd).replace(/</g, "\\u003c");
@@ -179,13 +194,21 @@ export default async function ProductPage(props: PageProps<"/shop/[itemId]">) {
   const prices = product.variations.map((v) => v.priceCents);
   const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
 
+  // Fetched once and used three times over: the summary under the title,
+  // the list at the bottom, and the structured data. One array, so the
+  // three can never disagree.
+  const reviews = await getApprovedReviews(product.id);
+  const summary = summarize(reviews);
+
   return (
     <section className="mx-auto grid w-full max-w-5xl gap-10 px-6 py-16 lg:grid-cols-2">
       {/* Product structured data — the difference between a plain blue link
           and a Google result showing price/availability directly. */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: buildProductJsonLd(product, canonicalPath) }}
+        dangerouslySetInnerHTML={{
+          __html: buildProductJsonLd(product, canonicalPath, reviews),
+        }}
       />
 
       <ProductGallery name={product.name} imageUrls={product.imageUrls} />
@@ -205,6 +228,18 @@ export default async function ProductPage(props: PageProps<"/shop/[itemId]">) {
           </div>
         )}
         <h1 className="font-display mt-3 text-4xl tracking-wide sm:text-5xl">{product.name}</h1>
+
+        {summary.count > 0 && (
+          // Jumps to the reviews rather than being decoration: someone
+          // who looks at a rating wants to read the reviews behind it.
+          <a href="#reviews" className="mt-3 flex items-center gap-2 text-sm text-muted hover:text-foreground">
+            <Stars value={summary.average} size="sm" />
+            <span>
+              {summary.average.toFixed(1)} · {summary.count} review{summary.count === 1 ? "" : "s"}
+            </span>
+          </a>
+        )}
+
         <p className="text-flame mt-3 text-lg">{formatCents(minPrice)}</p>
         {product.description && (
           <p className="mt-6 whitespace-pre-line text-sm leading-relaxed text-muted">
@@ -215,6 +250,14 @@ export default async function ProductPage(props: PageProps<"/shop/[itemId]">) {
           <AddToCart product={product} />
         </div>
       </div>
+
+      <ProductReviews
+        reviews={reviews}
+        productId={product.id}
+        productSlug={canonicalPath.replace("/shop/", "")}
+        productName={product.name}
+        variationIds={product.variations.map((v) => v.id)}
+      />
     </section>
   );
 }
