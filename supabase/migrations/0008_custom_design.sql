@@ -2,9 +2,9 @@
 -- a live ordering flow yet (see README). Visitors pick one of four
 -- black-only garment templates and "bleach" a design onto it with a
 -- marker/spray brush, then submit contact info. Strokes are stored as
--- normalized point paths (jsonb), same posture as graffiti_drawings —
--- plus a rendered PNG preview so a submission is actually inspectable
--- without a staff-facing viewer that replays the stroke data.
+-- normalized point paths (jsonb) rather than rasterized images, plus a
+-- rendered PNG preview so a submission is actually inspectable without a
+-- staff-facing viewer that replays the stroke data.
 
 create table if not exists custom_design_submissions (
   id uuid primary key default gen_random_uuid(),

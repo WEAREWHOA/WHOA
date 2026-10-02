@@ -657,9 +657,6 @@ revoked by deleting its row (which logout does).
      `square_customer_id` to `ambassadors`, caching the Square Customer
      match used by the Customer tab. See
      [Square Customers matching](#square-customers-matching).
-   - `supabase/migrations/0007_graffiti_wall.sql` — creates
-     `graffiti_drawings` for the WHOA Games graffiti wall. See
-     [WHOA Games](#whoa-games).
    - `supabase/migrations/0008_custom_design.sql` — creates
      `custom_design_submissions` for the Custom Design bleach editor. See
      [Custom Design](#custom-design).
@@ -1794,15 +1791,6 @@ so the six planets stay the six things a customer actually came for.
   quiz scored against 5 results (`lib/games/quiz.ts`); the result renders
   to an offscreen canvas and downloads as a PNG sized for Instagram
   Stories (9:16).
-- **Graffiti Wall** (`components/games/graffiti/`) — a shared drawing
-  canvas. Strokes save as normalized point paths in Supabase
-  (`graffiti_drawings`, [migration 0007](#data-layer--auth)) rather than
-  rasterized images — a whole drawing is a few KB of coordinates, so this
-  stays cheap to run at any volume. `lib/graffiti.ts` clamps/caps stroke
-  count, point count, and brush width server-side before insert, since
-  this is a public, unauthenticated write path. The gallery renders saved
-  strokes as SVG polylines (`DrawingThumbnail.tsx`) — no canvas replay
-  logic needed for read-only display.
 - **Beat Pad** (`components/games/beat-pad/`) — 16 pads (kick/snare/
   hats/toms/a pentatonic run of tones), each a synthesized hit via the
   Web Audio API (`lib/games/beatPad.ts`) rather than a sample — there
@@ -1935,11 +1923,10 @@ put the sitemap entry back.
   every remaining stroke from scratch after popping the last one — same
   redraw-on-undo approach as the WHOA Puzzle.
 - **Mouse and finger both work with no separate code path** — pointer
-  events (`onPointerDown/Move/Up`) unify mouse, touch, and pen input,
-  same approach as the Graffiti Wall canvas.
+  events (`onPointerDown/Move/Up`) unify mouse, touch, and pen input.
 - **The submission is genuinely captured, not faked** — `submitDesign()`
-  sanitizes and inserts the stroke data (jsonb, same normalized-point-path
-  posture as `graffiti_drawings`) plus a flattened PNG preview (so a
+  sanitizes and inserts the stroke data as normalized point paths (jsonb)
+  rather than a rasterized image, plus a flattened PNG preview (so a
   submission is inspectable without a staff-facing viewer that replays
   strokes) into `custom_design_submissions`, then emails info@wearewhoa.com
   via Resend (`sendCustomDesignNotification`, reply-to'd to the customer).

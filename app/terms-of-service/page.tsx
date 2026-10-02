@@ -92,7 +92,7 @@ export default function TermsOfServicePage() {
         <div>
           <h2 className="font-display text-xl text-foreground">User submissions</h2>
           <p className="mt-2">
-            Interactive features like the Custom Design editor, the Graffiti Wall, and the Contact
+            Interactive features like the Custom Design editor and the Contact
             form let you send us content or messages. By submitting, you confirm it&apos;s yours to
             share and give us permission to use it to respond to you and operate these features.
           </p>

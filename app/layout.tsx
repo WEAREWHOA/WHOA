@@ -48,6 +48,16 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
     images: ["/opengraph-image"],
   },
+  // Site verification. Through metadata rather than a hand-written tag in
+  // the head, so it lands on every page and survives any change to the
+  // layout's markup. Pinterest only reads it on the homepage, but a claim
+  // tag that exists in exactly one place is a claim that breaks the day
+  // someone edits that place.
+  verification: {
+    other: {
+      "p:domain_verify": "204421e31845d4a4bb02d3fc4ddaa2a0",
+    },
+  },
 };
 
 export const viewport: Viewport = {

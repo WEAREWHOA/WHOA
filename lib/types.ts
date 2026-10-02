@@ -58,6 +58,11 @@ export interface AccountPermissions {
   // NEWSLETTER tab: the subscriber list and the campaigns sent to it.
   // Off by default -- it can email everyone who ever signed up.
   newsletter: boolean;
+  // REVIEWS tab: the moderation queue for customer product reviews.
+  // Whoever holds this decides what appears under a product and what
+  // goes into the structured data Google reads, so it is granted one
+  // account at a time like the other admin tabs.
+  reviews: boolean;
   // ANALYTICS tab: traffic, revenue, payouts and funnels for the whole
   // business in one place. Off by default — it's the widest view of the
   // company there is, wider than any single admin tab.

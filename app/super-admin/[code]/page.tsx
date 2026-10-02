@@ -78,6 +78,12 @@ const PERMISSION_ROWS = [
     hint: "NEWSLETTER tab -- the subscriber list and the campaigns sent to it. Can email everyone who ever signed up, so grant it deliberately. Super Admins already have this.",
   },
   {
+    field: "perm_reviews",
+    permission: "reviews",
+    label: "Reviews",
+    hint: "REVIEWS tab -- the moderation queue for customer product reviews. Whoever holds this decides what appears under a product and what Google reads as the rating, so grant it deliberately. Super Admins already have this.",
+  },
+  {
     field: "perm_analytics",
     permission: "analytics",
     label: "Analytics",

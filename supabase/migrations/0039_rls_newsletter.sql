@@ -1,0 +1,15 @@
+-- Row level security on newsletter_subscribers.
+--
+-- Missed when 0037 created the table. Every other table in this schema
+-- has had it since the migration that created it, so this is closing a
+-- gap rather than making a new decision: the table holds the email
+-- address of everyone who ever signed up, which is the same thing the
+-- rest of these tables are protected for.
+--
+-- No policies, same as everywhere else here. The app reaches Supabase
+-- only through the service role key from server code, and the service
+-- role bypasses RLS, so the newsletter tab and every signup form carry
+-- on unchanged while anon and authenticated keys can read nothing.
+--
+-- Safe to run on a table that already has it: enabling twice is a no-op.
+alter table newsletter_subscribers enable row level security;
