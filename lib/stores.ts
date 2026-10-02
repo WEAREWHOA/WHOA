@@ -18,10 +18,23 @@ import { EVENTS, sortEventsByProximity, type EventInfo } from "@/lib/events";
 
 export type StoreKind = "retail-store" | "retail-popup" | "event-popup";
 
+/**
+ * Said in caps because that's the name of the thing, not shouting: these
+ * are the three badges on the cards and the three icons in the legend.
+ * Held as caps here rather than left to CSS so the plain text that goes
+ * out in the page summary reads the same as the badge above it.
+ */
 export const STORE_KIND_LABELS: Record<StoreKind, string> = {
-  "retail-store": "Retail store",
-  "retail-popup": "Retail pop-up",
-  "event-popup": "Event pop-up",
+  "retail-store": "RETAIL STORE",
+  "retail-popup": "RETAIL POP-UP",
+  "event-popup": "EVENT POP-UP",
+};
+
+/** The same three, for "2 EVENT POP-UPS". */
+export const STORE_KIND_LABELS_PLURAL: Record<StoreKind, string> = {
+  "retail-store": "RETAIL STORES",
+  "retail-popup": "RETAIL POP-UPS",
+  "event-popup": "EVENT POP-UPS",
 };
 
 export interface StoreAddress {
@@ -49,6 +62,13 @@ export interface StoreLocation {
   /** Free text, e.g. "Open daily 11am - 7pm". Omitted when unknown. */
   hours?: string;
   phone?: string;
+  /**
+   * The business whose building this is, for a pop-up that lives inside
+   * another shop. Published as containedInPlace in the structured data,
+   * which is what stops a search engine reading two businesses at one
+   * street address as a conflict about who is really there.
+   */
+  insideOf?: string;
   /** Where to read more on this site. */
   href?: string;
   /** The event this pop-up is part of, for the derived ones. */
@@ -99,12 +119,20 @@ export const PERMANENT_LOCATIONS: StoreLocation[] = [
     href: "/events",
   },
   {
+    // Kept as "pangea" so the /stores#pangea link stays good.
     slug: "pangea",
-    name: "Pangea",
+    name: "Pangaea Outpost",
     kind: "retail-popup",
-    blurb: "A WHOA rack inside Pangea. Our pieces, their shop.",
-    // No address here on purpose. Everything that needs one is skipped
-    // until the real one is filled in, rather than guessed at.
+    blurb:
+      "Our own section inside Pangaea Outpost, the indoor marketplace on Garnet Ave in Pacific Beach. A proper corner of WHOA in among the other local makers, open whenever the marketplace is.",
+    address: {
+      street: "909 Garnet Ave",
+      city: "San Diego",
+      region: "CA",
+      postalCode: "92109",
+      country: "US",
+    },
+    insideOf: "Pangaea Outpost",
   },
 ];
 
