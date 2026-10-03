@@ -85,12 +85,18 @@ export function isConfigured(): boolean {
  * domain is rejected when the send happens, not when it is typed, which
  * is the worst moment to find out.
  *
- * A different mailbox from the order emails on purpose. Transactional
- * and marketing mail build separate reputations, and a campaign that
- * collects complaints should not be able to stop receipts arriving.
+ * info@ rather than orders@ on purpose. Transactional and marketing mail
+ * build separate reputations, and a campaign that collects complaints
+ * should not be able to stop a receipt arriving.
+ *
+ * It is a real mailbox: wearewhoa.art is a user alias domain on the
+ * Google Workspace behind wearewhoa.com, so mail to it lands in the
+ * inbox that is already read. That matters because people reply to
+ * marketing email, and some of them ignore the reply-to header and
+ * write to the sender instead.
  */
 export function marketingFrom(): string {
-  return process.env.RESEND_FROM || "WHOA <hello@wearewhoa.art>";
+  return process.env.RESEND_FROM || "WHOA <info@wearewhoa.art>";
 }
 
 /**
