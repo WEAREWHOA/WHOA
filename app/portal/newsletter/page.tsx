@@ -1,14 +1,12 @@
-import NewsletterTab from "@/components/dashboard/newsletter/NewsletterTab";
-import { getNewsletterList } from "@/lib/newsletter";
-import { requirePortalTab } from "@/lib/portalAccess";
+import { redirect } from "next/navigation";
 
 /**
- * Every subscriber's email address, so it is fetched only behind the gate
- * -- never loaded and then hidden, which would still ship the whole list
- * in the page's payload.
+ * The tab used to live here and is now EMAIL/TEXT at /portal/email.
+ *
+ * Kept as a redirect rather than deleted: this path is in people's
+ * history and bookmarks, and landing on a 404 after clicking a saved
+ * link reads as the tab having been taken away.
  */
-export default async function PortalNewsletterPage() {
-  await requirePortalTab("newsletter");
-  const list = await getNewsletterList();
-  return <NewsletterTab initial={list} />;
+export default function PortalNewsletterPage() {
+  redirect("/portal/email");
 }

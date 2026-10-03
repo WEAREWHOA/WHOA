@@ -1,8 +1,6 @@
 "use server";
 
-import { getSessionAmbassadorCode } from "@/lib/auth";
-import { getByCode } from "@/lib/store";
-import { getNewsletterList, subscribe, type NewsletterList } from "@/lib/newsletter";
+import { subscribe } from "@/lib/newsletter";
 
 /**
  * The public one: anyone can call it, because anyone can subscribe.
@@ -17,24 +15,6 @@ export async function subscribeFooterAction(email: string): Promise<{ ok: boolea
     return { ok: false, error: "Couldn't sign you up right now. Please try again later." };
   });
   return { ok: result.ok, error: result.error };
-}
-
-/**
- * The list itself reads every subscriber's address, so the permission is
- * re-checked on the server each time rather than trusted from a client
- * that could simply call the action.
- */
-async function requireNewsletterAdmin(): Promise<boolean> {
-  const code = await getSessionAmbassadorCode().catch(() => null);
-  if (!code) return false;
-  const account = await getByCode(code).catch(() => null);
-  if (!account) return false;
-  return account.isSuperAdmin || account.permissions.newsletter;
-}
-
-export async function loadNewsletterListAction(): Promise<NewsletterList | null> {
-  if (!(await requireNewsletterAdmin())) return null;
-  return getNewsletterList();
 }
 
 /**
