@@ -77,9 +77,32 @@ export function isConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY && process.env.RESEND_AUDIENCE_ID);
 }
 
-/** The address a campaign is sent from. */
+/**
+ * The address a campaign is sent from.
+ *
+ * Must be on a domain verified in Resend, which is wearewhoa.art: the
+ * one the order emails already go out on. An address on an unverified
+ * domain is rejected when the send happens, not when it is typed, which
+ * is the worst moment to find out.
+ *
+ * A different mailbox from the order emails on purpose. Transactional
+ * and marketing mail build separate reputations, and a campaign that
+ * collects complaints should not be able to stop receipts arriving.
+ */
 export function marketingFrom(): string {
   return process.env.RESEND_FROM || "WHOA <hello@wearewhoa.art>";
+}
+
+/**
+ * Where a reply lands.
+ *
+ * People do reply to marketing email, and the sending address is on a
+ * domain picked for deliverability rather than for being read. This is
+ * the inbox somebody actually opens, and it does not have to be on a
+ * verified domain: reply-to is a header, not a sender.
+ */
+export function marketingReplyTo(): string {
+  return process.env.RESEND_REPLY_TO || "info@wearewhoa.com";
 }
 
 interface Row {
@@ -330,6 +353,8 @@ export async function applyImportPlan(plan: ImportPlan): Promise<ApplyResult> {
     unsub_reason: contact.unsubReason,
     optin_recorded: contact.optinRecorded,
     sms_consent: contact.smsConsent,
+    sms_consent_source: contact.smsConsentSource,
+    sms_consent_at: contact.smsConsent ? new Date().toISOString() : null,
     source: "import",
     imported_from: contact.importedFrom,
     updated_at: new Date().toISOString(),

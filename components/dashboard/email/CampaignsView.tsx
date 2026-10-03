@@ -58,12 +58,14 @@ function Stat({ label, value, capped }: { label: string; value: number; capped: 
 function Composer({
   segments,
   from,
+  replyTo,
   editing,
   onDone,
   onCancel,
 }: {
   segments: { id: string; name: string }[];
   from: string;
+  replyTo: string;
   editing: Campaign | null;
   onDone: () => void;
   onCancel: () => void;
@@ -130,7 +132,9 @@ function Composer({
     <section className="an-panel">
       <header className="an-panel-head">
         <h3 className="an-panel-title">{editing ? "Edit campaign" : "New campaign"}</h3>
-        <span className="an-panel-group">from {from}</span>
+        <span className="an-panel-group">
+          from {from} · replies to {replyTo}
+        </span>
       </header>
 
       <div className="mt-4 flex flex-col gap-4">
@@ -365,6 +369,7 @@ export default function CampaignsView() {
       <Composer
         segments={state?.segments ?? []}
         from={state?.from ?? ""}
+        replyTo={state?.replyTo ?? ""}
         editing={editing}
         onDone={() => {
           setComposing(false);

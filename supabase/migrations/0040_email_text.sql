@@ -43,6 +43,13 @@ alter table newsletter_subscribers
   -- ever gave an email is a TCPA problem, not a marketing decision, so
   -- this is false until there is a record saying otherwise.
   add column if not exists sms_consent boolean not null default false,
+  -- WHERE that consent came from, in words: a tag on the record, a tick
+  -- box at the register, or somebody asserting it for a whole import.
+  -- A bare true/false is useless the day a complaint arrives, because
+  -- the question then is never "did the flag say yes" but "on what
+  -- basis". This column is the answer to the second one.
+  add column if not exists sms_consent_source text,
+  add column if not exists sms_consent_at timestamptz,
   add column if not exists imported_from text,
   add column if not exists updated_at timestamptz;
 

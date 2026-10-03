@@ -54,6 +54,8 @@ export interface PlannedContact {
   unsubReason: string | null;
   optinRecorded: boolean;
   smsConsent: boolean;
+  /** In words: how we know. Null when there is no consent to explain. */
+  smsConsentSource: string | null;
   createdAt: string | null;
   importedFrom: string;
   /** Why this row's status is not simply the file it came from. */
@@ -259,10 +261,32 @@ export interface ImportFileInput {
   kind?: MailchimpFileKind;
 }
 
+export interface ImportOptions {
+  /**
+   * Mark everyone mailable with a usable number as having agreed to be
+   * texted.
+   *
+   * Only ever set by somebody ticking the box in the import screen, and
+   * only they can know whether it is true: the export itself carries no
+   * record of SMS consent beyond one "Text Subscribers" tag, so there is
+   * nothing here to infer it from.
+   *
+   * It applies to subscribed contacts only. Somebody who asked to stop
+   * getting email, who bounced, or who never opted in to anything has
+   * not been included in whatever was agreed.
+   */
+  smsConsentForAll?: boolean;
+  /** What to record as the basis. Shown in the audit trail. */
+  smsConsentSource?: string;
+}
+
+export const DEFAULT_SMS_CONSENT_SOURCE =
+  "Asserted at import: collected with the email signup";
+
 /**
  * Read the files and work out what would be written. Writes nothing.
  */
-export function planImport(files: ImportFileInput[]): ImportPlan {
+export function planImport(files: ImportFileInput[], options: ImportOptions = {}): ImportPlan {
   const byEmail = new Map<string, PlannedContact>();
   const duplicates = new Set<string>();
   const summaries: ImportFileSummary[] = [];
@@ -325,6 +349,9 @@ export function planImport(files: ImportFileInput[]): ImportPlan {
         unsubReason,
         optinRecorded: hasOptinRecord(row),
         smsConsent: tags.some((t) => SMS_TAG.test(t)),
+        smsConsentSource: tags.some((t) => SMS_TAG.test(t))
+          ? 'Tagged "Text Subscribers" in Mailchimp'
+          : null,
         createdAt: isoDate(row["Created At (UTC+0)"]) ?? isoDate(row.OPTIN_TIME),
         importedFrom: file.name,
         note,
@@ -345,6 +372,19 @@ export function planImport(files: ImportFileInput[]): ImportPlan {
   }
 
   const contacts = [...byEmail.values()];
+
+  if (options.smsConsentForAll) {
+    const source = options.smsConsentSource?.trim() || DEFAULT_SMS_CONSENT_SOURCE;
+    for (const contact of contacts) {
+      // A number we could not read is not a number we can text, and a
+      // status other than subscribed is somebody who is not part of
+      // whatever was agreed.
+      if (!contact.phoneE164 || contact.status !== "subscribed") continue;
+      if (contact.smsConsent) continue;
+      contact.smsConsent = true;
+      contact.smsConsentSource = source;
+    }
+  }
   const counts: Record<ContactStatus, number> = {
     subscribed: 0,
     unsubscribed: 0,
@@ -412,6 +452,7 @@ function mergeContacts(a: PlannedContact, b: PlannedContact): PlannedContact {
     tags: [...new Set([...keep.tags, ...other.tags])],
     optinRecorded: keep.optinRecorded || other.optinRecorded,
     smsConsent: keep.smsConsent || other.smsConsent,
+    smsConsentSource: keep.smsConsentSource ?? other.smsConsentSource,
     note: keep.note ?? other.note ?? "Appeared in more than one export",
   };
 }

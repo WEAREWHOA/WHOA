@@ -3,7 +3,11 @@
 import { useState, type ChangeEvent } from "react";
 
 import { applyImportAction, previewImportAction, type ImportPreview } from "@/app/email/actions";
-import { CONTACT_STATUS_LABELS, type ContactStatus } from "@/lib/mailchimpImport";
+import {
+  CONTACT_STATUS_LABELS,
+  DEFAULT_SMS_CONSENT_SOURCE,
+  type ContactStatus,
+} from "@/lib/mailchimpImport";
 
 /**
  * Bringing the Mailchimp list over.
@@ -28,6 +32,10 @@ export default function ImportView({ onImported }: { onImported: () => void }) {
   const [files, setFiles] = useState<{ name: string; text: string }[]>([]);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [busy, setBusy] = useState<"reading" | "previewing" | "importing" | null>(null);
+  // Off unless somebody deliberately turns it on. Nothing in the export
+  // can tell us this, so it is a statement by the person importing,
+  // recorded as one.
+  const [smsConsentForAll, setSmsConsentForAll] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
 
@@ -45,8 +53,12 @@ export default function ImportView({ onImported }: { onImported: () => void }) {
     );
     setFiles(read);
 
+    await runPreview(read, smsConsentForAll);
+  }
+
+  async function runPreview(read: { name: string; text: string }[], sms: boolean) {
     setBusy("previewing");
-    const result = await previewImportAction(read).catch(() => ({
+    const result = await previewImportAction(read, { smsConsentForAll: sms }).catch(() => ({
       ok: false as const,
       error: "Couldn't read those files.",
     }));
@@ -56,12 +68,20 @@ export default function ImportView({ onImported }: { onImported: () => void }) {
     else setError(result.error);
   }
 
+  function toggleSmsConsent(next: boolean) {
+    setSmsConsentForAll(next);
+    // Re-read rather than patch the numbers on screen: the count it
+    // changes is the whole reason to tick it, and a stale one is worse
+    // than none.
+    if (files.length > 0) void runPreview(files, next);
+  }
+
   async function runImport() {
     if (files.length === 0) return;
     setBusy("importing");
     setError(null);
 
-    const result = await applyImportAction(files).catch(() => ({
+    const result = await applyImportAction(files, { smsConsentForAll }).catch(() => ({
       ok: false as const,
       error: "The import failed.",
       storedLocally: 0,
@@ -94,6 +114,26 @@ export default function ImportView({ onImported }: { onImported: () => void }) {
         Drop all four in at once. Which file somebody is in is the only record of whether they
         agreed to hear from you, so the four are kept apart rather than merged into one list.
       </p>
+
+      {/* Above the picker, because it changes what the preview says
+          rather than being a detail applied afterwards. */}
+      <label className="mt-4 flex max-w-2xl items-start gap-3 text-sm text-muted">
+        <input
+          type="checkbox"
+          checked={smsConsentForAll}
+          onChange={(e) => toggleSmsConsent(e.target.checked)}
+          className="mt-1"
+        />
+        <span>
+          Everyone on this list also agreed to receive text messages.
+          <span className="block text-xs">
+            Only tick this if the form or the register actually asked about texts. Agreeing to
+            emails is not agreeing to messages, and the penalty is per message rather than per
+            campaign. Recorded against each contact as:{" "}
+            <span className="font-mono-code">{DEFAULT_SMS_CONSENT_SOURCE}</span>
+          </span>
+        </span>
+      </label>
 
       <label className="ba-btn mt-4 inline-block cursor-pointer">
         {busy === "reading" || busy === "previewing" ? "READING…" : "CHOOSE CSV FILES"}
@@ -139,7 +179,7 @@ export default function ImportView({ onImported }: { onImported: () => void }) {
             <span className="text-foreground">{preview.totalContacts.toLocaleString()}</span> people
             in total, of whom <span className="text-foreground">{preview.mailable.toLocaleString()}</span>{" "}
             can be emailed. {preview.withPhone.toLocaleString()} have a usable phone number, and{" "}
-            {preview.smsConsenting.toLocaleString()} of those agreed to be texted.
+            {preview.smsConsenting.toLocaleString()} of those can be texted.
           </p>
 
           {preview.warnings.map((w) => (

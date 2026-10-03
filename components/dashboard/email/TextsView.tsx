@@ -80,9 +80,9 @@ export default function TextsView({ audience }: { audience: Audience }) {
 
         {consenting.length === 0 ? (
           <p className="an-empty">
-            Nobody has agreed to be texted yet. The Mailchimp list carries one &quot;Text
-            Subscribers&quot; tag, so almost nobody on it ever opted in to messages, whatever their
-            number says.
+            Nobody is marked as agreeing to be texted. The Mailchimp export carries almost no
+            record of it, so if consent was collected somewhere else, say so when importing and
+            it will be recorded against each contact.
           </p>
         ) : (
           <table className="an-table ba-table">

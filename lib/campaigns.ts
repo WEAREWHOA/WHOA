@@ -231,12 +231,16 @@ export async function sendTest(input: {
   to: string;
   subject: string;
   from: string;
+  replyTo?: string;
   html: string;
   text?: string;
 }): Promise<void> {
   const result = await getResend().emails.send({
     to: input.to,
     from: input.from,
+    // The same reply-to as the real send, so the test shows what a
+    // recipient hitting reply would actually get.
+    replyTo: input.replyTo,
     subject: `[TEST] ${input.subject}`,
     html: input.html,
     text: input.text,

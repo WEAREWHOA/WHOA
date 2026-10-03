@@ -7,6 +7,7 @@ import {
   audienceCsv,
   getAudience,
   marketingFrom,
+  marketingReplyTo,
   type ApplyResult,
   type Audience,
 } from "@/lib/audience";
@@ -24,7 +25,12 @@ import {
   type Campaign,
   type CampaignStats,
 } from "@/lib/campaigns";
-import { planImport, type ImportFileInput, type ImportPlan } from "@/lib/mailchimpImport";
+import {
+  planImport,
+  type ImportFileInput,
+  type ImportOptions,
+  type ImportPlan,
+} from "@/lib/mailchimpImport";
 
 /**
  * Everything the EMAIL/TEXT tab does, behind one gate.
@@ -104,10 +110,11 @@ function toPreview(plan: ImportPlan): ImportPreview {
 
 export async function previewImportAction(
   files: ImportFileInput[],
+  options: ImportOptions = {},
 ): Promise<{ ok: true; preview: ImportPreview } | { ok: false; error: string }> {
   if (!(await requireEmailAdmin())) return { ok: false, error: "Not allowed." };
   try {
-    return { ok: true, preview: toPreview(planImport(files)) };
+    return { ok: true, preview: toPreview(planImport(files, options)) };
   } catch (err) {
     console.error("Import preview failed:", err);
     return { ok: false, error: "Couldn't read those files. Are they the Mailchimp CSV exports?" };
@@ -116,6 +123,7 @@ export async function previewImportAction(
 
 export async function applyImportAction(
   files: ImportFileInput[],
+  options: ImportOptions = {},
 ): Promise<ApplyResult | { ok: false; error: string; storedLocally: 0; sentToResend: 0; resendImportId: null; warnings: [] }> {
   if (!(await requireEmailAdmin())) {
     return { ok: false, error: "Not allowed.", storedLocally: 0, sentToResend: 0, resendImportId: null, warnings: [] };
@@ -123,7 +131,7 @@ export async function applyImportAction(
   try {
     // Re-planned here rather than trusting a plan sent from the browser.
     // The files are the input; a plan posted back could say anything.
-    return await applyImportPlan(planImport(files));
+    return await applyImportPlan(planImport(files, options));
   } catch (err) {
     console.error("Import failed:", err);
     return {
@@ -145,6 +153,7 @@ export interface CampaignsState {
   campaigns: Campaign[];
   segments: { id: string; name: string }[];
   from: string;
+  replyTo: string;
   error: string | null;
 }
 
@@ -152,13 +161,14 @@ export async function loadCampaignsAction(): Promise<CampaignsState | null> {
   if (!(await requireEmailAdmin())) return null;
   try {
     const [campaigns, segments] = await Promise.all([listCampaigns(), listSegments()]);
-    return { campaigns, segments, from: marketingFrom(), error: null };
+    return { campaigns, segments, from: marketingFrom(), replyTo: marketingReplyTo(), error: null };
   } catch (err) {
     console.error("Couldn't load campaigns:", err);
     return {
       campaigns: [],
       segments: [],
       from: marketingFrom(),
+      replyTo: marketingReplyTo(),
       error: err instanceof Error ? err.message : "Couldn't reach Resend.",
     };
   }
@@ -204,7 +214,7 @@ export async function saveCampaignAction(input: {
   segmentId: string;
 }): Promise<Simple> {
   return guarded(async () => {
-    const payload = { ...input, from: marketingFrom() };
+    const payload = { ...input, from: marketingFrom(), replyTo: marketingReplyTo() };
     if (input.id) {
       await updateDraft(input.id, payload);
       return { ok: true, id: input.id };
@@ -221,7 +231,7 @@ export async function sendTestAction(input: {
   text?: string;
 }): Promise<Simple> {
   return guarded(async () => {
-    await sendTest({ ...input, from: marketingFrom() });
+    await sendTest({ ...input, from: marketingFrom(), replyTo: marketingReplyTo() });
     return { ok: true };
   });
 }
