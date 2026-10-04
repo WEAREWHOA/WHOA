@@ -8,7 +8,8 @@ export const metadata: Metadata = {
   // competing as separate pages.
   alternates: { canonical: "/about" },
   title: "About",
-  description: "WHOA's story, mission, the podcast, partnerships, and how to get in touch.",
+  description:
+    "WHOA's story, mission, the podcast, partnerships, where to find us in person, and how to get in touch.",
 };
 
 export default function AboutPage() {
@@ -66,6 +67,32 @@ export default function AboutPage() {
           </p>
           <span className="text-flame mt-4 inline-block text-xs font-semibold tracking-wide uppercase">
             See who we support →
+          </span>
+        </Link>
+
+        {/* Across both columns rather than a fifth box in the grid: four
+            cards close a square and a fifth would leave an orphan on the
+            bottom row.
+
+            It also earns the width. This is the only card that answers
+            "where can I actually go and buy this", which is a question
+            somebody asks right before getting in a car, and the street
+            names in it are the words people search for. A link from a
+            page that is already crawled this heavily, with the
+            neighbourhoods written out rather than hidden behind "click
+            here", is most of what makes /stores findable at all. */}
+        <Link
+          href="/stores"
+          className="card-surface group rounded-2xl border border-border p-6 transition-colors hover:border-flame-2/50 sm:col-span-2"
+        >
+          <h2 className="font-display text-2xl">Retail Locations</h2>
+          <p className="mt-2 max-w-2xl text-sm text-muted">
+            The WHOADEGA, our shop on Newport Ave in Ocean Beach. Our own section inside Pangaea
+            Outpost on Garnet Ave in Pacific Beach. And a stall wherever we&apos;re running an
+            event.
+          </p>
+          <span className="text-flame mt-4 inline-block text-xs font-semibold tracking-wide uppercase">
+            Find us in person →
           </span>
         </Link>
       </div>
