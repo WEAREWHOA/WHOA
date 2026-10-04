@@ -378,12 +378,11 @@ table that can't be read at all falls back.
   their account code. A code that doesn't match any link redirects back
   with `?promoError=1` rather than silently charging full price.
 
-A seeded demo ambassador exists for exploring a populated portal. Its
-credentials are deliberately not written down here: this file is part of
-the repository, and a working login published in a README is a working
-login for anybody who can read the repository. Ask an admin, or reset the
-password on the seeded account and keep the new one somewhere credentials
-belong.
+A seeded demo ambassador exists for exploring a populated portal, and is
+meant to stay open. Its credentials are deliberately not written down
+here: this file is part of the repository, and a working login published
+in a README is a working login for anybody who can read the repository.
+Ask an admin for them.
 
 ### Wallet payments
 
