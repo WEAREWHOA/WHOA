@@ -56,6 +56,14 @@ export const metadata: Metadata = {
   verification: {
     other: {
       "p:domain_verify": "204421e31845d4a4bb02d3fc4ddaa2a0",
+      // Meta, for Commerce Manager. A catalogue is not allowed to link
+      // out to a domain nobody has proved they own, so Instagram
+      // Shopping is gated behind this rather than merely improved by it.
+      //
+      // wearewhoa.art and not the .com: Meta treats them as separate
+      // domains, and .art is where the product pages the feed links to
+      // actually live.
+      "facebook-domain-verification": "k7ewp3uedq76z2rhjaqq3pb2gmiez8",
     },
   },
 };
