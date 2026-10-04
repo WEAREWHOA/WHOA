@@ -23,7 +23,23 @@ import type { Product, ProductVariation } from "@/lib/types";
  * One entry per variation, not per product. A shopper searching for a
  * size buys that size, and Merchant Center groups variants of one item
  * through item_group_id.
+ *
+ * Meta reads the same feed in the same RSS 2.0 shape, with two
+ * differences that matter enough to make it a separate dialect rather
+ * than one feed pointed at both:
+ *
+ *   availability   Meta documents "in stock" and "out of stock", with
+ *                  spaces. Google uses underscores. Meta has become
+ *                  lenient about it, but a documented value is a value
+ *                  that cannot be deprecated out from under the feed.
+ *   quantity       Meta takes a real stock count and uses it to mark an
+ *                  item sold out on Instagram, which is the whole point
+ *                  of syncing inventory rather than just a catalogue.
+ *                  Google has no equivalent.
  */
+
+/** Which shop is reading. */
+export type FeedDialect = "google" | "meta";
 
 export const FEED_TITLE = "WHOA";
 export const BRAND = "WHOA";
@@ -89,7 +105,11 @@ function shippingNodes(priceCents: number): string {
   return nodes.join("");
 }
 
-function itemXml(product: Product, variation: ProductVariation): string {
+function itemXml(
+  product: Product,
+  variation: ProductVariation,
+  dialect: FeedDialect,
+): string {
   const link = `${SITE_URL}${productPath(product)}`;
   const price = (variation.priceCents / 100).toFixed(2);
   // A variation Square doesn't track is unlimited, not sold out.
@@ -107,7 +127,9 @@ function itemXml(product: Product, variation: ProductVariation): string {
     `<title>${xml(variationTitle(product, variation))}</title>`,
     `<description>${xml(description)}</description>`,
     `<link>${xml(link)}</link>`,
-    `<g:availability>${inStock ? "in_stock" : "out_of_stock"}</g:availability>`,
+    dialect === "meta"
+      ? `<g:availability>${inStock ? "in stock" : "out of stock"}</g:availability>`
+      : `<g:availability>${inStock ? "in_stock" : "out_of_stock"}</g:availability>`,
     `<g:price>${price} USD</g:price>`,
     `<g:condition>new</g:condition>`,
     `<g:brand>${xml(BRAND)}</g:brand>`,
@@ -118,6 +140,18 @@ function itemXml(product: Product, variation: ProductVariation): string {
     `<g:mpn>${xml(variation.id)}</g:mpn>`,
     `<g:identifier_exists>no</g:identifier_exists>`,
   ];
+
+  // The actual number left, where Square tracks it. This is what makes
+  // Instagram show a piece as sold out instead of taking an order for
+  // something that is already gone, which on one-of-one stock is the
+  // difference between a catalogue and an inventory. Null means Square
+  // does not track that variation, which is unlimited rather than zero,
+  // so the field is left off entirely rather than guessed at.
+  if (dialect === "meta" && variation.inStock != null) {
+    parts.push(
+      `<g:quantity_to_sell_on_facebook>${Math.max(0, variation.inStock)}</g:quantity_to_sell_on_facebook>`,
+    );
+  }
 
   if (product.imageUrls[0]) {
     parts.push(`<g:image_link>${xml(product.imageUrls[0])}</g:image_link>`);
@@ -143,13 +177,13 @@ function sellable(product: Product): boolean {
   return product.imageUrls.length > 0 && product.variations.some((v) => v.priceCents > 0);
 }
 
-export async function buildProductFeed(): Promise<string> {
+export async function buildProductFeed(dialect: FeedDialect = "google"): Promise<string> {
   const products = await listProducts({ onlineOnly: true });
 
   const items = products
     .filter(sellable)
     .flatMap((product) =>
-      product.variations.filter((v) => v.priceCents > 0).map((v) => itemXml(product, v)),
+      product.variations.filter((v) => v.priceCents > 0).map((v) => itemXml(product, v, dialect)),
     )
     .join("\n    ");
 
