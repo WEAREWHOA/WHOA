@@ -36,7 +36,12 @@ alter table links enable row level security;
 
 -- Give the demo ambassador a password and a default trackable link so the
 -- seeded WHOA-DEMO15 account can log in and show a populated links list.
--- Demo password: whoa-demo-2026
+--
+-- The plaintext password used to be written here. It is not any more: a
+-- migration file is in the repository, and a password in a comment is a
+-- password for anyone who can read it. The hash below is what was
+-- applied; rotate it with an update if the account is still wanted, or
+-- see 0041 for closing it.
 update ambassadors
 set password_hash = '$2b$10$z7afgxuwrqdYdpFFJgTAgev0Jz0XGBl2bfFMfsfyC.U9Bs6ZmMzg.'
 where code = 'WHOA-DEMO15';
