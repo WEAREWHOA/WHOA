@@ -40,8 +40,9 @@ alter table links enable row level security;
 -- The plaintext password used to be written here. It is not any more: a
 -- migration file is in the repository, and a password in a comment is a
 -- password for anyone who can read it. The hash below is what was
--- applied; rotate it with an update if the account is still wanted, or
--- see 0041 for closing it.
+-- applied. The account is meant to stay open, so rotate the hash with an
+-- update rather than removing it, and keep the new password wherever
+-- passwords are kept.
 update ambassadors
 set password_hash = '$2b$10$z7afgxuwrqdYdpFFJgTAgev0Jz0XGBl2bfFMfsfyC.U9Bs6ZmMzg.'
 where code = 'WHOA-DEMO15';
