@@ -6,7 +6,8 @@ import PageViewTracker from "@/components/analytics/PageViewTracker";
 import SiteChrome from "@/components/SiteChrome";
 import { CartProvider } from "@/components/cart/CartProvider";
 import { SITE_URL } from "@/lib/site";
-import { GA_MEASUREMENT_ID } from "@/lib/analytics";
+import Clarity from "@/components/analytics/Clarity";
+import { CLARITY_PROJECT_ID, GA_MEASUREMENT_ID } from "@/lib/analytics";
 import "./globals.css";
 
 const bebas = Bebas_Neue({
@@ -97,6 +98,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </CartProvider>
       </body>
       {GA_MEASUREMENT_ID && <GoogleAnalytics gaId={GA_MEASUREMENT_ID} />}
+      {CLARITY_PROJECT_ID && <Clarity projectId={CLARITY_PROJECT_ID} />}
     </html>
   );
 }

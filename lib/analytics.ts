@@ -5,6 +5,17 @@ import type { CartLine } from "@/lib/types";
 // loaded or sent from them — only the environment that sets the ID reports.
 export const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
+// Microsoft Clarity: heatmaps and session recordings, free and uncapped.
+// Answers a different question from GA, which counts what happened but
+// cannot show somebody failing to find the size selector.
+//
+// The default is the real project id rather than nothing, because an
+// analytics tag that silently does not load is worse than one that is
+// obvious: there is no error, just an empty dashboard three weeks later.
+// Set NEXT_PUBLIC_CLARITY_PROJECT_ID to "" to switch it off anywhere.
+export const CLARITY_PROJECT_ID =
+  process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID ?? "ytnpan3yiq";
+
 // sendGAEvent writes to window.dataLayer, which only exists once the
 // <GoogleAnalytics> tag in the root layout has mounted — and that tag only
 // mounts when the measurement ID is set. Without the ID, tracking is a no-op.
