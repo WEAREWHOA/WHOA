@@ -43,8 +43,19 @@ export default function PrivacyPolicyPage() {
               <span className="text-foreground">Cookies</span> — a short-lived cookie remembers an
               ambassador referral link for 30 days so the right ambassador gets credit for a sale,
               and, if you&apos;re a logged-in ambassador, a session cookie keeps you signed in for
-              30 days. Your shopping cart is stored only in your browser (not a cookie, and never
-              sent to us until you check out).
+              30 days. Your shopping cart is stored only in your browser (not a cookie), and stays
+              there while you browse.
+            </li>
+            <li>
+              <span className="text-foreground">Unfinished checkouts</span> — if you enter your
+              email on the checkout page but don&apos;t complete the order, we keep that email and
+              what was in your basket so we can send you one reminder. One, not a series. If you
+              finish the order, the reminder is cancelled before it goes. If you&apos;ve
+              unsubscribed from our emails, we don&apos;t send it at all. Email{" "}
+              <a href="mailto:info@wearewhoa.com" className="text-flame font-medium">
+                info@wearewhoa.com
+              </a>{" "}
+              and we&apos;ll delete it.
             </li>
           </ul>
           <p className="mt-2">

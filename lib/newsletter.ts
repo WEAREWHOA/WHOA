@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 
+import { sendWelcomeEmail } from "@/lib/email";
 import { getSupabase } from "@/lib/supabase";
 
 /**
@@ -129,6 +130,16 @@ export async function subscribe(input: SubscribeInput): Promise<SubscribeResult>
   await mirror({ email, firstName, lastName, source: input.source, accountCode: input.accountCode }).catch(
     (err) => console.error("Newsletter: couldn't mirror the subscriber:", err),
   );
+
+  // Only for somebody who was not already on the list. Welcoming a
+  // person for the second time reads as a shop that does not know who
+  // its customers are, and an import of two thousand contacts would
+  // otherwise welcome every one of them at once.
+  if (!alreadySubscribed && input.source !== "import") {
+    await sendWelcomeEmail({ to: email, firstName }).catch((err) =>
+      console.error("Newsletter: couldn't send the welcome email:", err),
+    );
+  }
 
   return { ok: true, alreadySubscribed };
 }

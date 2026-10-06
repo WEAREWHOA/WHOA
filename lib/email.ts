@@ -871,3 +871,211 @@ export async function sendReviewRequestEmail(input: {
   }
   return data?.id ?? null;
 }
+
+/** Call off a scheduled send. Throws if Resend refuses. */
+export async function cancelScheduledEmail(emailId: string): Promise<void> {
+  const { error } = await getResend().emails.cancel(emailId);
+  if (error) throw new Error(`Resend couldn't cancel ${emailId}: ${error.message}`);
+}
+
+/**
+ * Move a scheduled send later.
+ *
+ * Used while somebody is still filling a form in: every save pushes the
+ * reminder back rather than queueing a second one.
+ */
+export async function rescheduleEmail(emailId: string, scheduledAt: string): Promise<void> {
+  const { error } = await getResend().emails.update({ id: emailId, scheduledAt });
+  if (error) throw new Error(`Resend couldn't reschedule ${emailId}: ${error.message}`);
+}
+
+/* ------------------------------------------------------------------ */
+/* Abandoned checkout                                                  */
+/* ------------------------------------------------------------------ */
+
+export interface AbandonedLine {
+  productName: string;
+  variationName: string;
+  variationId: string;
+  priceCents: number;
+  quantity: number;
+}
+
+/**
+ * One reminder about a basket, with a link that rebuilds it.
+ *
+ * The link is the /cart?products= one, so pressing it puts the exact
+ * basket back rather than dropping somebody on the shop to find three
+ * things again. No discount in it on purpose: teaching people that
+ * walking away produces a coupon is a lesson they only need once.
+ */
+function buildAbandonedHtml(input: {
+  customerName: string | null;
+  lines: AbandonedLine[];
+  subtotalCents: number;
+}): string {
+  const greeting = input.customerName
+    ? `Hi ${escapeHtml(input.customerName.split(" ")[0])},`
+    : "Hi,";
+
+  const products = input.lines
+    .map((l) => `${encodeURIComponent(l.variationId)}%3A${l.quantity}`)
+    .join("%2C");
+  const href = `${SITE_URL}/cart?products=${products}`;
+
+  const rows = input.lines
+    .map(
+      (l) => `
+      <tr>
+        <td style="padding:8px 0;color:#b9ad9d;font-size:14px;">
+          ${escapeHtml(l.productName)} <span style="color:#6f6558;">(${escapeHtml(l.variationName)})</span>
+          ${l.quantity > 1 ? ` &times;${l.quantity}` : ""}
+        </td>
+        <td style="padding:8px 0;color:#f5efe6;font-size:14px;text-align:right;">${formatCents(l.priceCents * l.quantity)}</td>
+      </tr>`,
+    )
+    .join("");
+
+  return wrapEmail(`
+    <h1 style="margin:0 0 16px;color:#f5efe6;font-size:22px;">You left something</h1>
+    <p style="margin:0 0 20px;color:#b9ad9d;font-size:15px;line-height:1.6;">
+      ${greeting} your basket is still here. Everything we make is one of one, so when a piece
+      goes it is actually gone.
+    </p>
+    <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border-top:1px solid #2a231b;border-bottom:1px solid #2a231b;margin-bottom:20px;">
+      ${rows}
+      <tr>
+        <td style="padding:12px 0 0;color:#6f6558;font-size:13px;">Subtotal</td>
+        <td style="padding:12px 0 0;color:#f5efe6;font-size:15px;font-weight:700;text-align:right;">${formatCents(input.subtotalCents)}</td>
+      </tr>
+    </table>
+    <a href="${href}" style="display:inline-block;background:#ff7a00;color:#14100c;font-weight:700;font-size:14px;letter-spacing:0.04em;text-transform:uppercase;text-decoration:none;padding:14px 28px;border-radius:999px;">Pick up where you left off</a>
+    <p style="margin:20px 0 0;color:#6f6558;font-size:12px;line-height:1.6;">
+      Changed your mind? Nothing else is coming. This is the only reminder we send.
+    </p>
+  `);
+}
+
+export async function sendAbandonedCheckoutEmail(input: {
+  to: string;
+  customerName: string | null;
+  lines: AbandonedLine[];
+  subtotalCents: number;
+  scheduledAt?: string;
+}): Promise<string | null> {
+  const { data, error } = await getResend().emails.send({
+    from: FROM_ADDRESS,
+    to: input.to,
+    replyTo: REPLY_TO,
+    subject: "Your WHOA basket is still here",
+    html: buildAbandonedHtml(input),
+    scheduledAt: input.scheduledAt,
+  });
+  if (error) throw new Error(`Resend failed to schedule a cart reminder: ${error.message}`);
+  return data?.id ?? null;
+}
+
+/* ------------------------------------------------------------------ */
+/* Welcome                                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The first email somebody gets after signing up.
+ *
+ * Sent immediately, because the one moment somebody definitely wants to
+ * hear from WHOA is the moment they asked to. It promises only what the
+ * signup form promised, and it carries the unsubscribe link in plain
+ * sight rather than in six point grey: a list people can leave easily is
+ * a list that keeps delivering.
+ */
+function buildWelcomeHtml(firstName: string | null): string {
+  const greeting = firstName ? `Hi ${escapeHtml(firstName)},` : "Hi,";
+  return wrapEmail(`
+    <h1 style="margin:0 0 16px;color:#f5efe6;font-size:22px;">You're on the list</h1>
+    <p style="margin:0 0 16px;color:#b9ad9d;font-size:15px;line-height:1.6;">
+      ${greeting} thanks for signing up. Here is what that actually means: you will hear from us
+      when there is a drop, when there is an event, and not otherwise.
+    </p>
+    <p style="margin:0 0 20px;color:#b9ad9d;font-size:15px;line-height:1.6;">
+      Everything is hand finished in San Diego and most of it is one of one, so the drops are the
+      only way to catch a piece before it is gone.
+    </p>
+    <a href="${SITE_URL}/shop" style="display:inline-block;background:#ff7a00;color:#14100c;font-weight:700;font-size:14px;letter-spacing:0.04em;text-transform:uppercase;text-decoration:none;padding:14px 28px;border-radius:999px;">See what's in the shop</a>
+    <p style="margin:24px 0 0;color:#6f6558;font-size:12px;line-height:1.6;">
+      Find us in person at the WHOADEGA on Newport Ave in Ocean Beach, and inside Pangaea Outpost
+      in Pacific Beach. <a href="${SITE_URL}/stores" style="color:#ff7a00;">Where to find us</a>.
+    </p>
+  `);
+}
+
+export async function sendWelcomeEmail(input: {
+  to: string;
+  firstName?: string | null;
+}): Promise<void> {
+  const { error } = await getResend().emails.send({
+    from: FROM_ADDRESS,
+    to: input.to,
+    replyTo: REPLY_TO,
+    subject: "Welcome to WHOA",
+    html: buildWelcomeHtml(input.firstName ?? null),
+  });
+  if (error) throw new Error(`Resend failed to send a welcome email: ${error.message}`);
+}
+
+/* ------------------------------------------------------------------ */
+/* Event reminder                                                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The nudge the day before an event.
+ *
+ * Scheduled at the moment somebody RSVPs, which is often weeks out, so
+ * the send time is the event's own date rather than a delay from now.
+ * Returns the id so it can be called off if they cancel.
+ */
+function buildEventReminderHtml(input: {
+  name: string | null;
+  eventTitle: string;
+  eventDateLabel: string;
+  eventTimeLabel: string;
+  eventVenue: string;
+  eventLocation: string;
+}): string {
+  const greeting = input.name ? `Hi ${escapeHtml(input.name.split(" ")[0])},` : "Hi,";
+  return wrapEmail(`
+    <h1 style="margin:0 0 16px;color:#f5efe6;font-size:22px;">Tomorrow: ${escapeHtml(input.eventTitle)}</h1>
+    <p style="margin:0 0 16px;color:#b9ad9d;font-size:15px;line-height:1.6;">${greeting} just so it is in front of you.</p>
+    <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border-top:1px solid #2a231b;border-bottom:1px solid #2a231b;margin-bottom:20px;">
+      <tr><td style="padding:10px 0;color:#6f6558;font-size:13px;">When</td><td style="padding:10px 0;color:#f5efe6;font-size:14px;text-align:right;">${escapeHtml(input.eventDateLabel)}, ${escapeHtml(input.eventTimeLabel)}</td></tr>
+      <tr><td style="padding:10px 0;color:#6f6558;font-size:13px;">Where</td><td style="padding:10px 0;color:#f5efe6;font-size:14px;text-align:right;">${escapeHtml(input.eventVenue)}</td></tr>
+      <tr><td style="padding:10px 0;color:#6f6558;font-size:13px;"></td><td style="padding:10px 0;color:#b9ad9d;font-size:13px;text-align:right;">${escapeHtml(input.eventLocation)}</td></tr>
+    </table>
+    <a href="${SITE_URL}/events" style="display:inline-block;background:#ff7a00;color:#14100c;font-weight:700;font-size:14px;letter-spacing:0.04em;text-transform:uppercase;text-decoration:none;padding:14px 28px;border-radius:999px;">Event details</a>
+    <p style="margin:20px 0 0;color:#6f6558;font-size:12px;line-height:1.6;">
+      Can't make it? Just reply and let us know, so we are not holding a spot.
+    </p>
+  `);
+}
+
+export async function sendEventReminderEmail(input: {
+  to: string;
+  name: string | null;
+  eventTitle: string;
+  eventDateLabel: string;
+  eventTimeLabel: string;
+  eventVenue: string;
+  eventLocation: string;
+  /** ISO 8601. The day before the event, worked out by the caller. */
+  scheduledAt: string;
+}): Promise<string | null> {
+  const { data, error } = await getResend().emails.send({
+    from: FROM_ADDRESS,
+    to: input.to,
+    replyTo: REPLY_TO,
+    subject: `Tomorrow: ${input.eventTitle}`,
+    html: buildEventReminderHtml(input),
+    scheduledAt: input.scheduledAt,
+  });
+  if (error) throw new Error(`Resend failed to schedule an event reminder: ${error.message}`);
+  return data?.id ?? null;
+}
