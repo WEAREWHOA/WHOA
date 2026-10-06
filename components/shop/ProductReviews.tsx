@@ -41,12 +41,15 @@ export default function ProductReviews({
   productSlug,
   productName,
   variationIds,
+  reviewToken,
 }: {
   reviews: ProductReview[];
   productId: string;
   productSlug: string;
   productName: string;
   variationIds: string[];
+  /** From the link in a review request email, when they came that way. */
+  reviewToken?: string;
 }) {
   const summary = summarize(reviews);
 
@@ -123,6 +126,7 @@ export default function ProductReviews({
         productSlug={productSlug}
         productName={productName}
         variationIds={variationIds}
+        reviewToken={reviewToken}
       />
     </section>
   );

@@ -782,3 +782,92 @@ export async function sendTicketRecordFailureAlert(input: {
     replyTo: input.email,
   });
 }
+
+export interface ReviewRequestItem {
+  productName: string;
+  productUrl: string;
+  imageUrl: string | null;
+}
+
+/**
+ * The ask, after the thing has arrived.
+ *
+ * One button per product rather than one for the order: a review belongs
+ * to a piece, and a single "leave a review" link would land somebody on
+ * a page and leave them to work out which of three things it meant.
+ *
+ * The token rides in the link. Whoever is holding it bought the order it
+ * was issued for, so the form can fill in their email and mark the
+ * review verified without asking them to prove anything.
+ */
+function buildReviewRequestHtml(input: {
+  customerName: string | null;
+  items: ReviewRequestItem[];
+  token: string;
+}): string {
+  const greeting = input.customerName ? `Hi ${escapeHtml(input.customerName.split(" ")[0])},` : "Hi,";
+
+  const blocks = input.items
+    .map((item) => {
+      const href = `${SITE_URL}${item.productUrl}?review=${encodeURIComponent(input.token)}#reviews`;
+      const image = item.imageUrl
+        ? `<img src="${escapeHtml(item.imageUrl)}" alt="" width="56" height="56" style="border-radius:8px;object-fit:cover;vertical-align:middle;margin-right:12px;" />`
+        : "";
+      return `
+        <tr>
+          <td style="padding:12px 0;border-top:1px solid #2a231b;">
+            ${image}
+            <span style="color:#f5efe6;font-size:15px;vertical-align:middle;">${escapeHtml(item.productName)}</span>
+            <div style="margin-top:10px;">
+              <a href="${href}" style="display:inline-block;background:#ff7a00;color:#14100c;font-weight:700;font-size:13px;letter-spacing:0.04em;text-transform:uppercase;text-decoration:none;padding:10px 18px;border-radius:999px;">Review this piece</a>
+            </div>
+          </td>
+        </tr>`;
+    })
+    .join("");
+
+  return wrapEmail(`
+    <h1 style="margin:0 0 16px;color:#f5efe6;font-size:22px;">How is it?</h1>
+    <p style="margin:0 0 8px;color:#b9ad9d;font-size:15px;line-height:1.6;">${greeting}</p>
+    <p style="margin:0 0 20px;color:#b9ad9d;font-size:15px;line-height:1.6;">
+      Your order should be with you by now. Every piece is hand finished and one of one, so what
+      you think of yours is genuinely useful to the next person deciding.
+    </p>
+    <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">${blocks}</table>
+    <p style="margin:20px 0 0;color:#6f6558;font-size:12px;line-height:1.6;">
+      Something wrong with the order instead? Just reply to this email and a person will read it.
+    </p>
+  `);
+}
+
+/**
+ * Hands the email to Resend with a send time in the future.
+ *
+ * Resend holds it and sends it then, which is why none of this needs a
+ * cron or a queue. Returns the id so the row can record what was
+ * scheduled, which is also how it could be cancelled later.
+ */
+export async function sendReviewRequestEmail(input: {
+  to: string;
+  customerName: string | null;
+  items: ReviewRequestItem[];
+  token: string;
+  /** ISO 8601. Omitted sends immediately, which is only useful in a test. */
+  scheduledAt?: string;
+}): Promise<string | null> {
+  const resend = getResend();
+
+  const { data, error } = await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: input.to,
+    replyTo: REPLY_TO,
+    subject: "How is your WHOA order?",
+    html: buildReviewRequestHtml(input),
+    scheduledAt: input.scheduledAt,
+  });
+
+  if (error) {
+    throw new Error(`Resend failed to schedule a review request: ${error.message}`);
+  }
+  return data?.id ?? null;
+}

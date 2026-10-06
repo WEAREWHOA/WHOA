@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { getSessionAmbassadorCode } from "@/lib/auth";
 import { getByCode } from "@/lib/store";
 import { moderateReview, replyToReview, submitReview, type SubmitResult } from "@/lib/reviews";
+import { reviewerForToken } from "@/lib/reviewRequests";
 
 /**
  * The public one: anyone who bought something can say what they think,
@@ -25,6 +26,13 @@ export async function submitReviewAction(input: {
   body: string;
   authorName: string;
   authorEmail: string;
+  /**
+   * From the link in the review request email. It IS the proof of
+   * purchase: it was issued to one order and only sent to the address on
+   * it, so a review arriving with one needs no Square lookup and the
+   * email on the form is ignored in favour of the one it was issued to.
+   */
+  reviewToken?: string;
   /**
    * Hidden field no person ever sees. A bot that fills in every input
    * fills this one too, and gets told the same cheerful thing as
@@ -46,7 +54,20 @@ export async function submitReviewAction(input: {
     headerList.get("x-real-ip") ||
     null;
 
-  return submitReview({ ...input, accountCode, ip }).catch((err) => {
+  // Checked before anything else is trusted. A bad token is simply not a
+  // verified review rather than a rejected one: somebody who mistyped a
+  // link should still be able to say what they think.
+  const verified = input.reviewToken ? await reviewerForToken(input.reviewToken) : null;
+
+  return submitReview({
+    ...input,
+    // The address the request went to, not whatever is in the form.
+    authorEmail: verified?.email ?? input.authorEmail,
+    authorName: input.authorName || verified?.name || "",
+    verifiedByToken: Boolean(verified),
+    accountCode,
+    ip,
+  }).catch((err) => {
     console.error("Review submission failed:", err);
     return { ok: false as const, error: "Couldn't save that right now. Please try again later." };
   });
