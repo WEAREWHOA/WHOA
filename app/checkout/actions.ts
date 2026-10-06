@@ -6,7 +6,9 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import { getSquare, getSquareLocationId } from "@/lib/square";
 import { getDiscountIneligibleProductIds, getInventoryCounts } from "@/lib/catalog";
 import { getByCode, getLinkBySlug, recordLinkClick, setSquareCustomerId } from "@/lib/store";
+import { captureCheckout, markRecovered } from "@/lib/abandonedCheckouts";
 import { resolveAccount } from "@/lib/accountAuth";
+import { getSessionAmbassadorCode } from "@/lib/auth";
 import { findOrCreateSquareCustomerId } from "@/lib/squareCustomers";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { getSupabase } from "@/lib/supabase";
@@ -401,6 +403,10 @@ export async function checkoutAction(input: {
   }
 
   if (input.customerEmail) {
+    // Before the receipt, because the one email nobody should get is a
+    // "you left something behind" about an order they just paid for.
+    await markRecovered(input.customerEmail);
+
     // The payment already succeeded — a confirmation-email hiccup shouldn't
     // fail the checkout, just get logged for follow-up.
     await sendOrderConfirmationEmail({
@@ -448,4 +454,27 @@ export async function checkoutAction(input: {
     accountCreated: account.accountCreated || undefined,
     signedIn: account.signedIn || undefined,
   };
+}
+
+/**
+ * Remember a checkout in progress, so it can be followed up if it isn't
+ * finished.
+ *
+ * Called from the form as somebody fills it in, which means repeatedly
+ * for one person: each call pushes the reminder later rather than
+ * queueing another. Returns nothing a caller can act on, because there
+ * is nothing the shopper should ever see about this.
+ */
+export async function saveCheckoutDraftAction(input: {
+  email: string;
+  name?: string;
+  lines: CartLine[];
+}): Promise<void> {
+  const code = await getSessionAmbassadorCode().catch(() => null);
+  await captureCheckout({
+    email: input.email,
+    name: input.name ?? null,
+    lines: input.lines,
+    accountCode: code,
+  }).catch((err) => console.error("Couldn't capture a checkout draft:", err));
 }

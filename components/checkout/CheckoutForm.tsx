@@ -5,7 +5,7 @@ import Script from "next/script";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/components/cart/CartProvider";
 import { formatCents } from "@/lib/money";
-import { applyPromoCodeAction, checkoutAction, quoteCheckoutAction } from "@/app/checkout/actions";
+import { applyPromoCodeAction, checkoutAction, quoteCheckoutAction, saveCheckoutDraftAction } from "@/app/checkout/actions";
 import { subscribeCheckoutAction } from "@/app/newsletter/actions";
 import { SHIPPING_COUNTRIES, countryName, isDomestic, nextTierSaving, normalizeCountry } from "@/lib/shipping";
 import { accountSignOutAction, getAccountAction } from "@/app/account/actions";
@@ -116,6 +116,29 @@ function CheckoutFields({
   }, [lines, ambassadorCode, country]);
 
   // Once per visit to checkout. The cart reads as empty on the first
+  /**
+   * Remember this checkout, so it can be followed up if it is never
+   * finished.
+   *
+   * Debounced hard. It fires on a pause in typing rather than on every
+   * keystroke, because the point is to catch somebody who walked away,
+   * and a half typed address is worse than nothing. Every save pushes
+   * the reminder later, so nobody is emailed while they are still here.
+   *
+   * Deliberately not awaited and never surfaced: a shopper must never
+   * see anything about this, and it must never be able to interrupt a
+   * checkout that is going fine.
+   */
+  useEffect(() => {
+    const address = email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(address) || lines.length === 0) return;
+
+    const timer = setTimeout(() => {
+      void saveCheckoutDraftAction({ email: address, name: name.trim(), lines }).catch(() => undefined);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [email, name, lines]);
+
   // (hydration) render and fills in right after, so wait for real lines.
   const beginCheckoutTracked = useRef(false);
   useEffect(() => {

@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import { scheduleEventReminder } from "./eventReminders";
 import { getSupabase } from "./supabase";
 import { EVENTS, type EventInfo } from "./events";
 
@@ -106,6 +107,15 @@ export async function createRsvpRecord(input: {
 
   if (error) {
     throw new Error(`Failed to record RSVP: ${error.message}`);
+  }
+
+  // Arranged here rather than by the caller so every path that books
+  // somebody in gets it: the RSVP form, a ticket purchase, and the till.
+  // Silent on failure, because an RSVP that worked must not report an
+  // error because a reminder could not be scheduled weeks ahead.
+  if (input.email) {
+    await scheduleEventReminder({ eventId: input.eventId, to: input.email, name: input.name })
+      .catch((err) => console.error(`Couldn't schedule an event reminder for ${id}:`, err));
   }
 
   return id;
