@@ -2,6 +2,7 @@ import { WebhooksHelper } from "square";
 import { revalidateTag } from "next/cache";
 import { SQUARE_CATALOG_TAG } from "@/lib/catalog";
 import { syncFullCatalog, syncInventoryForVariations, syncOrder } from "@/lib/squareSync";
+import { scheduleReviewRequest } from "@/lib/reviewRequests";
 
 // Full catalog/order resyncs can take longer than the platform default —
 // give the handler headroom instead of racing a short timeout.
@@ -78,7 +79,17 @@ export async function POST(req: Request) {
 
       case "order.updated": {
         const orderId = event.data?.id;
-        if (orderId) await syncOrder(orderId);
+        if (orderId) {
+          await syncOrder(orderId);
+          // Asks for a review once the order is actually fulfilled, and
+          // does nothing on the several other order.updated events a
+          // single order produces. Caught here rather than inside, so a
+          // review request can never be the reason an order fails to
+          // sync and Square starts retrying a webhook that did its job.
+          await scheduleReviewRequest(orderId).catch((err) =>
+            console.error(`square webhook: couldn't schedule a review request for ${orderId}:`, err),
+          );
+        }
         break;
       }
 

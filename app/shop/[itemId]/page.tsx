@@ -11,6 +11,7 @@ import { SITE_URL } from "@/lib/site";
 import { BRAND } from "@/lib/productFeed";
 import { RETURN_WINDOW_DAYS } from "@/lib/returns";
 import { getApprovedReviews, reviewJsonLd, summarize, type ProductReview } from "@/lib/reviews";
+import { reviewerForToken } from "@/lib/reviewRequests";
 import { SHIPPING_ZONES, shippingRateCents } from "@/lib/shipping";
 import type { Product } from "@/lib/types";
 
@@ -165,6 +166,15 @@ export async function generateMetadata(props: PageProps<"/shop/[itemId]">): Prom
 
 export default async function ProductPage(props: PageProps<"/shop/[itemId]">) {
   const { itemId } = await props.params;
+  // Arrives on the link in a review request email, and is resolved here
+  // rather than taken at face value. A token that means nothing (expired
+  // link, mistyped URL, somebody guessing) has to leave an ordinary
+  // review form behind it: if the form hid the email field on the
+  // strength of an unchecked token, a bad link would produce a form
+  // nobody could submit at all.
+  const searchParams = await props.searchParams;
+  const rawToken = typeof searchParams?.review === "string" ? searchParams.review : undefined;
+  const reviewToken = rawToken && (await reviewerForToken(rawToken)) ? rawToken : undefined;
 
   let resolved: Awaited<ReturnType<typeof resolveProduct>>;
   try {
@@ -257,6 +267,7 @@ export default async function ProductPage(props: PageProps<"/shop/[itemId]">) {
         productSlug={canonicalPath.replace("/shop/", "")}
         productName={product.name}
         variationIds={product.variations.map((v) => v.id)}
+        reviewToken={reviewToken}
       />
     </section>
   );

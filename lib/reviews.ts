@@ -188,6 +188,13 @@ export interface SubmitReviewInput {
    * so the check runs against exactly the product being reviewed.
    */
   variationIds?: string[];
+  /**
+   * True when the review arrived through the link in a review request
+   * email. That link was issued against a real order and sent only to
+   * the address on it, which is stronger evidence than the Square lookup
+   * below and does not depend on Square being reachable.
+   */
+  verifiedByToken?: boolean;
   /** Raw client address, hashed here and never stored as given. */
   ip?: string | null;
 }
@@ -343,8 +350,12 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitResu
   }
 
   // Looked up before the insert because the answer is stored on the row;
-  // it is a snapshot of what was true when the review was written.
-  const verifiedPurchase = await wasPurchased(authorEmail, input.variationIds ?? [], productName);
+  // it is a snapshot of what was true when the review was written. A
+  // token skips the lookup entirely: it was issued against a real order,
+  // so there is nothing left to prove and nothing to fail.
+  const verifiedPurchase = input.verifiedByToken
+    ? true
+    : await wasPurchased(authorEmail, input.variationIds ?? [], productName);
 
   const { error } = await getSupabase().from("product_reviews").insert({
     product_id: productId,

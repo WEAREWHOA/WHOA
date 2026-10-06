@@ -27,13 +27,18 @@ export default function ReviewForm({
   productSlug,
   productName,
   variationIds,
+  reviewToken,
 }: {
   productId: string;
   productSlug: string;
   productName: string;
   variationIds: string[];
+  reviewToken?: string;
 }) {
-  const [open, setOpen] = useState(false);
+  // Somebody who followed the link in a review request email came here
+  // to do exactly one thing. Making them find and press a button first
+  // is a step that loses people for no reason.
+  const [open, setOpen] = useState(Boolean(reviewToken));
   const [rating, setRating] = useState(0);
   const [hovered, setHovered] = useState(0);
   const [state, setState] = useState<"idle" | "sending" | "done">("idle");
@@ -57,6 +62,7 @@ export default function ReviewForm({
       body: String(form.get("body") || ""),
       authorName: String(form.get("authorName") || ""),
       authorEmail: String(form.get("authorEmail") || ""),
+      reviewToken,
       website: String(form.get("website") || ""),
     }).catch(() => ({ ok: false as const, error: "Couldn't send that. Please try again." }));
 
@@ -144,16 +150,21 @@ export default function ReviewForm({
             className="rounded-xl border border-border-strong bg-surface px-4 py-2.5 text-sm font-normal normal-case tracking-normal outline-none focus:border-flame-2"
           />
         </label>
-        <label className="flex flex-col gap-1 text-xs font-semibold tracking-wide uppercase">
-          Email
-          <input
-            name="authorEmail"
-            type="email"
-            required
-            autoComplete="email"
-            className="rounded-xl border border-border-strong bg-surface px-4 py-2.5 text-sm font-normal normal-case tracking-normal outline-none focus:border-flame-2"
-          />
-        </label>
+        {/* Not asked for when the link already proves who they are: the
+            token was issued against one order and sent to one address,
+            so asking again can only introduce a typo. */}
+        {!reviewToken && (
+          <label className="flex flex-col gap-1 text-xs font-semibold tracking-wide uppercase">
+            Email
+            <input
+              name="authorEmail"
+              type="email"
+              required
+              autoComplete="email"
+              className="rounded-xl border border-border-strong bg-surface px-4 py-2.5 text-sm font-normal normal-case tracking-normal outline-none focus:border-flame-2"
+            />
+          </label>
+        )}
       </div>
 
       {/* Never shown to a person: off-screen, not display:none, and
@@ -174,8 +185,9 @@ export default function ReviewForm({
       )}
 
       <p className="text-xs text-muted">
-        Your email is never shown. We use it to check the purchase against our orders and to reply
-        if we need to. Someone here reads every review before it goes up.
+        {reviewToken
+          ? "We already know this is your order, so it will show as a verified purchase. Someone here reads every review before it goes up."
+          : "Your email is never shown. We use it to check the purchase against our orders and to reply if we need to. Someone here reads every review before it goes up."}
       </p>
 
       <div className="flex flex-wrap gap-3">
