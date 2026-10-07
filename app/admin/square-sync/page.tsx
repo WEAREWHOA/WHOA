@@ -75,11 +75,60 @@ export default function SquareSyncAdminPage() {
     }
   }
 
+  /**
+   * The backfill answers before it has finished, handing back where it
+   * reached, so no single request can outlive the gateway. This follows
+   * that token until it says done, and shows the running totals as it
+   * goes rather than a spinner that might mean anything.
+   *
+   * The cap is a stop, not an expectation: a backfill that somehow never
+   * reports done should end as a readable message rather than as a
+   * browser tab calling an endpoint forever.
+   */
   async function handleBackfill() {
     setBackfillState({ loading: true, result: null, error: null });
+
+    const totals: Record<string, number> = {};
+    let resume: unknown = undefined;
+
     try {
-      const result = await callAdminRoute("/api/admin/square/backfill", secret);
-      setBackfillState({ loading: false, result, error: null });
+      for (let round = 1; round <= 200; round++) {
+        const raw = await callAdminRoute(
+          "/api/admin/square/backfill",
+          secret,
+          resume ? { resume } : undefined,
+        );
+        const body = JSON.parse(raw) as {
+          done?: boolean;
+          resume?: unknown;
+          progress?: Record<string, number>;
+        };
+
+        for (const [key, value] of Object.entries(body.progress ?? {})) {
+          totals[key] = (totals[key] ?? 0) + value;
+        }
+
+        if (body.done) {
+          setBackfillState({
+            loading: false,
+            result: JSON.stringify({ done: true, rounds: round, ...totals }, null, 2),
+            error: null,
+          });
+          return;
+        }
+
+        resume = body.resume;
+        if (!resume) throw new Error("The backfill stopped without saying where to continue from.");
+
+        // Visible progress between rounds, so a long run reads as working
+        // rather than as hung.
+        setBackfillState({
+          loading: true,
+          result: JSON.stringify({ working: true, round, ...totals }, null, 2),
+          error: null,
+        });
+      }
+      throw new Error("The backfill is still going after 200 rounds. Stopping rather than looping.");
     } catch (err) {
       setBackfillState({ loading: false, result: null, error: (err as Error).message });
     }
