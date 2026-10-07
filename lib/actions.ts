@@ -1,5 +1,6 @@
 "use server";
 
+import { CAMPAIGN_LIST_IDS, savePreferences, type CampaignPreferences } from "./campaignLists";
 import { portalPath, tabForMediaKind, tabForSubmitter } from "./portalNav";
 
 import { redirect, unstable_rethrow } from "next/navigation";
@@ -183,6 +184,48 @@ export async function updatePayoutAction(formData: FormData) {
 
   await setPayout(code, { method, destination });
   redirect(portalPath("ambassador", "saved=1"));
+}
+
+/**
+ * The three marketing-email checkboxes on the settings page.
+ *
+ * An unchecked checkbox sends nothing at all, so the state is read as
+ * "is this name present" rather than by comparing a value. Reading it
+ * any other way makes every unticked box indistinguishable from a field
+ * that was never rendered, which is how a form like this silently stops
+ * being able to turn anything off.
+ */
+export async function updateEmailPreferencesAction(formData: FormData) {
+  const code = String(formData.get("code") || "").trim();
+  const sessionCode = await getSessionAmbassadorCode();
+  if (!sessionCode || sessionCode.toUpperCase() !== code.toUpperCase()) {
+    redirect("/login");
+  }
+
+  const account = await getByCode(sessionCode);
+  if (!account) redirect("/login");
+
+  const preferences = Object.fromEntries(
+    CAMPAIGN_LIST_IDS.map((id) => [id, formData.get(id) != null]),
+  ) as CampaignPreferences;
+
+  try {
+    const result = await savePreferences({
+      email: account.email,
+      name: account.name,
+      accountCode: account.code,
+      preferences,
+    });
+    if (!result.ok) {
+      redirect(portalPath("settings", `settingsError=${encodeURIComponent(result.error ?? "server")}`));
+    }
+  } catch (err) {
+    unstable_rethrow(err);
+    console.error("updateEmailPreferencesAction failed:", err);
+    redirect(portalPath("settings", "settingsError=server"));
+  }
+
+  redirect(portalPath("settings", "emailPrefsSaved=1"));
 }
 
 export async function updateAccountInfoAction(formData: FormData) {

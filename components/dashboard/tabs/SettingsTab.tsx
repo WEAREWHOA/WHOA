@@ -1,4 +1,10 @@
-import { changePasswordAction, deleteAccountAction, updateAccountInfoAction } from "@/lib/actions";
+import {
+  changePasswordAction,
+  deleteAccountAction,
+  updateAccountInfoAction,
+  updateEmailPreferencesAction,
+} from "@/lib/actions";
+import { CAMPAIGN_LISTS, type SubscriberPreferences } from "@/lib/campaignLists";
 import type { Ambassador } from "@/lib/types";
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -16,11 +22,15 @@ export default function SettingsTab({
   settingsSaved,
   passwordChanged,
   settingsError,
+  emailPrefs,
+  emailPrefsSaved,
 }: {
   account: Ambassador;
   settingsSaved: boolean;
   passwordChanged: boolean;
   settingsError?: string;
+  emailPrefs: SubscriberPreferences;
+  emailPrefsSaved: boolean;
 }) {
   const errorMessage = settingsError ? (ERROR_MESSAGES[settingsError] ?? ERROR_MESSAGES.server) : null;
 
@@ -92,6 +102,62 @@ export default function SettingsTab({
             className="self-start rounded-full border border-border-strong px-6 py-2.5 text-sm font-medium transition-colors hover:bg-surface"
           >
             Save changes
+          </button>
+        </form>
+      </div>
+
+      <div className="card-surface rounded-xl p-6">
+        <h3 className="font-semibold">Email preferences</h3>
+        <p className="mt-1 text-sm text-muted">
+          Which of our emails you get, sent to{" "}
+          <span className="text-foreground">{account.email}</span>. Order confirmations, tickets
+          and anything else about something you bought are not on this list and always send.
+        </p>
+
+        {emailPrefsSaved && (
+          <p className="mt-4 rounded-lg border border-flame-2/40 bg-flame-2/10 px-4 py-2 text-sm text-flame-3">
+            Email preferences updated.
+          </p>
+        )}
+
+        {emailPrefs.status === "unsubscribed" && (
+          <p className="mt-4 rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm text-muted">
+            You are currently unsubscribed from everything. Tick any box below and save to start
+            again.
+          </p>
+        )}
+
+        <form action={updateEmailPreferencesAction} className="mt-4 flex flex-col gap-4">
+          <input type="hidden" name="code" value={account.code} />
+
+          {CAMPAIGN_LISTS.map((list) => (
+            <label key={list.id} className="flex cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                name={list.id}
+                defaultChecked={emailPrefs[list.id]}
+                className="mt-1 h-4 w-4 shrink-0 accent-[var(--flame-2)]"
+              />
+              <span>
+                <span className="block text-sm font-medium">
+                  {list.name}{" "}
+                  <span className="text-xs font-normal text-muted">({list.cadence})</span>
+                </span>
+                <span className="mt-0.5 block text-sm text-muted">{list.blurb}</span>
+              </span>
+            </label>
+          ))}
+
+          <p className="text-xs text-muted">
+            Untick all three to stop every marketing email. Every one we send also carries its own
+            unsubscribe link.
+          </p>
+
+          <button
+            type="submit"
+            className="btn-flame self-start rounded-full px-6 py-2.5 text-sm font-semibold tracking-wide uppercase"
+          >
+            Save preferences
           </button>
         </form>
       </div>

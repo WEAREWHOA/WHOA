@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="supported-color-schemes" content="dark light">
+<title>WHOA · This week</title>
+</head>
+<body style="margin:0;padding:0;background:#0a0806;">
+
+<!-- Preheader: shown next to the subject in an inbox list and nowhere
+     else. Without it the client lifts the first words it finds, which is
+     usually "View this email in your browser". The spacer characters
+     after it stop the rest of the body being pulled in behind it. -->
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">
+  {{PREHEADER}}
+  &#8203;&#847;&#8203;&#847;&#8203;&#847;&#8203;&#847;&#8203;&#847;&#8203;&#847;&#8203;&#847;&#8203;&#847;&#8203;&#847;&#8203;&#847;&#8203;&#847;&#8203;&#847;&#8203;&#847;&#8203;&#847;&#8203;&#847;&#8203;&#847;&#8203;&#847;&#8203;&#847;&#8203;&#847;&#8203;&#847;
+</div>
+
+<!-- Tables, not divs. Outlook renders through Word, which has no real
+     support for float, flex or grid. A table is the one layout primitive
+     every client agrees on. -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0a0806;">
+  <tr>
+    <td align="center" style="padding:32px 16px;">
+
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;">
+
+        <tr>
+          <td align="center" style="padding-bottom:24px;">
+            <a href="https://www.wearewhoa.art" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:24px;font-weight:800;letter-spacing:0.08em;color:#f5efe6;text-decoration:none;">
+              WHOA<span style="color:#ff7a00;">.</span>
+            </a>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="background:#14100c;border:1px solid #2a231b;border-radius:16px;padding:32px 28px;">
+            <p style="margin:0 0 8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:#ff7a00;">This week</p>
+            <h1 style="margin:0 0 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:26px;line-height:1.25;font-weight:800;color:#f5efe6;">{{HEADLINE}}</h1>
+            <p style="margin:0 0 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.65;color:#b9ad9d;">{{INTRO}}</p>
+            <div style="height:1px;line-height:1px;font-size:0;background:#2a231b;margin:28px 0;">&nbsp;</div>
+
+            <!-- EVENT 1. Delete the whole block if there are fewer
+                 than three this week; duplicate it if there are more. -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 8px;">
+              <tr>
+                <td style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+                  <p style="margin:0 0 4px;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#ff7a00;">{{EVENT_1_DATE}}</p>
+                  <p style="margin:0 0 4px;font-size:18px;font-weight:700;line-height:1.3;color:#f5efe6;">{{EVENT_1_TITLE}}</p>
+                  <p style="margin:0 0 6px;font-size:14px;line-height:1.6;color:#b9ad9d;">{{EVENT_1_VENUE}} &middot; {{EVENT_1_TIME}}</p>
+                  <p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:#b9ad9d;">{{EVENT_1_BLURB}}</p>
+                  <a href="{{EVENT_1_URL}}" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#ff7a00;text-decoration:none;">RSVP &rarr;</a>
+                </td>
+              </tr>
+            </table>
+            <div style="height:1px;line-height:1px;font-size:0;background:#2a231b;margin:28px 0;">&nbsp;</div>
+
+            <!-- EVENT 2. Delete the whole block if there are fewer
+                 than three this week; duplicate it if there are more. -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 8px;">
+              <tr>
+                <td style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+                  <p style="margin:0 0 4px;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#ff7a00;">{{EVENT_2_DATE}}</p>
+                  <p style="margin:0 0 4px;font-size:18px;font-weight:700;line-height:1.3;color:#f5efe6;">{{EVENT_2_TITLE}}</p>
+                  <p style="margin:0 0 6px;font-size:14px;line-height:1.6;color:#b9ad9d;">{{EVENT_2_VENUE}} &middot; {{EVENT_2_TIME}}</p>
+                  <p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:#b9ad9d;">{{EVENT_2_BLURB}}</p>
+                  <a href="{{EVENT_2_URL}}" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#ff7a00;text-decoration:none;">RSVP &rarr;</a>
+                </td>
+              </tr>
+            </table>
+            <div style="height:1px;line-height:1px;font-size:0;background:#2a231b;margin:28px 0;">&nbsp;</div>
+
+            <!-- EVENT 3. Delete the whole block if there are fewer
+                 than three this week; duplicate it if there are more. -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 8px;">
+              <tr>
+                <td style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+                  <p style="margin:0 0 4px;font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#ff7a00;">{{EVENT_3_DATE}}</p>
+                  <p style="margin:0 0 4px;font-size:18px;font-weight:700;line-height:1.3;color:#f5efe6;">{{EVENT_3_TITLE}}</p>
+                  <p style="margin:0 0 6px;font-size:14px;line-height:1.6;color:#b9ad9d;">{{EVENT_3_VENUE}} &middot; {{EVENT_3_TIME}}</p>
+                  <p style="margin:0 0 10px;font-size:14px;line-height:1.6;color:#b9ad9d;">{{EVENT_3_BLURB}}</p>
+                  <a href="{{EVENT_3_URL}}" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#ff7a00;text-decoration:none;">RSVP &rarr;</a>
+                </td>
+              </tr>
+            </table>
+            <div style="height:1px;line-height:1px;font-size:0;background:#2a231b;margin:28px 0;">&nbsp;</div>
+            <p style="margin:0 0 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;line-height:1.65;color:#6f6558;">Everything we have on, all in one place.</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 8px;">
+              <tr>
+                <td align="center" bgcolor="#ff7a00" style="border-radius:999px;">
+                  <a href="https://www.wearewhoa.art/events" style="display:inline-block;padding:14px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#14100c;text-decoration:none;border-radius:999px;">See all events</a>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:24px 8px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:12px;line-height:1.7;color:#6f6558;text-align:center;">
+            You are getting this because you asked for our weekly events email.<br>
+            <a href="https://www.wearewhoa.art/shop" style="color:#6f6558;text-decoration:underline;">Shop</a> &nbsp;&middot;&nbsp;
+            <a href="https://www.wearewhoa.art/events" style="color:#6f6558;text-decoration:underline;">Events</a> &nbsp;&middot;&nbsp;
+            <a href="https://www.wearewhoa.art/stores" style="color:#6f6558;text-decoration:underline;">Visit us</a> &nbsp;&middot;&nbsp;
+            <a href="https://www.wearewhoa.art/portal/settings" style="color:#6f6558;text-decoration:underline;">Email preferences</a>
+            <br><br>
+            WHOA &middot; 4847 Newport Ave, Ocean Beach, San Diego, CA
+            <br>
+            <!-- CAN-SPAM requires a physical address and a working opt
+                 out. Resend appends its own unsubscribe link below this
+                 line; the preferences link above is the finer-grained
+                 one, not a replacement for it. -->
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
