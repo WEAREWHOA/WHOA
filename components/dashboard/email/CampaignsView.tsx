@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { CAMPAIGN_LISTS, isCampaignListId } from "@/lib/campaignLists";
 
 import {
   cancelCampaignAction,
@@ -75,6 +76,7 @@ function Composer({
   const [previewText, setPreviewText] = useState(editing?.previewText ?? "");
   const [html, setHtml] = useState(editing?.html ?? "");
   const [segmentId, setSegmentId] = useState(editing?.segmentId ?? segments[0]?.id ?? "");
+  const [listId, setListId] = useState<string>("");
   const [testTo, setTestTo] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
   const [savedId, setSavedId] = useState<string | null>(editing?.id ?? null);
@@ -95,6 +97,10 @@ function Composer({
       previewText: previewText.trim() || undefined,
       html,
       segmentId,
+      // Narrowed here as well as on the server. The select can only
+      // ever hold one of these, but the action's type should not have to
+      // take that on trust from a component.
+      listId: isCampaignListId(listId) ? listId : undefined,
     });
     setBusy(null);
     if (!result.ok) {
@@ -168,6 +174,22 @@ function Composer({
               </option>
             ))}
           </select>
+        </label>
+
+        <label className="flex flex-col gap-1 text-xs font-semibold tracking-wide uppercase">
+          Which email is this
+          <select value={listId} onChange={(e) => setListId(e.target.value)} className="an-search">
+            <option value="">One-off (goes to the whole segment)</option>
+            {CAMPAIGN_LISTS.map((list) => (
+              <option key={list.id} value={list.id}>
+                {list.name} ({list.cadence})
+              </option>
+            ))}
+          </select>
+          <span className="an-kpi-hint normal-case">
+            Pick one of the three and Resend leaves out anybody who turned it off in their
+            settings. A one-off goes to everybody in the segment.
+          </span>
         </label>
 
         <label className="flex flex-col gap-1 text-xs font-semibold tracking-wide uppercase">

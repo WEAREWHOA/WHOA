@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { getTopicIds, type CampaignListId } from "./campaignLists";
 
 /**
  * Campaigns, which Resend calls broadcasts.
@@ -164,6 +165,36 @@ export interface ComposeInput {
   html: string;
   text?: string;
   segmentId: string;
+  /**
+   * Which of the three lists this is. Resend then excludes anybody who
+   * opted out of it, which is what makes the preference checkboxes in
+   * the portal mean something: without it a broadcast goes to the whole
+   * segment regardless of what anybody asked for.
+   *
+   * Undefined for a one-off that belongs to no list, which still goes to
+   * the segment as before.
+   */
+  listId?: CampaignListId;
+}
+
+/**
+ * The Resend topic for a list, or null for a campaign that belongs to
+ * none.
+ *
+ * Null rather than a throw when the lookup fails: a broadcast that goes
+ * to the whole segment is a worse outcome than one that respects
+ * preferences, but it is a far better outcome than a composer that
+ * cannot save a draft because Resend was briefly unreachable. The error
+ * is logged so the cause is visible.
+ */
+async function topicIdFor(listId?: CampaignListId): Promise<string | null> {
+  if (!listId) return null;
+  try {
+    return (await getTopicIds()).get(listId) ?? null;
+  } catch (err) {
+    console.error(`Couldn't resolve the Resend topic for ${listId}:`, err);
+    return null;
+  }
 }
 
 /** Save a draft. Nothing is sent. */
@@ -177,6 +208,7 @@ export async function createDraft(input: ComposeInput): Promise<string> {
     html: input.html,
     text: input.text,
     segmentId: input.segmentId,
+    topicId: await topicIdFor(input.listId),
     send: false,
   });
   if (result.error) throw new Error(result.error.message);
@@ -194,6 +226,7 @@ export async function updateDraft(id: string, input: Partial<ComposeInput>): Pro
     html: input.html,
     text: input.text,
     segmentId: input.segmentId,
+    topicId: await topicIdFor(input.listId),
   });
   if (result.error) throw new Error(result.error.message);
 }

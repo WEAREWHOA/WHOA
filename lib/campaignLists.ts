@@ -1,3 +1,5 @@
+import { Resend } from "resend";
+
 import { getSupabase } from "./supabase";
 import { normalizeEmail } from "./newsletter";
 
@@ -165,6 +167,17 @@ export async function savePreferences(input: {
     .from("newsletter_subscribers")
     .upsert(row, { onConflict: "email" });
 
+  // Mirrored to Resend after our own write, so a Resend outage cannot
+  // lose somebody's choice: the row is the record, and the topics are
+  // the enforcement. Not awaited, for the reason in the function's own
+  // comment, and logged loudly because the window where the two disagree
+  // is the window where somebody gets an email they asked not to.
+  if (!error) {
+    void syncPreferencesToResend(email, input.preferences).catch((err) =>
+      console.error(`Saved preferences for ${email} but Resend did not take them:`, err),
+    );
+  }
+
   if (error) {
     console.error(`Couldn't save campaign preferences for ${email}:`, error.message);
     return {
@@ -195,4 +208,104 @@ export async function recipientsForList(list: CampaignListId): Promise<string[]>
     throw new Error(`Couldn't read the ${list} list: ${error.message}`);
   }
   return (data ?? []).map((row) => (row as { email: string }).email);
+}
+
+/* ------------------------------------------------------------------ */
+/* Resend topics                                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Our three switches, mirrored into Resend as topics.
+ *
+ * This is the part that makes a preference mean something. Our database
+ * is where somebody sets it, but it is Resend that actually sends, and a
+ * broadcast goes to a segment without consulting us. A preference we
+ * store and never tell Resend about is a checkbox that does nothing,
+ * which is worse than not offering one.
+ *
+ * Resend has topics for exactly this: a contact is opted in or out per
+ * topic, a broadcast names a topicId, and Resend excludes the opted-out
+ * itself. That also makes the unsubscribe link in each send a per-topic
+ * unsubscribe rather than a total one, which is the same improvement
+ * seen from the reader's end.
+ *
+ * Topics are found by name and created when missing, rather than kept in
+ * three environment variables. An id in an env var is one redeploy away
+ * from pointing at nothing, and the failure is silent: the send goes to
+ * everybody.
+ */
+function getResend(): Resend {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) throw new Error("Missing Resend env var: RESEND_API_KEY is required.");
+  return new Resend(key);
+}
+
+/** Resolved once per process. A topic id does not change under us. */
+let topicIdCache: Map<CampaignListId, string> | null = null;
+
+export async function getTopicIds(): Promise<Map<CampaignListId, string>> {
+  if (topicIdCache) return topicIdCache;
+
+  const resend = getResend();
+  const existing = await resend.topics.list();
+  if (existing.error) throw new Error(`Couldn't read Resend topics: ${existing.error.message}`);
+
+  const byName = new Map<string, string>();
+  for (const topic of existing.data?.data ?? []) {
+    byName.set(topic.name.trim().toLowerCase(), topic.id);
+  }
+
+  const resolved = new Map<CampaignListId, string>();
+  for (const list of CAMPAIGN_LISTS) {
+    const found = byName.get(list.name.toLowerCase());
+    if (found) {
+      resolved.set(list.id, found);
+      continue;
+    }
+    const created = await resend.topics.create({
+      name: list.name,
+      description: list.blurb,
+      // Everybody already on the list opted into "the newsletter" when it
+      // was all three of these, so the same reasoning as the column
+      // defaults applies here: opting them out by default would empty
+      // the lists on the day this starts being used.
+      defaultSubscription: "opt_in",
+    });
+    if (created.error || !created.data?.id) {
+      throw new Error(`Couldn't create the Resend topic "${list.name}": ${created.error?.message}`);
+    }
+    resolved.set(list.id, created.data.id);
+  }
+
+  topicIdCache = resolved;
+  return resolved;
+}
+
+/**
+ * Push one person's three switches to Resend.
+ *
+ * Best-effort and never awaited by the settings page: a preference saved
+ * in our database and not yet mirrored is a short inconsistency, while a
+ * settings page that fails because Resend is slow is a broken page. The
+ * error is logged loudly because the window where the two disagree is
+ * the window where somebody gets an email they asked not to.
+ */
+export async function syncPreferencesToResend(
+  email: string,
+  preferences: CampaignPreferences,
+): Promise<void> {
+  const address = normalizeEmail(email);
+  if (!address) return;
+
+  const ids = await getTopicIds();
+  const topics = CAMPAIGN_LIST_IDS.filter((id) => ids.has(id)).map((id) => ({
+    id: ids.get(id) as string,
+    subscription: (preferences[id] ? "opt_in" : "opt_out") as "opt_in" | "opt_out",
+  }));
+  if (topics.length === 0) return;
+
+  const result = await getResend().contacts.topics.update({ email: address, topics });
+  if (result.error) {
+    throw new Error(`Resend refused the topic update for ${address}: ${result.error.message}`);
+  }
 }
