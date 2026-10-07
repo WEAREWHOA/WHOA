@@ -244,13 +244,70 @@ async function page<T>(
   }
 }
 
+/**
+ * The same walk, narrowed to rows whose `column` is one of `values`.
+ *
+ * For a child table with no timestamp of its own. square_order_line_items
+ * is the case: it has no created_at, which is why it was being read in
+ * full on every dashboard load and then filtered down in JS. On a history
+ * of fifteen thousand orders that is tens of thousands of rows fetched to
+ * use a few hundred, and it walks towards ROW_CAP, past which the product
+ * figures would quietly start undercounting.
+ *
+ * The id list is chunked because this ends up in a URL, and a few hundred
+ * order ids in one `in` clause is a request line long enough for a proxy
+ * to refuse. Each chunk is then paged exactly like any other read, since
+ * a chunk can still hold more rows than the server will return at once.
+ */
+const IN_CHUNK = 100;
+
+async function pageWhereIn<T>(
+  table: string,
+  columns: string,
+  key: string,
+  column: string,
+  values: string[],
+): Promise<PagedRows<T>> {
+  const out: T[] = [];
+  if (values.length === 0) return { rows: out, hitCap: false };
+
+  try {
+    for (let i = 0; i < values.length; i += IN_CHUNK) {
+      const slice = values.slice(i, i + IN_CHUNK);
+
+      for (let from = 0; from < ROW_CAP; from += PAGE_SIZE) {
+        if (out.length >= ROW_CAP) return { rows: out, hitCap: true };
+        const to = from + PAGE_SIZE - 1;
+        const { data, error } = await getSupabase()
+          .from(table)
+          .select(columns)
+          .in(column, slice)
+          .order(key, { ascending: true })
+          .range(from, to);
+
+        if (error) {
+          console.error(`Analytics: failed to read ${table}:`, error.message);
+          return { rows: out, hitCap: false };
+        }
+
+        const batch = (data ?? []) as T[];
+        out.push(...batch);
+        if (batch.length < PAGE_SIZE) break;
+      }
+    }
+    return { rows: out, hitCap: false };
+  } catch (err) {
+    console.error(`Analytics: failed to read ${table}:`, err);
+    return { rows: out, hitCap: false };
+  }
+}
+
 export async function getAnalytics(periodDays = 30): Promise<AnalyticsSnapshot> {
   const since = sinceIso(periodDays);
 
   const [
     viewsPage,
     ordersPage,
-    lineItemsPage,
     rsvpsPage,
     stampsPage,
     gamePrizesPage,
@@ -272,9 +329,6 @@ export async function getAnalytics(periodDays = 30): Promise<AnalyticsSnapshot> 
     page<{ id: string; state: string | null; total_money_cents: number; created_at: string | null; closed_at: string | null; channel: string | null }>(
       "square_orders", "id, state, total_money_cents, created_at, closed_at, channel", "id",
       { column: "created_at", iso: since },
-    ),
-    page<{ order_id: string; name: string | null; quantity: number; total_money_cents: number }>(
-      "square_order_line_items", "id, order_id, name, quantity, total_money_cents", "id",
     ),
     page<{ event_id: string; quantity: number; price_cents: number; checked_in_at: string | null; created_at: string }>(
       "event_rsvps", "id, event_id, quantity, price_cents, checked_in_at, created_at", "id",
@@ -326,7 +380,6 @@ export async function getAnalytics(periodDays = 30): Promise<AnalyticsSnapshot> 
   const reads = [
     viewsPage,
     ordersPage,
-    lineItemsPage,
     rsvpsPage,
     stampsPage,
     gamePrizesPage,
@@ -341,11 +394,10 @@ export async function getAnalytics(periodDays = 30): Promise<AnalyticsSnapshot> 
     reviewRequestsPage,
     reviewsPage,
   ];
-  const truncated = reads.some((r) => r.hitCap);
+  let truncated = reads.some((r) => r.hitCap);
 
   const views = viewsPage.rows;
   const orders = ordersPage.rows;
-  const lineItems = lineItemsPage.rows;
   const rsvps = rsvpsPage.rows;
   const stamps = stampsPage.rows;
   const gamePrizes = gamePrizesPage.rows;
@@ -415,8 +467,20 @@ export async function getAnalytics(periodDays = 30): Promise<AnalyticsSnapshot> 
     if (parts) bump(revenueByDayCounts, parts.day, (order.total_money_cents ?? 0) / 100);
   }
 
-  const orderIds = new Set(paidOrders.map((o) => o.id));
-  const periodItems = lineItems.filter((li) => orderIds.has(li.order_id));
+  // Fetched for THESE orders rather than fetched whole and filtered after.
+  // The table has no timestamp to narrow on, so the order ids are the
+  // filter, and they are already known by this point. On a long history
+  // this is the difference between reading a few hundred rows and reading
+  // every line item the shop has ever sold.
+  const orderIds = paidOrders.map((o) => o.id);
+  const lineItemsPage = await pageWhereIn<{
+    order_id: string;
+    name: string | null;
+    quantity: number;
+    total_money_cents: number;
+  }>("square_order_line_items", "id, order_id, name, quantity, total_money_cents", "id", "order_id", orderIds);
+  const periodItems = lineItemsPage.rows;
+  if (lineItemsPage.hitCap) truncated = true;
   const productRevenue = new Map<string, number>();
   const productUnits = new Map<string, number>();
   let unitsSold = 0;
