@@ -1,14 +1,13 @@
 import { getSquare } from "@/lib/square";
-import { checkAdminSecret } from "@/lib/squareAdminAuth";
+import { adminSecretFailure, adminUnauthorized } from "@/lib/squareAdminAuth";
 
 export const runtime = "nodejs";
 
 // Read-only lookup so SQUARE_LOCATION_ID doesn't have to be hunted down in
 // Square's dashboard — only needs SQUARE_ACCESS_TOKEN to already be set.
 export async function POST(req: Request) {
-  if (!checkAdminSecret(req)) {
-    return new Response("Unauthorized", { status: 401 });
-  }
+  const denied = adminSecretFailure(req);
+  if (denied) return adminUnauthorized(denied);
 
   try {
     const square = getSquare();

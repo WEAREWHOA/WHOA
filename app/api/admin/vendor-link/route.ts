@@ -1,4 +1,4 @@
-import { checkAdminSecret } from "@/lib/squareAdminAuth";
+import { adminSecretFailure, adminUnauthorized } from "@/lib/squareAdminAuth";
 import { getArtist } from "@/lib/artists";
 import { setVendorSlug } from "@/lib/store";
 
@@ -8,9 +8,8 @@ export const runtime = "nodejs";
 // slug (see lib/artists.ts) so that account's dashboard Vendor tab shows
 // real sales/inventory scoped to that vendor. No self-serve claim flow yet.
 export async function POST(req: Request) {
-  if (!checkAdminSecret(req)) {
-    return new Response("Unauthorized", { status: 401 });
-  }
+  const denied = adminSecretFailure(req);
+  if (denied) return adminUnauthorized(denied);
 
   let body: { code?: string; vendorSlug?: string };
   try {

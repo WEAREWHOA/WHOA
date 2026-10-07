@@ -29,10 +29,15 @@ async function callAdminRoute(path: string, secret: string, body?: unknown): Pro
   }
 
   if (!res.ok) {
+    // `detail` before `error`, because the guarded routes answer a 401
+    // with "Unauthorized" in `error` and the thing you actually need to
+    // know in `detail`: whether the secret is missing from the
+    // deployment or merely does not match.
+    const record = typeof parsed === "object" && parsed ? (parsed as Record<string, unknown>) : null;
     const message =
-      typeof parsed === "object" && parsed && "error" in parsed
-        ? String((parsed as { error: unknown }).error)
-        : `${res.status} ${res.statusText}`;
+      (record && typeof record.detail === "string" && record.detail) ||
+      (record && "error" in record && String(record.error)) ||
+      `${res.status} ${res.statusText}`;
     throw new Error(message);
   }
 
