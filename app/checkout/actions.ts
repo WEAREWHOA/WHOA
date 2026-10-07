@@ -7,6 +7,7 @@ import { getSquare, getSquareLocationId } from "@/lib/square";
 import { getDiscountIneligibleProductIds, getInventoryCounts } from "@/lib/catalog";
 import { getByCode, getLinkBySlug, recordLinkClick, setSquareCustomerId } from "@/lib/store";
 import { captureCheckout, markRecovered } from "@/lib/abandonedCheckouts";
+import { recordContactInBackground, TAG } from "@/lib/newsletter";
 import { resolveAccount } from "@/lib/accountAuth";
 import { getSessionAmbassadorCode } from "@/lib/auth";
 import { findOrCreateSquareCustomerId } from "@/lib/squareCustomers";
@@ -406,6 +407,22 @@ export async function checkoutAction(input: {
     // Before the receipt, because the one email nobody should get is a
     // "you left something behind" about an order they just paid for.
     await markRecovered(input.customerEmail);
+
+    // A till sale, identified by having no shipping address. The online
+    // storefront records its own buyer from the checkout form, where the
+    // opt-in box decides whether they are subscribed or merely recorded;
+    // the register collects an address for a receipt and asks nothing, so
+    // the row says exactly that.
+    if (!input.shippingAddress) {
+      const [firstName, ...restOfName] = input.customerName.trim().split(/\s+/);
+      recordContactInBackground({
+        email: input.customerEmail,
+        firstName: firstName && firstName !== "Walk-in" ? firstName : undefined,
+        lastName: restOfName.join(" ") || undefined,
+        source: "pos",
+        tags: [TAG.pos, TAG.customers],
+      });
+    }
 
     // The payment already succeeded — a confirmation-email hiccup shouldn't
     // fail the checkout, just get logged for follow-up.

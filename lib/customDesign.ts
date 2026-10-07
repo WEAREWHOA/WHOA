@@ -1,5 +1,6 @@
 import { getSupabase } from "./supabase";
 import { sendCustomDesignNotification } from "./email";
+import { recordContactInBackground, TAG } from "./newsletter";
 
 export type GarmentId = "tshirt" | "hoodie" | "tapered-sweatpants" | "wide-leg-sweatpants";
 
@@ -425,6 +426,19 @@ export async function submitDesign(input: SubmitDesignInput): Promise<{ ok: bool
   } catch (err) {
     console.error("Failed to store custom design submission:", err);
   }
+
+  // A design request is a warm lead and a phone number we were given on
+  // purpose. Recorded as a contact rather than a subscriber: they asked
+  // for a quote, not a newsletter.
+  const [firstName, ...restOfName] = name.split(/\s+/);
+  recordContactInBackground({
+    email,
+    firstName: firstName || undefined,
+    lastName: restOfName.join(" ") || undefined,
+    phone,
+    source: "custom-design",
+    tags: [TAG.customDesign],
+  });
 
   let notified = false;
   try {

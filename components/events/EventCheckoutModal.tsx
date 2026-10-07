@@ -62,6 +62,10 @@ export default function EventCheckoutModal({
   const [phone, setPhone] = useState(restored?.phone ?? "");
   const [selectedArtist, setSelectedArtist] = useState(restored?.selectedArtist ?? "");
   const [password, setPassword] = useState("");
+  // Ticked by default. Somebody buying a ticket to a WHOA show is the
+  // clearest signal there is that they want to hear about the next one,
+  // and it is a visible box they can clear before they submit.
+  const [joinList, setJoinList] = useState(true);
   const [account, setAccount] = useState<{ name: string; email: string } | null>(null);
   const [accountChecked, setAccountChecked] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -226,6 +230,7 @@ export default function EventCheckoutModal({
       password: account ? undefined : password || undefined,
       token,
       waiverAgreed,
+      joinList,
     });
 
     if (!outcome.ok) {
@@ -436,6 +441,19 @@ export default function EventCheckoutModal({
                   </div>
                 )}
   
+                <label className="flex cursor-pointer items-start gap-3 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={joinList}
+                    onChange={(e) => setJoinList(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--flame-2)]"
+                  />
+                  <span className="text-muted">
+                    Email me about WHOA events and new drops.{" "}
+                    <span className="text-xs">Unsubscribe any time.</span>
+                  </span>
+                </label>
+
                 {account ? (
                   <div className="flex items-center justify-between rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm">
                     <span className="text-muted">

@@ -2,6 +2,7 @@
 
 import { resolveAccount } from "@/lib/accountAuth";
 import { getSessionAmbassadorCode } from "@/lib/auth";
+import { recordContactInBackground, TAG } from "@/lib/newsletter";
 import { claimWaterPrize } from "@/lib/waterPrizes";
 
 export interface WaterClaimResult {
@@ -42,6 +43,18 @@ export async function claimWaterPrizeAction(input: {
   if (account.error) return { ok: false, error: account.error };
   if (!account.code) {
     return { ok: false, error: "We couldn't sign you in — check your details and try again." };
+  }
+
+  if (email) {
+    const [firstName, ...restOfName] = name.split(/\s+/);
+    recordContactInBackground({
+      email,
+      firstName: firstName || undefined,
+      lastName: restOfName.join(" ") || undefined,
+      source: "experience",
+      tags: [TAG.experiences, "Played: H2WHOA"],
+      accountCode: account.code,
+    });
   }
 
   try {

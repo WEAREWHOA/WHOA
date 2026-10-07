@@ -5,6 +5,7 @@ import { createAmbassador, getByEmail } from "@/lib/store";
 import { recordEventSalesApplication } from "@/lib/eventSales";
 import { createSession, hashPassword } from "@/lib/auth";
 import { sendEventSalesApplicationNotification } from "@/lib/email";
+import { recordContactInBackground, TAG } from "@/lib/newsletter";
 
 export async function applySellForUsAction(formData: FormData) {
   const name = String(formData.get("name") || "").trim();
@@ -41,6 +42,20 @@ export async function applySellForUsAction(formData: FormData) {
       code = created.code;
       await createSession(code);
     }
+
+    // A vendor applicant, with the phone number this form requires.
+    // Recorded as a contact so staff can find them; not subscribed,
+    // because applying to sell with us is not asking for marketing.
+    const [firstName, ...restOfName] = name.split(/\s+/);
+    recordContactInBackground({
+      email,
+      firstName: firstName || undefined,
+      lastName: restOfName.join(" ") || undefined,
+      phone,
+      source: "vendor",
+      tags: [TAG.vendors],
+      accountCode: code,
+    });
 
     // Best-effort. This row is a reference copy for staff; the account
     // above is the part that had to succeed, and the notification below is

@@ -18,7 +18,7 @@ export default function PrivacyPolicyPage() {
       <h1 className="font-display mt-2 text-4xl tracking-wide">
         Privacy <span className="text-flame">Policy</span>
       </h1>
-      <p className="mt-3 text-xs text-muted">Last updated: September 2026</p>
+      <p className="mt-3 text-xs text-muted">Last updated: October 2026</p>
 
       <div className="card-surface mt-8 flex flex-col gap-6 rounded-2xl p-6 text-sm leading-relaxed text-muted sm:p-8">
         <p>
@@ -32,8 +32,17 @@ export default function PrivacyPolicyPage() {
           <ul className="mt-2 list-disc space-y-2 pl-5">
             <li>
               <span className="text-foreground">Information you give us</span> — your name, email,
-              phone number, and shipping address when you check out, apply to become an ambassador,
-              submit a Custom Design, or send us a message through the Contact page.
+              phone number, and shipping address when you check out, RSVP or buy a ticket to an
+              event, claim a prize at one of our pop-ups, write a product review, apply to become an
+              ambassador or a vendor, submit a Custom Design, or send us a message through the
+              Contact page.
+            </li>
+            <li>
+              <span className="text-foreground">Marketing email.</span> We only send it to people
+              who ticked a box asking for it. An address you gave us for something else, like an
+              RSVP or a contact message, is stored so we know who you are and is marked as not
+              signed up, which keeps it out of every campaign. Ticking a box later is what changes
+              that, and every marketing email has an unsubscribe link.
             </li>
             <li>
               <span className="text-foreground">Payment information</span> — handled directly by
