@@ -15,12 +15,43 @@ import { getSupabase } from "./supabase";
  *
  * Aggregation happens in JS rather than SQL views: the volumes here are
  * a small brand's, the queries stay readable, and adding a KPI doesn't
- * mean shipping a migration. ROW_CAP is the guard — if a window ever
+ * mean shipping a migration. ROW_CAP is the guard: if a window ever
  * exceeds it the snapshot says so rather than quietly reporting a
  * fraction of the traffic as the whole.
+ *
+ * ───────────────────────────────────────────────────────────────────────
+ * Why every read here is paged.
+ *
+ * `.limit(50000)` does NOT get you 50,000 rows. PostgREST enforces its
+ * own ceiling, `db-max-rows`, and Supabase ships it set to 1,000. A
+ * client-side limit above it is silently clamped: no error, no warning,
+ * just the first thousand rows presented as the whole table.
+ *
+ * That is exactly what this file did, and it is why page views appeared
+ * to stop at 1,000. Worse, it was not only traffic. Orders, line items,
+ * RSVPs, stamps and accounts all read through the same helper, so once
+ * any of them passed a thousand rows in the window, every number built
+ * on it was wrong and nothing said so. `truncated` was meant to catch
+ * precisely this and could not: it compared against 50,000, a number the
+ * query could never reach.
+ *
+ * So each read walks the table in pages, and every page is ordered by the
+ * primary key. The order is not cosmetic. Postgres makes no promise about
+ * row order between two unordered queries, so paging without a stable
+ * sort can hand you the same row twice and skip another, which in an
+ * analytics table means a count that is wrong in both directions at once.
+ * ───────────────────────────────────────────────────────────────────────
  */
 
 const ROW_CAP = 50_000;
+
+/**
+ * Rows per request. Must stay at or below the smallest `db-max-rows` this
+ * runs against, which is Supabase's default of 1,000. Asking for more
+ * would be clamped back to it and the short page would end the walk
+ * early, which is the bug this page size exists to avoid.
+ */
+const PAGE_SIZE = 1_000;
 
 export interface Point {
   label: string;
@@ -57,6 +88,8 @@ export interface AnalyticsSnapshot {
   kpis: Kpi[];
   viewsByDay: Point[];
   revenueByDay: Point[];
+  onlineRevenueByDay: Point[];
+  abandonedByDay: Point[];
   stampsByDay: Point[];
   signupsByDay: Point[];
   topPages: Point[];
@@ -153,26 +186,61 @@ function bump(map: Map<string, number>, key: string, by = 1): void {
   map.set(key, (map.get(key) ?? 0) + by);
 }
 
-/** `newerThan` narrows server-side; everything else is filtered in JS. */
-async function rows<T>(
+/**
+ * Every row in a table, or in a time window of it, read a page at a time.
+ *
+ * `newerThan` narrows server-side; everything else is filtered in JS.
+ * `key` is the column paging is ordered by and must be unique, which in
+ * practice means the primary key. See the note at the top of the file for
+ * why that is not optional.
+ *
+ * Stops at ROW_CAP. Reaching it is reported through `hitCap` rather than
+ * being silently absorbed, because a truncated analytics table that looks
+ * complete is the failure mode this whole helper exists to prevent.
+ */
+interface PagedRows<T> {
+  rows: T[];
+  hitCap: boolean;
+}
+
+async function page<T>(
   table: string,
   columns: string,
+  key: string,
   newerThan?: { column: string; iso: string },
-): Promise<T[]> {
+): Promise<PagedRows<T>> {
+  const out: T[] = [];
   try {
-    const base = getSupabase().from(table).select(columns).limit(ROW_CAP);
-    const query = newerThan ? base.gte(newerThan.column, newerThan.iso) : base;
-    const { data, error } = await query;
-    if (error) {
-      // A table that was never migrated shouldn't blank the whole tab —
-      // that section just reports zero and everything else still works.
-      console.error(`Analytics: failed to read ${table}:`, error.message);
-      return [];
+    for (let from = 0; from < ROW_CAP; from += PAGE_SIZE) {
+      const to = Math.min(from + PAGE_SIZE, ROW_CAP) - 1;
+      let query = getSupabase()
+        .from(table)
+        .select(columns)
+        .order(key, { ascending: true })
+        .range(from, to);
+      if (newerThan) query = query.gte(newerThan.column, newerThan.iso);
+
+      const { data, error } = await query;
+      if (error) {
+        // A table that was never migrated shouldn't blank the whole tab:
+        // that section reports zero and everything else still works. Rows
+        // already collected are kept, since a partial read of a real table
+        // beats discarding it over one bad page.
+        console.error(`Analytics: failed to read ${table}:`, error.message);
+        return { rows: out, hitCap: false };
+      }
+
+      const batch = (data ?? []) as T[];
+      out.push(...batch);
+      // A short page is the end of the table. This is the one inference
+      // the walk makes, and it is why PAGE_SIZE must not exceed the
+      // server's own ceiling: a clamped page would look short.
+      if (batch.length < to - from + 1) return { rows: out, hitCap: false };
     }
-    return (data ?? []) as T[];
+    return { rows: out, hitCap: true };
   } catch (err) {
     console.error(`Analytics: failed to read ${table}:`, err);
-    return [];
+    return { rows: out, hitCap: false };
   }
 }
 
@@ -180,54 +248,118 @@ export async function getAnalytics(periodDays = 30): Promise<AnalyticsSnapshot> 
   const since = sinceIso(periodDays);
 
   const [
-    views,
-    orders,
-    lineItems,
-    rsvps,
-    stamps,
-    gamePrizes,
-    waterPrizes,
-    accounts,
-    links,
-    referralOrders,
-    preorders,
-    messages,
+    viewsPage,
+    ordersPage,
+    lineItemsPage,
+    rsvpsPage,
+    stampsPage,
+    gamePrizesPage,
+    waterPrizesPage,
+    accountsPage,
+    linksPage,
+    referralOrdersPage,
+    preordersPage,
+    messagesPage,
+    cartsPage,
+    subscribersPage,
+    reviewRequestsPage,
+    reviewsPage,
   ] = await Promise.all([
-    rows<{ path: string; session_id: string; account_code: string | null; referrer_host: string | null; device: string; country: string | null; created_at: string }>(
-      "page_views", "path, session_id, account_code, referrer_host, device, country, created_at",
+    page<{ path: string; session_id: string; account_code: string | null; referrer_host: string | null; device: string; country: string | null; created_at: string }>(
+      "page_views", "id, path, session_id, account_code, referrer_host, device, country, created_at", "id",
       { column: "created_at", iso: since },
     ),
-    rows<{ id: string; state: string | null; total_money_cents: number; created_at: string | null; closed_at: string | null }>(
-      "square_orders", "id, state, total_money_cents, created_at, closed_at",
+    page<{ id: string; state: string | null; total_money_cents: number; created_at: string | null; closed_at: string | null; channel: string | null }>(
+      "square_orders", "id, state, total_money_cents, created_at, closed_at, channel", "id",
       { column: "created_at", iso: since },
     ),
-    rows<{ order_id: string; name: string | null; quantity: number; total_money_cents: number }>(
-      "square_order_line_items", "order_id, name, quantity, total_money_cents",
+    page<{ order_id: string; name: string | null; quantity: number; total_money_cents: number }>(
+      "square_order_line_items", "id, order_id, name, quantity, total_money_cents", "id",
     ),
-    rows<{ event_id: string; quantity: number; price_cents: number; checked_in_at: string | null; created_at: string }>(
-      "event_rsvps", "event_id, quantity, price_cents, checked_in_at, created_at",
+    page<{ event_id: string; quantity: number; price_cents: number; checked_in_at: string | null; created_at: string }>(
+      "event_rsvps", "id, event_id, quantity, price_cents, checked_in_at, created_at", "id",
     ),
-    rows<{ account_code: string; stamped_at: string }>(
-      "scavenger_stamps", "account_code, stamped_at",
+    page<{ account_code: string; stamped_at: string }>(
+      "scavenger_stamps", "id, account_code, stamped_at", "id",
     ),
-    rows<{ prize: string; reward: string; redeemed_at: string | null; claimed_at: string }>(
-      "game_prize_claims", "prize, reward, redeemed_at, claimed_at",
+    page<{ prize: string; reward: string; redeemed_at: string | null; claimed_at: string }>(
+      "game_prize_claims", "id, prize, reward, redeemed_at, claimed_at", "id",
     ),
-    rows<{ redeemed_at: string | null; claimed_at: string }>(
-      "water_prize_claims", "code, redeemed_at, claimed_at",
+    page<{ redeemed_at: string | null; claimed_at: string }>(
+      "water_prize_claims", "id, code, redeemed_at, claimed_at", "id",
     ),
-    rows<{ code: string; name: string; created_at: string; deleted_at: string | null }>(
-      "ambassadors", "code, name, created_at, deleted_at",
+    page<{ code: string; name: string; created_at: string; deleted_at: string | null }>(
+      "ambassadors", "code, name, created_at, deleted_at", "code",
     ),
-    rows<{ ambassador_code: string; clicks: number }>("links", "ambassador_code, clicks"),
-    rows<{ ambassador_code: string; sale_amount: number; commission: number; order_date: string }>(
-      "orders", "ambassador_code, sale_amount, commission, order_date",
+    page<{ ambassador_code: string; clicks: number }>("links", "id, ambassador_code, clicks", "id"),
+    page<{ ambassador_code: string; sale_amount: number; commission: number; order_date: string }>(
+      "orders", "id, ambassador_code, sale_amount, commission, order_date", "id",
     ),
-    rows<{ total_cents: number; status: string; created_at: string }>(
-      "oasis_preorders", "total_cents, status, created_at",
+    page<{ total_cents: number; status: string; created_at: string }>(
+      "oasis_preorders", "id, total_cents, status, created_at", "id",
     ),
-    rows<{ created_at: string }>("contact_messages", "created_at"),
+    page<{ created_at: string }>("contact_messages", "id, created_at", "id"),
+    // Abandoned checkouts: one row per email, so a row IS a person who got
+    // far enough to type their address and then did not buy.
+    page<{ email: string; subtotal_cents: number; lines: unknown; recovered_at: string | null; reminder_email_id: string | null; created_at: string; updated_at: string }>(
+      "abandoned_checkouts",
+      "email, subtotal_cents, lines, recovered_at, reminder_email_id, created_at, updated_at",
+      "email",
+      { column: "created_at", iso: since },
+    ),
+    page<{ email: string; status: string | null; source: string | null; optin_recorded: boolean | null; created_at: string }>(
+      "newsletter_subscribers", "email, status, source, optin_recorded, created_at", "email",
+    ),
+    page<{ order_id: string; email: string; status: string | null; scheduled_for: string; created_at: string }>(
+      "review_requests", "order_id, email, status, scheduled_for, created_at", "order_id",
+      { column: "created_at", iso: since },
+    ),
+    page<{ rating: number; status: string | null; verified_purchase: boolean | null; reply_at: string | null; created_at: string }>(
+      "product_reviews", "id, rating, status, verified_purchase, reply_at, created_at", "id",
+      { column: "created_at", iso: since },
+    ),
   ]);
+
+  // The walk reports whether it stopped at ROW_CAP rather than at the end
+  // of the table. Any one of them hitting it makes the whole snapshot a
+  // sample, so the tab says so instead of presenting a fraction as a total.
+  const reads = [
+    viewsPage,
+    ordersPage,
+    lineItemsPage,
+    rsvpsPage,
+    stampsPage,
+    gamePrizesPage,
+    waterPrizesPage,
+    accountsPage,
+    linksPage,
+    referralOrdersPage,
+    preordersPage,
+    messagesPage,
+    cartsPage,
+    subscribersPage,
+    reviewRequestsPage,
+    reviewsPage,
+  ];
+  const truncated = reads.some((r) => r.hitCap);
+
+  const views = viewsPage.rows;
+  const orders = ordersPage.rows;
+  const lineItems = lineItemsPage.rows;
+  const rsvps = rsvpsPage.rows;
+  const stamps = stampsPage.rows;
+  const gamePrizes = gamePrizesPage.rows;
+  const waterPrizes = waterPrizesPage.rows;
+  const accounts = accountsPage.rows;
+  const links = linksPage.rows;
+  const referralOrders = referralOrdersPage.rows;
+  const preorders = preordersPage.rows;
+  const messages = messagesPage.rows;
+  const carts = cartsPage.rows;
+  const subscribers = subscribersPage.rows;
+  const reviewRequests = reviewRequestsPage.rows;
+  const reviews = reviewsPage.rows;
+
 
   // ── traffic ────────────────────────────────────────────────────────
   const viewsByDayCounts = new Map<string, number>();
@@ -295,6 +427,55 @@ export async function getAnalytics(periodDays = 30): Promise<AnalyticsSnapshot> 
     bump(productUnits, name, qty);
     unitsSold += qty;
   }
+
+  // ── channel split ──────────────────────────────────────────────────
+  // Null channel is NOT in_person. It means the row predates 0044 or was
+  // written while that migration was outstanding, and counting it either
+  // way would invent a split. Reported as its own number so a
+  // half-backfilled table is visible rather than quietly wrong.
+  const onlineOrders = paidOrders.filter((o) => o.channel === "online");
+  const inPersonOrders = paidOrders.filter((o) => o.channel === "in_person");
+  const unclassifiedOrders = paidOrders.filter((o) => !o.channel);
+  const sumCents = (list: typeof paidOrders) =>
+    list.reduce((sum, o) => sum + (o.total_money_cents ?? 0), 0);
+  const onlineCents = sumCents(onlineOrders);
+  const inPersonCents = sumCents(inPersonOrders);
+  const onlineByDayCounts = new Map<string, number>();
+  for (const order of onlineOrders) {
+    const parts = localParts(order.closed_at ?? order.created_at);
+    if (parts) bump(onlineByDayCounts, parts.day, (order.total_money_cents ?? 0) / 100);
+  }
+
+  // ── abandoned checkouts ────────────────────────────────────────────
+  // A row is one person who typed their email at checkout and did not
+  // finish. `recovered_at` is set the moment their order completes, so a
+  // recovered row is a sale this reminder can take credit for.
+  const recoveredCarts = carts.filter((c) => c.recovered_at);
+  const openCarts = carts.filter((c) => !c.recovered_at);
+  const abandonedValue = openCarts.reduce((sum, c) => sum + (c.subtotal_cents ?? 0), 0);
+  const recoveredValue = recoveredCarts.reduce((sum, c) => sum + (c.subtotal_cents ?? 0), 0);
+  const remindersSent = carts.filter((c) => c.reminder_email_id).length;
+  const abandonedByDayCounts = new Map<string, number>();
+  for (const cart of carts) {
+    const parts = localParts(cart.created_at);
+    if (parts) bump(abandonedByDayCounts, parts.day);
+  }
+  // Checkouts started is carts plus orders, because a cart that converted
+  // is marked recovered and a cart that never got an email typed in is
+  // not in this table at all. An approximation, and labelled as one.
+  const checkoutsStarted = openCarts.length + paidOrders.length;
+
+  // ── email and SMS list ─────────────────────────────────────────────
+  const mailable = subscribers.filter((c) => (c.status ?? "subscribed") === "subscribed");
+  const heldNotMailable = subscribers.filter((c) => c.status === "never");
+  const unsubscribed = subscribers.filter((c) => c.status === "unsubscribed");
+  const newSubscribers = mailable.filter((c) => c.created_at >= since);
+
+  // ── reviews ────────────────────────────────────────────────────────
+  const publishedReviews = reviews.filter((r) => r.status === "approved");
+  const pendingReviews = reviews.filter((r) => (r.status ?? "pending") === "pending");
+  const ratingSum = publishedReviews.reduce((sum, r) => sum + (r.rating ?? 0), 0);
+  const averageRating = publishedReviews.length ? ratingSum / publishedReviews.length : 0;
 
   // ── events ─────────────────────────────────────────────────────────
   const periodRsvps = rsvps.filter((r) => r.created_at >= since);
@@ -381,6 +562,39 @@ export async function getAnalytics(periodDays = 30): Promise<AnalyticsSnapshot> 
     { id: "topProduct", group: "Commerce", label: "Best seller", value: topN(productUnits, 1)[0]?.label ?? "—", keywords: "product best seller top item" },
     { id: "conversion", group: "Commerce", label: "Shop conversion", value: pct(paidOrders.length, entryCounts.size || sessions), keywords: "conversion rate funnel sales", hint: "Orders as a share of sessions. Counts orders from every channel, including the POS." },
 
+    // Online vs in person
+    { id: "onlineRevenue", group: "Online", label: "Online sales", value: money(onlineCents), keywords: "online web storefront shipped revenue sales ecommerce", hint: "Orders Square shipped or delivered, which is what the storefront creates." },
+    { id: "onlineOrders", group: "Online", label: "Online orders", value: onlineOrders.length.toLocaleString(), keywords: "online web storefront orders count ecommerce" },
+    { id: "onlineAov", group: "Online", label: "Online average order", value: onlineOrders.length ? money(Math.round(onlineCents / onlineOrders.length)) : "—", keywords: "online aov basket average web" },
+    { id: "onlineShare", group: "Online", label: "Online share of revenue", value: pct(onlineCents, onlineCents + inPersonCents), keywords: "online share split channel mix web vs store" },
+    { id: "onlineConversion", group: "Online", label: "Online conversion", value: pct(onlineOrders.length, sessions), keywords: "online conversion rate web sessions", hint: "Online orders as a share of sessions. The honest one: the overall figure above includes till sales that never saw the site." },
+    { id: "inPersonRevenue", group: "Online", label: "In-person sales", value: money(inPersonCents), keywords: "pos register store popup in person revenue sales till" },
+    { id: "inPersonOrders", group: "Online", label: "In-person orders", value: inPersonOrders.length.toLocaleString(), keywords: "pos register store popup orders till" },
+    { id: "unclassifiedOrders", group: "Online", label: "Channel not recorded", value: unclassifiedOrders.length.toLocaleString(), keywords: "unknown channel backfill missing split", hint: "Orders stored before the channel column existed. Re-run the Square order backfill to classify them.", note: unclassifiedOrders.length > 0 ? "Not counted as online or in person, so the split above is of the rest." : undefined },
+
+    // Abandoned checkouts
+    { id: "cartsAbandoned", group: "Abandoned carts", label: "Checkouts abandoned", value: openCarts.length.toLocaleString(), keywords: "abandoned cart basket checkout left dropped" },
+    { id: "cartsValue", group: "Abandoned carts", label: "Value left behind", value: money(abandonedValue), keywords: "abandoned cart value money lost basket" },
+    { id: "cartsRecovered", group: "Abandoned carts", label: "Carts recovered", value: recoveredCarts.length.toLocaleString(), keywords: "abandoned cart recovered returned bought reminder" },
+    { id: "cartsRecoveredValue", group: "Abandoned carts", label: "Revenue recovered", value: money(recoveredValue), keywords: "abandoned cart recovered revenue money won back" },
+    { id: "cartsRecoveryRate", group: "Abandoned carts", label: "Recovery rate", value: pct(recoveredCarts.length, carts.length), keywords: "abandoned cart recovery rate percent reminder works" },
+    { id: "cartsAbandonRate", group: "Abandoned carts", label: "Abandonment rate", value: pct(openCarts.length, checkoutsStarted), keywords: "abandoned cart rate percent drop off", note: "Against checkouts we saw an email on, plus completed orders. Somebody who left before typing an email is not counted." },
+    { id: "cartsReminders", group: "Abandoned carts", label: "Reminders scheduled", value: remindersSent.toLocaleString(), keywords: "abandoned cart reminder email sent resend" },
+    { id: "cartsAverage", group: "Abandoned carts", label: "Average abandoned basket", value: openCarts.length ? money(Math.round(abandonedValue / openCarts.length)) : "—", keywords: "abandoned cart average basket size value" },
+
+    // List
+    { id: "mailable", group: "Email list", label: "Mailable contacts", value: mailable.length.toLocaleString(), keywords: "email list subscribers mailable marketing size", note: "All time." },
+    { id: "newSubscribers", group: "Email list", label: "New subscribers", value: newSubscribers.length.toLocaleString(), keywords: "email list growth signups new subscribers" },
+    { id: "heldNotMailable", group: "Email list", label: "Held, not mailable", value: heldNotMailable.length.toLocaleString(), keywords: "email contacts never opted in rsvp held", hint: "Gave us an address for something else, like an RSVP, and never asked for marketing.", note: "All time." },
+    { id: "unsubscribed", group: "Email list", label: "Unsubscribed", value: unsubscribed.length.toLocaleString(), keywords: "email unsubscribed opt out left list", note: "All time." },
+
+    // Reviews
+    { id: "reviewsPublished", group: "Reviews", label: "Reviews published", value: publishedReviews.length.toLocaleString(), keywords: "reviews ratings published approved stars" },
+    { id: "reviewsPending", group: "Reviews", label: "Awaiting moderation", value: pendingReviews.length.toLocaleString(), keywords: "reviews pending moderation queue approve" },
+    { id: "reviewRating", group: "Reviews", label: "Average rating", value: publishedReviews.length ? `${averageRating.toFixed(1)} / 5` : "—", keywords: "reviews rating stars average score" },
+    { id: "reviewRequests", group: "Reviews", label: "Review requests sent", value: reviewRequests.length.toLocaleString(), keywords: "reviews requests email asked resend" },
+    { id: "reviewResponse", group: "Reviews", label: "Request response rate", value: pct(reviews.length, reviewRequests.length), keywords: "reviews response rate replied conversion", hint: "Reviews written against requests sent in the period." },
+
     // Ambassadors
     { id: "referralClicks", group: "Ambassadors", label: "Referral link clicks", value: totalClicks.toLocaleString(), keywords: "ambassador referral link clicks", note: "Lifetime — link clicks are a running counter, not dated rows." },
     { id: "attributed", group: "Ambassadors", label: "Attributed sales", value: `$${attributedSales.toFixed(2)}`, keywords: "ambassador referral sales attribution" },
@@ -434,7 +648,7 @@ export async function getAnalytics(periodDays = 30): Promise<AnalyticsSnapshot> 
     {
       id: "shop",
       title: "Shop",
-      blurb: "Browsing through to a paid order.",
+      blurb: "Browsing through to a paid online order.",
       steps: [
         { label: "Shop views", value: pageCounts.get("/shop") ?? 0 },
         {
@@ -443,8 +657,24 @@ export async function getAnalytics(periodDays = 30): Promise<AnalyticsSnapshot> 
             .filter(([path]) => path.startsWith("/shop/"))
             .reduce((sum, [, n]) => sum + n, 0),
         },
+        { label: "Cart views", value: pageCounts.get("/cart") ?? 0 },
         { label: "Reached checkout", value: pageCounts.get("/checkout") ?? 0 },
-        { label: "Orders placed", value: paidOrders.length },
+        { label: "Gave an email", value: carts.length },
+        // Online, not every order: a POS sale at the bottom of a funnel
+        // that starts with shop page views would read as a conversion the
+        // website earned, and it is not one.
+        { label: "Online orders", value: onlineOrders.length },
+      ],
+    },
+    {
+      id: "recovery",
+      title: "Checkout recovery",
+      blurb: "What happens to a basket somebody walked away from.",
+      steps: [
+        { label: "Gave an email at checkout", value: carts.length },
+        { label: "Did not finish", value: carts.length - recoveredCarts.length },
+        { label: "Reminder scheduled", value: remindersSent },
+        { label: "Came back and bought", value: recoveredCarts.length },
       ],
     },
     {
@@ -473,10 +703,12 @@ export async function getAnalytics(periodDays = 30): Promise<AnalyticsSnapshot> 
   return {
     periodDays,
     generatedAt: new Date().toISOString(),
-    truncated: views.length >= ROW_CAP,
+    truncated,
     kpis,
     viewsByDay: series(periodDays, viewsByDayCounts),
     revenueByDay: series(periodDays, revenueByDayCounts),
+    onlineRevenueByDay: series(periodDays, onlineByDayCounts),
+    abandonedByDay: series(periodDays, abandonedByDayCounts),
     stampsByDay: series(periodDays, stampsByDayCounts),
     signupsByDay: series(periodDays, signupsByDayCounts),
     topPages: topN(pageCounts, 12),

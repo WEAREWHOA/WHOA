@@ -154,11 +154,36 @@ export async function syncInventoryForVariations(variationIds: string[]): Promis
   }
 }
 
+/**
+ * Online or in person, worked out from the fulfillment.
+ *
+ * Square has no channel field. What it has is this: our storefront
+ * checkout attaches a SHIPMENT fulfillment, because it has an address;
+ * the POS register attaches none, because the customer is standing at the
+ * booth. So no fulfillment means in person, and a shipment means online.
+ *
+ * SHIPMENT and DELIVERY are online: both need an address, which only a
+ * web order collects. IN_STORE is in person by definition. PICKUP is
+ * genuinely ambiguous, since it covers both a web order someone collects
+ * and a counter sale rung up for later, so it reports as `unknown`
+ * rather than being forced into one side. A wrong split is worse than an
+ * honest gap.
+ */
+function channelFor(order: Square.Order): { fulfillmentType: string | null; channel: string } {
+  const fulfillmentType = order.fulfillments?.[0]?.type ?? null;
+  if (!fulfillmentType) return { fulfillmentType: null, channel: "in_person" };
+  if (fulfillmentType === "SHIPMENT" || fulfillmentType === "DELIVERY") {
+    return { fulfillmentType, channel: "online" };
+  }
+  if (fulfillmentType === "IN_STORE") return { fulfillmentType, channel: "in_person" };
+  return { fulfillmentType, channel: "unknown" };
+}
+
 async function upsertOrderRecord(order: Square.Order): Promise<void> {
   if (!order.id) return;
   const supabase = getSupabase();
 
-  const { error: orderError } = await supabase.from("square_orders").upsert({
+  const base = {
     id: order.id,
     location_id: order.locationId,
     state: order.state ?? null,
@@ -166,7 +191,23 @@ async function upsertOrderRecord(order: Square.Order): Promise<void> {
     created_at: order.createdAt ?? null,
     closed_at: order.closedAt ?? null,
     updated_at: new Date().toISOString(),
-  });
+  };
+  const { fulfillmentType, channel } = channelFor(order);
+
+  let { error: orderError } = await supabase
+    .from("square_orders")
+    .upsert({ ...base, fulfillment_type: fulfillmentType, channel });
+
+  // 0044 not applied yet. Keep the order and drop just the channel rather
+  // than losing a sale from the mirror because a migration is outstanding.
+  if (orderError && /fulfillment_type|channel/.test(orderError.message)) {
+    console.error(
+      "square_orders is missing the channel columns, so this order is stored without them. " +
+        "Run migration 0044, then POST /api/admin/square/backfill.",
+    );
+    ({ error: orderError } = await supabase.from("square_orders").upsert(base));
+  }
+
   if (orderError) {
     throw new Error(`Failed to sync order ${order.id}: ${orderError.message}`);
   }
