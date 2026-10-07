@@ -7,8 +7,8 @@ export const runtime = "nodejs";
 // One-time setup call: registers this deployment's webhook endpoint with
 // Square. Run once after deploying (see README), not on every request.
 export async function POST(req: Request) {
-  const denied = adminSecretFailure(req);
-  if (denied) return adminUnauthorized(denied);
+  const auth = adminSecretFailure(req);
+  if (auth.failure) return adminUnauthorized(auth);
 
   const url = new URL(req.url);
   const notificationUrl = `${url.protocol}//${url.host}/api/webhooks/square`;

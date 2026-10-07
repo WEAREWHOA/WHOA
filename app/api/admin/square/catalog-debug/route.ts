@@ -11,8 +11,8 @@ export const runtime = "nodejs";
 // channels array (Square's own, read-only, computed field) includes it —
 // so a broken match can be diagnosed without guessing.
 export async function POST(req: Request) {
-  const denied = adminSecretFailure(req);
-  if (denied) return adminUnauthorized(denied);
+  const auth = adminSecretFailure(req);
+  if (auth.failure) return adminUnauthorized(auth);
 
   try {
     const square = getSquare();

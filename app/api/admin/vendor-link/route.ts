@@ -8,8 +8,8 @@ export const runtime = "nodejs";
 // slug (see lib/artists.ts) so that account's dashboard Vendor tab shows
 // real sales/inventory scoped to that vendor. No self-serve claim flow yet.
 export async function POST(req: Request) {
-  const denied = adminSecretFailure(req);
-  if (denied) return adminUnauthorized(denied);
+  const auth = adminSecretFailure(req);
+  if (auth.failure) return adminUnauthorized(auth);
 
   let body: { code?: string; vendorSlug?: string };
   try {

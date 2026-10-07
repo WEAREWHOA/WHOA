@@ -10,8 +10,8 @@ export const runtime = "nodejs";
 // order history into Supabase. Safe to re-run — every sync step is
 // upsert-based, so calling this again just refreshes everything.
 export async function POST(req: Request) {
-  const denied = adminSecretFailure(req);
-  if (denied) return adminUnauthorized(denied);
+  const auth = adminSecretFailure(req);
+  if (auth.failure) return adminUnauthorized(auth);
 
   try {
     const { productIds, variationIds } = await syncFullCatalog();
