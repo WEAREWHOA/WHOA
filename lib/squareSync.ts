@@ -152,6 +152,46 @@ export async function syncFullCatalog(): Promise<{ productIds: string[]; variati
  * without writing it a variation that sells out keeps whatever row it
  * last had and stays "in stock" forever.
  */
+/**
+ * The same inventory sync, resumable, reading the variations out of the
+ * mirror instead of being handed thousands of ids.
+ *
+ * The ids come from the database because carrying them through a resume
+ * token means putting a megabyte of identifiers in a request body to
+ * avoid re-reading a table that is right there. Ordered by id so the
+ * offset means the same thing on the next call.
+ */
+export async function syncInventoryFromMirror(options: {
+  offset?: number;
+  deadline?: number;
+}): Promise<{ processed: number; nextOffset?: number }> {
+  const supabase = getSupabase();
+  let offset = options.offset ?? 0;
+  let processed = 0;
+
+  for (;;) {
+    const { data, error } = await supabase
+      .from("square_product_variations")
+      .select("id")
+      .order("id", { ascending: true })
+      .range(offset, offset + 99);
+    if (error) throw new Error(`Failed to read variations: ${error.message}`);
+
+    const ids = (data ?? []).map((row) => (row as { id: string }).id);
+    if (ids.length === 0) return { processed };
+
+    await syncInventoryForVariations(ids);
+    offset += ids.length;
+    processed += ids.length;
+
+    // A short page is the end of the table.
+    if (ids.length < 100) return { processed };
+    if (options.deadline && Date.now() >= options.deadline) {
+      return { processed, nextOffset: offset };
+    }
+  }
+}
+
 export async function syncInventoryForVariations(variationIds: string[]): Promise<void> {
   if (variationIds.length === 0) return;
 
@@ -230,103 +270,142 @@ function channelFor(order: Square.Order): { fulfillmentType: string | null; chan
   return { fulfillmentType, channel: "unknown" };
 }
 
-async function upsertOrderRecord(order: Square.Order): Promise<void> {
-  if (!order.id) return;
-  const supabase = getSupabase();
+/**
+ * Write a page of orders in three statements instead of three per order.
+ *
+ * This used to be one function per order doing an upsert, a delete and an
+ * insert, so a backfill of a thousand orders was three thousand
+ * sequential round trips to Supabase. At even 50ms each that is two and a
+ * half minutes of waiting, which is what produced the 504: Vercel's
+ * gateway gave up long before Square or Postgres did.
+ *
+ * syncFullCatalog above already learned this and says so in its own
+ * comment. The orders path never got the same treatment.
+ */
+async function upsertOrderRecords(orders: Square.Order[]): Promise<void> {
+  const withIds = orders.filter((order) => order.id);
+  if (withIds.length === 0) return;
 
-  const base = {
-    id: order.id,
+  const supabase = getSupabase();
+  const now = new Date().toISOString();
+
+  const base = withIds.map((order) => ({
+    id: order.id as string,
     location_id: order.locationId,
     state: order.state ?? null,
     total_money_cents: Number(order.totalMoney?.amount ?? 0),
     created_at: order.createdAt ?? null,
     closed_at: order.closedAt ?? null,
-    updated_at: new Date().toISOString(),
-  };
-  const { fulfillmentType, channel } = channelFor(order);
+    updated_at: now,
+  }));
+  const withChannel = base.map((row, i) => {
+    const { fulfillmentType, channel } = channelFor(withIds[i]);
+    return { ...row, fulfillment_type: fulfillmentType, channel };
+  });
 
-  let { error: orderError } = await supabase
-    .from("square_orders")
-    .upsert({ ...base, fulfillment_type: fulfillmentType, channel });
+  let { error: orderError } = await supabase.from("square_orders").upsert(withChannel);
 
-  // 0044 not applied yet. Keep the order and drop just the channel rather
-  // than losing a sale from the mirror because a migration is outstanding.
+  // 0044 not applied yet. Keep the orders and drop just the channel rather
+  // than losing sales from the mirror because a migration is outstanding.
   if (orderError && /fulfillment_type|channel/.test(orderError.message)) {
     console.error(
-      "square_orders is missing the channel columns, so this order is stored without them. " +
-        "Run migration 0044, then POST /api/admin/square/backfill.",
+      "square_orders is missing the channel columns, so these orders are stored without them. " +
+        "Run migration 0044, then re-run the backfill.",
     );
     ({ error: orderError } = await supabase.from("square_orders").upsert(base));
   }
-
   if (orderError) {
-    throw new Error(`Failed to sync order ${order.id}: ${orderError.message}`);
+    throw new Error(`Failed to sync ${withIds.length} orders: ${orderError.message}`);
   }
 
   // Line item `uid`s aren't stable/global, so replace the full set on every
-  // sync rather than trying to diff — an order rarely has more than a
-  // handful of line items, so this is cheap.
+  // sync rather than trying to diff. One delete covering the whole page,
+  // not one per order.
+  const orderIds = withIds.map((order) => order.id as string);
   const { error: deleteError } = await supabase
     .from("square_order_line_items")
     .delete()
-    .eq("order_id", order.id);
+    .in("order_id", orderIds);
   if (deleteError) {
-    throw new Error(`Failed to clear line items for order ${order.id}: ${deleteError.message}`);
+    throw new Error(`Failed to clear line items: ${deleteError.message}`);
   }
 
-  const lineItems = order.lineItems ?? [];
-  if (lineItems.length > 0) {
-    const rows = lineItems.map((li, i) => ({
+  const rows = withIds.flatMap((order) =>
+    (order.lineItems ?? []).map((li, i) => ({
       id: `${order.id}_${li.uid ?? i}`,
-      order_id: order.id,
+      order_id: order.id as string,
       catalog_object_id: li.catalogObjectId ?? null,
       name: li.name ?? null,
       quantity: Number(li.quantity ?? "1"),
       total_money_cents: Number(li.totalMoney?.amount ?? 0),
-    }));
+    })),
+  );
 
-    const { error: lineItemError } = await supabase.from("square_order_line_items").insert(rows);
+  if (rows.length > 0) {
+    // Upsert rather than insert: the id is derived from the order id and
+    // the line uid, so a page containing the same order twice (or a retry
+    // landing on rows the delete above already replaced) is a conflict
+    // rather than a duplicate.
+    const { error: lineItemError } = await supabase
+      .from("square_order_line_items")
+      .upsert(rows, { onConflict: "id" });
     if (lineItemError) {
-      throw new Error(`Failed to sync line items for order ${order.id}: ${lineItemError.message}`);
+      throw new Error(`Failed to sync line items: ${lineItemError.message}`);
     }
   }
 }
 
-// Fetches a single order fresh from Square and upserts it — used by the
-// webhook handler, which only receives an order id, not the full order.
 export async function syncOrder(orderId: string): Promise<void> {
   const square = getSquare();
   const response = await square.orders.get({ orderId });
-  if (response.order) await upsertOrderRecord(response.order);
+  if (response.order) await upsertOrderRecords([response.order]);
 }
 
-// One-time historical backfill across every location. `orders.search`
-// without `returnEntries` already returns full Order objects, so this
-// upserts directly instead of re-fetching each order individually.
-export async function backfillOrders(): Promise<number> {
+export interface BackfillOrdersResult {
+  /** Orders written on this call, not in total. */
+  count: number;
+  /** Set when there is more to do: pass it back to carry on. */
+  cursor?: string;
+}
+
+/**
+ * Historical backfill across every location, resumable.
+ *
+ * `orders.search` without `returnEntries` already returns full Order
+ * objects, so this upserts directly instead of re-fetching each one.
+ *
+ * `deadline` is what keeps this inside a serverless function. A catalogue
+ * big enough to need several minutes of paging will be cut off by the
+ * gateway with nothing to show for it, so instead this stops at the
+ * deadline and hands back the cursor it had reached. The caller decides
+ * whether to come straight back for more. Checked between pages rather
+ * than mid-page, so a page is either fully written or not started.
+ */
+export async function backfillOrders(options: {
+  cursor?: string;
+  deadline?: number;
+} = {}): Promise<BackfillOrdersResult> {
   const square = getSquare();
   const locationIds = await getAllLocationIds();
-  if (locationIds.length === 0) return 0;
+  if (locationIds.length === 0) return { count: 0 };
 
-  let cursor: string | undefined;
+  let cursor = options.cursor;
   let count = 0;
 
   do {
-    const response = await square.orders.search({
-      locationIds,
-      limit: 100,
-      cursor,
-    });
+    const response = await square.orders.search({ locationIds, limit: 100, cursor });
+    const orders = response.orders ?? [];
 
-    for (const order of response.orders ?? []) {
-      await upsertOrderRecord(order);
-      count += 1;
-    }
+    await upsertOrderRecords(orders);
+    count += orders.length;
 
     cursor = response.cursor;
+    if (cursor && options.deadline && Date.now() >= options.deadline) {
+      return { count, cursor };
+    }
   } while (cursor);
 
-  return count;
+  return { count };
 }
 
 // Same matching conventions as matchVendorSlug/matchArtCollectiveCode
