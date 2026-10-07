@@ -8,8 +8,8 @@ export const maxDuration = 300;
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
-  const denied = adminSecretFailure(req);
-  if (denied) return adminUnauthorized(denied);
+  const auth = adminSecretFailure(req);
+  if (auth.failure) return adminUnauthorized(auth);
 
   try {
     const result = await backfillArtistCategories();

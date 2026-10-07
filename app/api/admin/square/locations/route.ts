@@ -6,8 +6,8 @@ export const runtime = "nodejs";
 // Read-only lookup so SQUARE_LOCATION_ID doesn't have to be hunted down in
 // Square's dashboard — only needs SQUARE_ACCESS_TOKEN to already be set.
 export async function POST(req: Request) {
-  const denied = adminSecretFailure(req);
-  if (denied) return adminUnauthorized(denied);
+  const auth = adminSecretFailure(req);
+  if (auth.failure) return adminUnauthorized(auth);
 
   try {
     const square = getSquare();
