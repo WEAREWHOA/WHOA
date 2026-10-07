@@ -3,6 +3,7 @@ import { listProducts, productPath } from "@/lib/catalog";
 import { ARTISTS } from "@/lib/artists";
 import { MUSICIANS } from "@/lib/musicians";
 import { SITE_URL } from "@/lib/site";
+import { listPublishedPosts } from "@/lib/blog";
 
 // Without this, a sitemap with no dynamic-request APIs (cookies/headers) —
 // this one only calls listProducts(), a plain external fetch — gets frozen
@@ -24,6 +25,7 @@ const STATIC_ROUTES = [
   "/about",
   "/about/story",
   "/about/history",
+  "/blog",
   "/podcast",
   "/contact",
   "/faq",
@@ -73,6 +75,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // The photographs are the product for a brand like this one, and
       // image entries are what puts them in Google Images.
       images: product.imageUrls.length > 0 ? product.imageUrls : undefined,
+    });
+  }
+
+  // Posts carry a real lastModified, because unlike a static page they
+  // genuinely change and a corrected post deserves a re-crawl. Drafts and
+  // anything scheduled for later are excluded by listPublishedPosts, so a
+  // post cannot reach the sitemap before it exists to a reader.
+  const posts = await listPublishedPosts(500).catch(() => []);
+  for (const post of posts) {
+    entries.push({
+      url: `${SITE_URL}/blog/${post.slug}`,
+      lastModified: new Date(post.updatedAt),
+      images: post.coverImageUrl ? [post.coverImageUrl] : undefined,
     });
   }
 

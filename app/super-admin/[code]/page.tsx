@@ -84,6 +84,12 @@ const PERMISSION_ROWS = [
     hint: "REVIEWS tab -- the moderation queue for customer product reviews. Whoever holds this decides what appears under a product and what Google reads as the rating, so grant it deliberately. Super Admins already have this.",
   },
   {
+    field: "perm_blog",
+    permission: "blog",
+    label: "Blog",
+    hint: "BLOG tab — writing, editing and publishing posts on /blog. Published posts are public immediately and are what search engines read, so grant it deliberately. Super Admins already have this.",
+  },
+  {
     field: "perm_analytics",
     permission: "analytics",
     label: "Analytics",
