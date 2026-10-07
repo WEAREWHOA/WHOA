@@ -16,7 +16,7 @@ import {
   requiresDamageWaiver,
 } from "@/lib/events";
 import { SITE_URL } from "@/lib/site";
-import { subscribe } from "@/lib/newsletter";
+import { eventTag, recordContactInBackground, subscribe, TAG } from "@/lib/newsletter";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -57,6 +57,12 @@ export async function eventRsvpAction(input: {
   // Required (and re-checked here, never trusted from the client alone)
   // for any event at the WHOAdega/SH!FT Gallery — see requiresDamageWaiver.
   waiverAgreed?: boolean;
+  // Whether they left the "email me about WHOA events" box ticked. Ticked
+  // puts them on the newsletter properly, with a welcome email. Unticked
+  // still records them as a contact, tagged with this event and marked
+  // not-mailable, because the Rolodex needs to know a guest exists
+  // without that being permission to market to them.
+  joinList?: boolean;
 }): Promise<EventRsvpResult> {
   const event = EVENTS.find((e) => e.id === input.eventId);
   if (!event) {
@@ -254,6 +260,44 @@ export async function eventRsvpAction(input: {
     console.error("Failed to send event confirmation email:", err);
   });
 
+  // The list, after the ticket rather than before it: a card that
+  // declines must not leave somebody subscribed, and a free RSVP that
+  // failed to save should not either.
+  //
+  // Both branches tag with the event, which is the thing that makes a
+  // send to one show's guests possible later. The difference between them
+  // is only whether we are allowed to mail them at all.
+  const rsvpTags = [
+    TAG.events,
+    eventTag(event.title),
+    ...(priceCents > 0 ? [TAG.ticketBuyers] : []),
+  ];
+  const [firstName, ...restOfName] = name.split(/\s+/);
+  if (input.joinList) {
+    // Fire-and-forget, like the confirmation email above: the ticket is
+    // paid for, and a newsletter hiccup is not worth an error in front of
+    // somebody who has already bought.
+    void subscribe({
+      email,
+      firstName: firstName || undefined,
+      lastName: restOfName.join(" ") || undefined,
+      phone: input.phone?.trim() || undefined,
+      source: "rsvp",
+      tags: rsvpTags,
+      accountCode: account.code ?? undefined,
+    }).catch((err) => console.error("Couldn't subscribe an event guest:", err));
+  } else {
+    recordContactInBackground({
+      email,
+      firstName: firstName || undefined,
+      lastName: restOfName.join(" ") || undefined,
+      phone: input.phone?.trim() || undefined,
+      source: "rsvp",
+      tags: rsvpTags,
+      accountCode: account.code ?? undefined,
+    });
+  }
+
   return {
     ok: true,
     accountCreated: account.accountCreated || undefined,
@@ -282,12 +326,19 @@ export async function subscribeEventsNewsletterAction(input: {
   if (!EMAIL_PATTERN.test(email)) return { ok: false, error: "Enter a valid email." };
 
   try {
-    // Resend's contact record has no phone field, so the number collected
-    // here is no longer stored. Left on the form rather than removed:
-    // taking a field away mid-migration is a visible change to a page
-    // that works, and the number can be captured properly later.
-    void phone;
-    const result = await subscribe({ email, firstName, lastName, source: "events" });
+    // The number the form asks for IS stored now, on the mirror row that
+    // the EMAIL/TEXT migration gave a phone column. Resend's contact
+    // record still has nowhere to put it, which is why it lives on our
+    // side. It is not consent to text anybody: sms_consent stays false
+    // until there is a record saying otherwise.
+    const result = await subscribe({
+      email,
+      firstName,
+      lastName,
+      phone,
+      source: "events",
+      tags: [TAG.events, TAG.eventNewsletter],
+    });
     // Someone already on the list is thanked, not told they're already on
     // it: whether a given address is subscribed isn't a fact a public form
     // should hand out.

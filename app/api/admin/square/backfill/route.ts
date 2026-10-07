@@ -1,4 +1,4 @@
-import { checkAdminSecret } from "@/lib/squareAdminAuth";
+import { adminSecretFailure, adminUnauthorized } from "@/lib/squareAdminAuth";
 import { backfillOrders, syncFullCatalog, syncInventoryForVariations } from "@/lib/squareSync";
 
 // Historical backfill can take a while on a large catalog/order history —
@@ -10,9 +10,8 @@ export const runtime = "nodejs";
 // order history into Supabase. Safe to re-run — every sync step is
 // upsert-based, so calling this again just refreshes everything.
 export async function POST(req: Request) {
-  if (!checkAdminSecret(req)) {
-    return new Response("Unauthorized", { status: 401 });
-  }
+  const denied = adminSecretFailure(req);
+  if (denied) return adminUnauthorized(denied);
 
   try {
     const { productIds, variationIds } = await syncFullCatalog();

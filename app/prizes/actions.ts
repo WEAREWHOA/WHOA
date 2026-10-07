@@ -2,6 +2,7 @@
 
 import { resolveAccount } from "@/lib/accountAuth";
 import { getSessionAmbassadorCode } from "@/lib/auth";
+import { recordContactInBackground, TAG } from "@/lib/newsletter";
 import {
   claimGamePrize,
   getGamePrize,
@@ -78,6 +79,22 @@ export async function claimPrizeAction(input: {
   if (account.error) return { ok: false, error: account.error };
   if (!account.code) {
     return { ok: false, error: "We couldn't sign you in — check your details and try again." };
+  }
+
+  // The address somebody typed at a booth to claim a prize. A contact,
+  // never a subscriber: finishing a card is not asking for email. Tagged
+  // with the game so a follow-up can be aimed at the people who actually
+  // played it.
+  if (email) {
+    const [firstName, ...restOfName] = name.split(/\s+/);
+    recordContactInBackground({
+      email,
+      firstName: firstName || undefined,
+      lastName: restOfName.join(" ") || undefined,
+      source: "experience",
+      tags: [TAG.experiences, `Played: ${input.game}`],
+      accountCode: account.code,
+    });
   }
 
   try {

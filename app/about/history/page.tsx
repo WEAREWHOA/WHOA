@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
-import HistoryMap from "@/components/about/HistoryMap";
 import { HISTORY, HISTORY_DESCRIPTION } from "@/lib/history";
 import { SITE_URL } from "@/lib/siteUrl";
 
@@ -92,28 +91,32 @@ export default function HistoryPage() {
         </nav>
 
         <div className="mt-8 text-center">
-          <span className="text-xs font-semibold tracking-[0.3em] text-white/70 uppercase">
-            The long, strange trip
-          </span>
-          <h1 className="text-psychedelic font-display mt-3 text-5xl tracking-wide sm:text-7xl">
-            The History of WHOA
+          <h1 className="text-psychedelic font-display mt-3 text-4xl tracking-wide uppercase sm:text-6xl lg:text-7xl">
+            {/* Two blocks rather than one wrapping line, so the break
+                lands after "Extraordinary" at every width instead of
+                wherever the container happens to run out. */}
+            <span className="block">The Extraordinary</span>
+            <span className="block">History of WHOA</span>
           </h1>
           {/* The when / where / who in one paragraph, first on the page, so
-              it's what a search engine lifts as the summary. */}
+              it's what a search engine lifts as the summary. The year and
+              WASANI's name carry the markup they always did: a crawler
+              answering "when was WHOA founded" reads this paragraph, not
+              the timeline below it. */}
           <p className="mx-auto mt-5 max-w-2xl text-sm leading-relaxed text-white/80 sm:text-base">
-            WHOA (WE ARE WHOA) started in{" "}
-            <strong className="text-white">San Diego, California in 2015</strong>, when{" "}
+            WHOA started with a rhythm and a thread, under the Southern California sun. In{" "}
+            <strong className="text-white">2015</strong>,{" "}
             <Link href="/music-collective/wasani" className="text-flame font-semibold hover:underline">
               WASANI
             </Link>{" "}
-            and Reece released the official WHOA song and made the very first WHOA t-shirt. Since
-            then it&apos;s grown from hand-dyed tees into a brand of one-of-a-kind hand-painted
-            apparel, beach pop-ups up and down the coast, artist collabs, our own shop in Ocean
-            Beach, and a festival sponsorship.
+            and Reece dropped the official WHOA song and pressed their very first t-shirt. What
+            began as a handful of hand-dyed tees has since rippled through the entire world.
+            Today, that spark has evolved into a canvas for one-of-a-kind, hand-painted apparel,
+            legendary pop-ups, and collaborative art. From our flagship shop in Ocean Beach to
+            massive festival activations, WHOA isn&apos;t just a brand anymore, it&apos;s a
+            movement born from expression.
           </p>
         </div>
-
-        <HistoryMap />
 
         {/* Jump-to-year strip. Sticky so it stays a scrubber on a long
             scroll; scrolls sideways on a phone instead of wrapping. */}

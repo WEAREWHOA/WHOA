@@ -331,18 +331,22 @@ function CheckoutFields({
       return;
     }
 
-    if (joinList) {
-      // After the sale, not before: a card that declines must not leave
-      // someone subscribed. Fire-and-forget for the same reason the
-      // confirmation email is -- the order is already paid for, and a
-      // newsletter hiccup is not worth showing this customer an error.
-      const [first, ...rest] = (buyer?.name?.trim() || name).trim().split(/\s+/);
-      void subscribeCheckoutAction({
-        email: buyer?.email?.trim() || email,
-        firstName: first || undefined,
-        lastName: rest.join(" ") || undefined,
-      }).catch(() => {});
-    }
+    // After the sale, not before: a card that declines must not leave
+    // someone subscribed. Fire-and-forget for the same reason the
+    // confirmation email is: the order is already paid for, and a
+    // newsletter hiccup is not worth showing this customer an error.
+    //
+    // Called either way. Ticked subscribes them; unticked records the
+    // buyer as a contact who is not to be mailed, which is a fact worth
+    // writing down rather than a reason to write nothing down at all.
+    const [first, ...rest] = (buyer?.name?.trim() || name).trim().split(/\s+/);
+    void subscribeCheckoutAction({
+      email: buyer?.email?.trim() || email,
+      firstName: first || undefined,
+      lastName: rest.join(" ") || undefined,
+      phone: buyer?.phone?.trim() || phone || undefined,
+      joinList,
+    }).catch(() => {});
 
     trackPurchase(outcome.orderId ?? "", lines, finalCents, shippingCents);
     clear();

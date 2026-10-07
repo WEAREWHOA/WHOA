@@ -4,6 +4,7 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import { createAmbassador, getByEmail } from "@/lib/store";
 import { createSession, hashPassword } from "@/lib/auth";
 import { sendAmbassadorApplicationNotification } from "@/lib/email";
+import { recordContactInBackground, TAG } from "@/lib/newsletter";
 
 export async function applyAction(formData: FormData) {
   const name = String(formData.get("name") || "").trim();
@@ -45,6 +46,19 @@ export async function applyAction(formData: FormData) {
 
     await createSession(ambassador.code);
     target = "/portal?applied=1";
+
+    // An applicant is a contact. Not subscribed: applying to represent the
+    // brand is not the same as asking for the newsletter, and an ambassador
+    // already receives everything operational through their portal.
+    const [firstName, ...restOfName] = name.split(/\s+/);
+    recordContactInBackground({
+      email,
+      firstName: firstName || undefined,
+      lastName: restOfName.join(" ") || undefined,
+      source: "apply",
+      tags: [TAG.ambassadors],
+      accountCode: ambassador.code,
+    });
 
     // Best-effort — staff should hear about every application, but a
     // Resend hiccup must never block the signup that already succeeded.

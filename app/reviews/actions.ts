@@ -8,6 +8,7 @@ import { getSessionAmbassadorCode } from "@/lib/auth";
 import { getByCode } from "@/lib/store";
 import { moderateReview, replyToReview, submitReview, type SubmitResult } from "@/lib/reviews";
 import { reviewerForToken } from "@/lib/reviewRequests";
+import { recordContactInBackground, TAG } from "@/lib/newsletter";
 
 /**
  * The public one: anyone who bought something can say what they think,
@@ -59,11 +60,29 @@ export async function submitReviewAction(input: {
   // link should still be able to say what they think.
   const verified = input.reviewToken ? await reviewerForToken(input.reviewToken) : null;
 
+  const authorEmail = verified?.email ?? input.authorEmail;
+  const authorName = input.authorName || verified?.name || "";
+
+  // Somebody who reviewed a piece is worth being able to find again, and
+  // a verified reviewer is the most useful contact there is. Still only a
+  // contact: writing a review is not asking for email.
+  if (authorEmail) {
+    const [firstName, ...restOfName] = authorName.trim().split(/\s+/);
+    recordContactInBackground({
+      email: authorEmail,
+      firstName: firstName || undefined,
+      lastName: restOfName.join(" ") || undefined,
+      source: "review",
+      tags: [TAG.reviewers, ...(verified ? [TAG.customers] : [])],
+      accountCode: accountCode ?? undefined,
+    });
+  }
+
   return submitReview({
     ...input,
     // The address the request went to, not whatever is in the form.
-    authorEmail: verified?.email ?? input.authorEmail,
-    authorName: input.authorName || verified?.name || "",
+    authorEmail,
+    authorName,
     verifiedByToken: Boolean(verified),
     accountCode,
     ip,

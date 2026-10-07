@@ -1,5 +1,6 @@
 import { getSupabase } from "./supabase";
 import { sendContactMessageNotification } from "./email";
+import { recordContactInBackground, TAG } from "./newsletter";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -45,6 +46,18 @@ export async function submitContactMessage(
   if (!message) return { ok: false, error: "Enter a message." };
 
   const stored = await storeContactMessage({ name, email, topic, message });
+
+  // Somebody who wrote in is a contact, not a subscriber. Recorded so the
+  // Rolodex can find them and so the row says plainly that writing to us
+  // was never permission to market to them.
+  const [firstName, ...restOfName] = name.split(/\s+/);
+  recordContactInBackground({
+    email,
+    firstName: firstName || undefined,
+    lastName: restOfName.join(" ") || undefined,
+    source: "contact",
+    tags: [TAG.contact, `Asked About: ${topic}`],
+  });
 
   let notified = false;
   try {

@@ -117,6 +117,16 @@ export default function AnalyticsTab({
         body: <TimeSeries points={snapshot.revenueByDay} format={MONEY} accent="var(--an-series-2)" />,
       },
       {
+        id: "online-revenue-day", title: "Online sales by day", group: "Online", wide: true,
+        keywords: "online web storefront revenue sales daily trend chart ecommerce shipped",
+        body: <TimeSeries points={snapshot.onlineRevenueByDay} format={MONEY} accent="var(--an-series-1)" />,
+      },
+      {
+        id: "abandoned-day", title: "Checkouts abandoned by day", group: "Abandoned carts", wide: true,
+        keywords: "abandoned cart basket checkout left dropped daily trend chart",
+        body: <TimeSeries points={snapshot.abandonedByDay} accent="var(--an-series-8)" />,
+      },
+      {
         id: "products-revenue", title: "Top products by revenue", group: "Commerce",
         keywords: "products best sellers revenue money shop items",
         body: <RankedBars points={snapshot.topProductsByRevenue} format={MONEY} accent="var(--an-series-2)" />,

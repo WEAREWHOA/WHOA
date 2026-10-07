@@ -1,15 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { getSquare } from "@/lib/square";
-import { checkAdminSecret } from "@/lib/squareAdminAuth";
+import { adminSecretFailure, adminUnauthorized } from "@/lib/squareAdminAuth";
 
 export const runtime = "nodejs";
 
 // One-time setup call: registers this deployment's webhook endpoint with
 // Square. Run once after deploying (see README), not on every request.
 export async function POST(req: Request) {
-  if (!checkAdminSecret(req)) {
-    return new Response("Unauthorized", { status: 401 });
-  }
+  const denied = adminSecretFailure(req);
+  if (denied) return adminUnauthorized(denied);
 
   const url = new URL(req.url);
   const notificationUrl = `${url.protocol}//${url.host}/api/webhooks/square`;

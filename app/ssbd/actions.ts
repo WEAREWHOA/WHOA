@@ -4,6 +4,7 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import { createAmbassador, getByEmail, getCredentialsByCode, getCredentialsByEmail, updatePermissions } from "@/lib/store";
 import { createSession, getSessionAmbassadorCode, hashPassword, verifyPassword } from "@/lib/auth";
 import { grantEventWorkSignup } from "@/lib/eventSales";
+import { recordContactInBackground, TAG } from "@/lib/newsletter";
 import { SSBD_CREW_HUB, SSBD_EVENT_ID } from "@/lib/ssbdCrew";
 
 /**
@@ -90,6 +91,18 @@ export async function ssbdSignupAction(formData: FormData) {
     const created = await createAmbassador({ name, email, passwordHash });
     await createSession(created.code);
     await onboard(created.code);
+
+    // Crew, so a contact rather than a subscriber: they signed up to work
+    // a show, and everything operational reaches them through the portal.
+    const [firstName, ...restOfName] = name.split(/\s+/);
+    recordContactInBackground({
+      email,
+      firstName: firstName || undefined,
+      lastName: restOfName.join(" ") || undefined,
+      source: "apply",
+      tags: [TAG.ambassadors, "SSBD Crew"],
+      accountCode: created.code,
+    });
   } catch (err) {
     unstable_rethrow(err);
     console.error("ssbdSignupAction failed:", err);

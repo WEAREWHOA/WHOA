@@ -1,6 +1,6 @@
 import { getSquare, getSquareLocationId } from "@/lib/square";
 import { getOnlineStoreChannelId } from "@/lib/catalog";
-import { checkAdminSecret } from "@/lib/squareAdminAuth";
+import { adminSecretFailure, adminUnauthorized } from "@/lib/squareAdminAuth";
 
 export const runtime = "nodejs";
 
@@ -11,9 +11,8 @@ export const runtime = "nodejs";
 // channels array (Square's own, read-only, computed field) includes it —
 // so a broken match can be diagnosed without guessing.
 export async function POST(req: Request) {
-  if (!checkAdminSecret(req)) {
-    return new Response("Unauthorized", { status: 401 });
-  }
+  const denied = adminSecretFailure(req);
+  if (denied) return adminUnauthorized(denied);
 
   try {
     const square = getSquare();

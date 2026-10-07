@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { resolveAccount } from "@/lib/accountAuth";
 import { getSessionAmbassadorCode } from "@/lib/auth";
+import { recordContactInBackground, TAG } from "@/lib/newsletter";
 import { recordStamp, type StampResult } from "@/lib/scavenger";
 
 export interface EnterResult {
@@ -37,6 +38,16 @@ export async function enterExperienceAction(input: {
   if (!account.code) {
     return { ok: false, error: "We couldn't sign you in — check your details and try again." };
   }
+
+  const [firstName, ...restOfName] = name.split(/\s+/);
+  recordContactInBackground({
+    email,
+    firstName: firstName || undefined,
+    lastName: restOfName.join(" ") || undefined,
+    source: "experience",
+    tags: [TAG.experiences],
+    accountCode: account.code,
+  });
 
   return { ok: true };
 }

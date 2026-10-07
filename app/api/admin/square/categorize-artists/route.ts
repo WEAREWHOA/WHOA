@@ -1,4 +1,4 @@
-import { checkAdminSecret } from "@/lib/squareAdminAuth";
+import { adminSecretFailure, adminUnauthorized } from "@/lib/squareAdminAuth";
 import { backfillArtistCategories } from "@/lib/squareSync";
 
 // Catch-up run, not part of initial setup — safe to click again any time
@@ -8,9 +8,8 @@ export const maxDuration = 300;
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
-  if (!checkAdminSecret(req)) {
-    return new Response("Unauthorized", { status: 401 });
-  }
+  const denied = adminSecretFailure(req);
+  if (denied) return adminUnauthorized(denied);
 
   try {
     const result = await backfillArtistCategories();
