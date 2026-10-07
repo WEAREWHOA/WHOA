@@ -27,13 +27,13 @@ export default function AboutPage() {
           href="/about/story"
           className="card-surface group rounded-2xl border border-border p-6 transition-colors hover:border-flame-2/50"
         >
-          <h2 className="font-display text-2xl">Our Story &amp; Mission</h2>
+          <h2 className="font-display text-2xl">The History of WHOA</h2>
           <p className="mt-2 text-sm text-muted">
             A song and a single hand-dyed t-shirt in 2015, now a shop in Ocean Beach, festival
             pop-ups, and one-of-a-kind pieces made for individuality.
           </p>
           <span className="text-flame mt-4 inline-block text-xs font-semibold tracking-wide uppercase">
-            Read our story →
+            Read the history →
           </span>
         </Link>
 

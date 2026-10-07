@@ -1,28 +1,29 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 
 export const metadata: Metadata = {
   // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
   // Square Online sprayed around consolidate here instead of
   // competing as separate pages.
   alternates: { canonical: "/about/story" },
-  title: "About",
+  title: "The History of WHOA",
   description:
     "WHOA began in 2015 with a song and one hand-dyed t-shirt. Now a collector's brand of 1-of-1 hand-painted apparel, a shop in Ocean Beach, and pop-ups across San Diego.",
 };
 
 export default function AboutPage() {
   return (
-    <section className="relative flex flex-1 flex-col items-center overflow-hidden px-6 py-20">
-      <PsychedelicBackground />
-
+    <section className="relative flex flex-1 flex-col items-center px-6 py-20">
       <div className="relative z-10 max-w-2xl text-center">
         <span className="text-xs font-semibold tracking-[0.3em] text-white/70 uppercase">
           Since 2015
         </span>
-        <h1 className="text-psychedelic font-display mt-3 text-5xl tracking-wide sm:text-6xl">
-          About WHOA
+        <h1 className="text-psychedelic font-display mt-3 text-4xl tracking-wide uppercase sm:text-5xl lg:text-6xl">
+          {/* Two blocks rather than one wrapping line, so the break lands
+              after "Extraordinary" at every width instead of wherever the
+              container happens to run out. */}
+          <span className="block">The Extraordinary</span>
+          <span className="block">History of WHOA</span>
         </h1>
 
         <div className="card-surface mt-10 rounded-2xl p-6 text-left sm:p-8">
