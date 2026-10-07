@@ -119,6 +119,39 @@ export async function syncFullCatalog(): Promise<{ productIds: string[]; variati
   return { productIds, variationIds };
 }
 
+/**
+ * The stock mirror, rebuilt for the variations given.
+ *
+ * batchGetCounts does NOT return one row per item per location. It
+ * returns one row per item per location PER STATE, and Square has
+ * seventeen of them: IN_STOCK, SOLD, WASTE, RESERVED_FOR_SALE,
+ * RETURNED_BY_CUSTOMER and so on. Asking without naming a state gets
+ * them all, which caused three separate problems here:
+ *
+ *   The upsert died on "ON CONFLICT DO UPDATE command cannot affect row
+ *   a second time". A variation with both an IN_STOCK and a SOLD count
+ *   at one location is two rows with the same primary key, and one
+ *   statement cannot update the same row twice.
+ *
+ *   Worse, when it did not die it could be wrong. A sold-out one-of-one
+ *   often has only a SOLD count left, no IN_STOCK row at all, so the
+ *   quantity written was the number SOLD and the piece read as in
+ *   stock. That is the opposite of the truth, on the inventory that
+ *   matters most here.
+ *
+ *   Only the first page was read. The same bug lib/catalog.ts already
+ *   warns about: batchGetCounts paginates, and `page.data` is one page.
+ *
+ * So this now does what lib/catalog.ts's getInventoryCounts has always
+ * done: ask for IN_STOCK only, and iterate the pages rather than the
+ * first of them.
+ *
+ * It also writes a zero for every pair it asked about and got nothing
+ * back for. Absence of a count is Square saying the item has not
+ * interacted with that state at that location, which is a real zero, and
+ * without writing it a variation that sells out keeps whatever row it
+ * last had and stays "in stock" forever.
+ */
 export async function syncInventoryForVariations(variationIds: string[]): Promise<void> {
   if (variationIds.length === 0) return;
 
@@ -127,23 +160,41 @@ export async function syncInventoryForVariations(variationIds: string[]): Promis
   const locationIds = await getAllLocationIds();
   if (locationIds.length === 0) return;
 
+  const key = (variationId: string, locationId: string) => `${variationId}\u0000${locationId}`;
+
   // Square caps batchGetCounts at 1000 catalog object ids per request; we
   // chunk well under that to keep individual calls fast. One upsert per
   // chunk (not per row) for the same reason as syncFullCatalog above.
   for (const ids of chunk(variationIds, 100)) {
+    // Every pair asked about starts at zero, so a pair Square returns
+    // nothing for is written as nothing rather than left at whatever it
+    // was last time.
+    const quantities = new Map<string, number>();
+    for (const variationId of ids) {
+      for (const locationId of locationIds) quantities.set(key(variationId, locationId), 0);
+    }
+
     const page = await square.inventory.batchGetCounts({
       catalogObjectIds: ids,
       locationIds,
+      states: ["IN_STOCK"],
     });
 
-    const rows = page.data
-      .filter((count) => count.catalogObjectId && count.locationId)
-      .map((count) => ({
-        variation_id: count.catalogObjectId,
-        location_id: count.locationId,
-        quantity: Number(count.quantity ?? 0),
-        updated_at: new Date().toISOString(),
-      }));
+    for await (const count of page) {
+      if (!count.catalogObjectId || !count.locationId) continue;
+      const k = key(count.catalogObjectId, count.locationId);
+      // Summed rather than assigned. One state is asked for, so a repeat
+      // should not happen, but a Map keyed on the primary key is what
+      // makes the upsert structurally incapable of carrying the same row
+      // twice, whatever Square returns.
+      quantities.set(k, (quantities.get(k) ?? 0) + Number(count.quantity ?? 0));
+    }
+
+    const updatedAt = new Date().toISOString();
+    const rows = [...quantities.entries()].map(([k, quantity]) => {
+      const [variation_id, location_id] = k.split("\u0000");
+      return { variation_id, location_id, quantity, updated_at: updatedAt };
+    });
 
     if (rows.length > 0) {
       const { error } = await supabase.from("square_inventory_counts").upsert(rows);
