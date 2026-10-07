@@ -29,8 +29,8 @@ export default function AboutPage() {
         >
           <h2 className="font-display text-2xl">Our Story &amp; Mission</h2>
           <p className="mt-2 text-sm text-muted">
-            &ldquo;WHOA&rdquo; is the word you say when you&apos;re too impressed to find any
-            other words — one-of-a-kind designs, made for individuality.
+            A song and a single hand-dyed t-shirt in 2015, now a shop in Ocean Beach, festival
+            pop-ups, and one-of-a-kind pieces made for individuality.
           </p>
           <span className="text-flame mt-4 inline-block text-xs font-semibold tracking-wide uppercase">
             Read our story →

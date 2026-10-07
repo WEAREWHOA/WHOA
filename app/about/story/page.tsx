@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/about/story" },
   title: "About",
   description:
-    "Collector's fashion brand blending streetwear & art, offering rare 1-of-1 pieces, bold apparel & immersive retail experiences.",
+    "WHOA began in 2015 with a song and one hand-dyed t-shirt. Now a collector's brand of 1-of-1 hand-painted apparel, a shop in Ocean Beach, and pop-ups across San Diego.",
 };
 
 export default function AboutPage() {
@@ -19,7 +19,7 @@ export default function AboutPage() {
 
       <div className="relative z-10 max-w-2xl text-center">
         <span className="text-xs font-semibold tracking-[0.3em] text-white/70 uppercase">
-          A common reaction
+          Since 2015
         </span>
         <h1 className="text-psychedelic font-display mt-3 text-5xl tracking-wide sm:text-6xl">
           About WHOA
@@ -27,14 +27,27 @@ export default function AboutPage() {
 
         <div className="card-surface mt-10 rounded-2xl p-6 text-left sm:p-8">
           <p className="text-lg leading-relaxed text-foreground/90">
+            WHOA started with a rhythm and a thread, under the Southern California sun. In 2015,
+            WASANI and Reece dropped the official WHOA song and pressed their very first t-shirt.
+            What began as a handful of hand-dyed tees has since rippled through the entire world.
+            Today, that spark has evolved into a canvas for one-of-a-kind, hand-painted apparel,
+            legendary pop-ups, and collaborative art. From our flagship shop in Ocean Beach to
+            massive festival activations, WHOA isn&apos;t just a brand anymore, it&apos;s a
+            movement born from expression.
+          </p>
+        </div>
+
+        <div className="card-surface mt-6 rounded-2xl p-6 text-left sm:p-8">
+          <h2 className="font-display text-2xl tracking-wide">What WHOA means</h2>
+          <p className="mt-3 leading-relaxed text-foreground/90">
             Impressed? Excited? Confused? Surprised? &ldquo;WHOA&rdquo; is the word we use when
-            we&apos;re so enamored we can&apos;t even formulate words — and that&apos;s how people
+            we&apos;re so enamored we can&apos;t even formulate words, and that&apos;s how people
             feel when they look at you, and all the unique traits that set you apart from
             everybody else.
           </p>
           <p className="mt-5 text-sm leading-relaxed text-muted">
-            Just like you, WHOA designs are one-of-a-kind. No two pieces are ever the same — every
-            piece has its own unique energy. Different patterns, different dyes, different
+            Just like you, WHOA designs are one-of-a-kind. No two pieces are ever the same. Every
+            piece has its own unique energy: different patterns, different dyes, different
             fabrics, different shades of color. That&apos;s what makes each one special. It&apos;s
             time to celebrate that individuality of yours.
           </p>

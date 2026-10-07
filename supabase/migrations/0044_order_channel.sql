@@ -16,14 +16,21 @@
 -- our reading of it. Keeping the raw value means a later disagreement
 -- about the reading can be settled without a resync.
 alter table square_orders
-  -- SHIPMENT | PICKUP | DIGITAL | null. Null means Square reported no
-  -- fulfillment at all, which is what an in-person sale looks like.
+  -- Square's own value: SHIPMENT | DELIVERY | PICKUP | IN_STORE, or null.
+  -- Null means Square reported no fulfillment at all, which is what a
+  -- sale rung up at the register looks like.
   add column if not exists fulfillment_type text,
-  -- online | in_person | unknown. Null on rows written before this
-  -- migration, which is NOT the same as unknown: it means nobody has
-  -- looked yet. The analytics tab counts those separately rather than
-  -- guessing, so a half-backfilled table cannot quietly understate
-  -- online sales.
+  -- online | in_person | unknown, derived from the type above.
+  --   online      SHIPMENT or DELIVERY, both of which need an address,
+  --               and only a web order collects one
+  --   in_person   no fulfillment, or IN_STORE
+  --   unknown     PICKUP, which genuinely covers both a web order
+  --               somebody collects and a counter sale rung up for
+  --               later. Left unsplit rather than guessed: a wrong
+  --               split is worse than an honest gap.
+  -- Null is NOT unknown. Null means the row predates this migration and
+  -- nobody has looked yet. The analytics tab counts those separately, so
+  -- a half-backfilled table cannot quietly understate online sales.
   add column if not exists channel text;
 
 alter table square_orders
