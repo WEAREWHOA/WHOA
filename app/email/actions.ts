@@ -1,6 +1,7 @@
 "use server";
 
 import { getSessionAmbassadorCode } from "@/lib/auth";
+import { isCampaignListId, type CampaignListId } from "@/lib/campaignLists";
 import { getByCode } from "@/lib/store";
 import {
   applyImportPlan,
@@ -212,9 +213,15 @@ export async function saveCampaignAction(input: {
   html: string;
   text?: string;
   segmentId: string;
+  listId?: CampaignListId;
 }): Promise<Simple> {
   return guarded(async () => {
-    const payload = { ...input, from: marketingFrom(), replyTo: marketingReplyTo() };
+    // Validated rather than trusted: this arrives from the browser, and
+    // an unrecognised id would silently become "no topic", which sends to
+    // everybody. Better to drop it the same way and say so in the log.
+    const listId = input.listId && isCampaignListId(input.listId) ? input.listId : undefined;
+    if (input.listId && !listId) console.error(`Ignored an unknown campaign list: ${input.listId}`);
+    const payload = { ...input, listId, from: marketingFrom(), replyTo: marketingReplyTo() };
     if (input.id) {
       await updateDraft(input.id, payload);
       return { ok: true, id: input.id };
