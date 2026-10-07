@@ -2316,3 +2316,102 @@ body {
     }
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Blog post body                                                      */
+/* ------------------------------------------------------------------ */
+/* The post body is rendered from Markdown (see lib/markdown.ts), so it
+   arrives as plain tags with no classes on them. Styling by element is
+   the only option, and scoping it to .blog-body keeps it from leaking
+   into the rest of the app, where a bare <p> or <h2> means something
+   else entirely. */
+
+.blog-body {
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.8;
+}
+
+.blog-body > * + * {
+  margin-top: 1.25rem;
+}
+
+.blog-body h2,
+.blog-body h3,
+.blog-body h4 {
+  color: var(--foreground);
+  font-family: var(--font-display), system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
+  /* More space above a heading than below it, so a heading reads as
+     belonging to what follows rather than floating between two things. */
+  margin-top: 2.5rem;
+  margin-bottom: -0.25rem;
+}
+
+.blog-body h2 { font-size: 1.75rem; }
+.blog-body h3 { font-size: 1.375rem; }
+.blog-body h4 { font-size: 1.125rem; }
+
+.blog-body a {
+  color: var(--flame-2);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.blog-body strong { color: var(--foreground); font-weight: 700; }
+
+.blog-body ul,
+.blog-body ol {
+  padding-left: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.blog-body ul { list-style: disc; }
+.blog-body ol { list-style: decimal; }
+
+.blog-body blockquote {
+  border-left: 3px solid var(--flame-2);
+  padding-left: 1.25rem;
+  color: var(--foreground);
+  font-style: italic;
+}
+
+.blog-body code {
+  background: var(--surface-raised, #1a1511);
+  border: 1px solid var(--border-strong, #2a231b);
+  border-radius: 0.375rem;
+  padding: 0.1em 0.4em;
+  font-size: 0.9em;
+}
+
+.blog-body pre {
+  background: var(--surface-raised, #1a1511);
+  border: 1px solid var(--border-strong, #2a231b);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+}
+/* The <pre> already carries the frame, so the <code> inside it must not
+   draw a second one. */
+.blog-body pre code {
+  background: none;
+  border: 0;
+  padding: 0;
+}
+
+.blog-body hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 2.5rem 0;
+}
+
+.blog-img,
+.blog-body img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border);
+}

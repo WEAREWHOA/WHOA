@@ -52,6 +52,7 @@ export async function GET() {
 - [Our story](${SITE_URL}/about/story)
 - [Our history, 2015 to today](${SITE_URL}/about/history)
 - [Partnerships, donations and how we try to keep this eco-friendly](${SITE_URL}/partnerships)
+- [Blog: how the pieces get made, the artists, and what happens at a pop-up](${SITE_URL}/blog)
 - [The WHOA Podcast](${SITE_URL}/podcast)
 - [FAQ](${SITE_URL}/faq)
 

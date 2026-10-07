@@ -63,6 +63,8 @@ export interface AccountPermissions {
   // goes into the structured data Google reads, so it is granted one
   // account at a time like the other admin tabs.
   reviews: boolean;
+  // BLOG tab: writing, editing and publishing posts on /blog.
+  blog: boolean;
   // ANALYTICS tab: traffic, revenue, payouts and funnels for the whole
   // business in one place. Off by default — it's the widest view of the
   // company there is, wider than any single admin tab.

@@ -54,7 +54,7 @@ export default function AboutPage() {
           than the two above it: six boxes that are nearly the same size
           read worse than six that obviously are. */}
       <div className="mt-10 grid auto-rows-fr gap-6 sm:grid-cols-2">
-        <AboutCard href="/about/story" title="Our Story &amp; Mission" cta="Read our story">
+        <AboutCard href="/about/story" title="Our Mission" cta="Read our story">
           &ldquo;WHOA&rdquo; is the word you say when you&apos;re too impressed to find any other
           words. One-of-a-kind designs, made for individuality.
         </AboutCard>
