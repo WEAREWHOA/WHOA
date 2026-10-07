@@ -2253,3 +2253,66 @@ body {
     overflow-x: auto;
   }
 }
+
+/* /about/history: the road the timeline runs down, the stops on it, and
+   the route on the map. Static by default; the motion only switches on
+   for people who haven't asked for less of it. */
+.history-road {
+  background-image: linear-gradient(
+    180deg,
+    #ff2fb0,
+    #7b2ff7,
+    #29e6ff,
+    #baff29,
+    #fff229,
+    #ff8a29,
+    #ff2fb0
+  );
+  opacity: 0.7;
+}
+
+.history-stop {
+  background-image: linear-gradient(135deg, var(--flame-1), var(--flame-3));
+  box-shadow: 0 0 24px rgba(255, 122, 0, 0.55);
+}
+
+.history-pin:hover circle,
+.history-pin:focus-visible circle {
+  filter: brightness(1.3);
+}
+
+@keyframes history-route-march {
+  to { stroke-dashoffset: -110; }
+}
+
+@keyframes history-pin-pulse {
+  0%, 100% { opacity: 0.5; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+@keyframes history-reveal {
+  from { opacity: 0; transform: translateY(28px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .history-route {
+    animation: history-route-march 6s linear infinite;
+  }
+
+  .history-pin-pulse {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: history-pin-pulse 2.8s ease-in-out infinite;
+  }
+
+  /* Scroll-driven where the browser supports it; everywhere else the
+     cards are simply there, which is also what a crawler sees. */
+  @supports (animation-timeline: view()) {
+    .history-reveal {
+      animation: history-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 40%;
+    }
+  }
+}

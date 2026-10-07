@@ -16,7 +16,11 @@ const organization = {
   "@context": "https://schema.org",
   "@type": "OnlineStore",
   name: "WHOA",
+  alternateName: "WE ARE WHOA",
   url: SITE_URL,
+  // Both on /about/history.
+  foundingDate: "2015",
+  founder: { "@type": "Person", name: "WASANI", url: `${SITE_URL}/music-collective/wasani` },
   description:
     "One-of-a-kind hand-bleached and hand-painted apparel from San Diego, California. Every piece is finished by hand, so no two are alike.",
   email: "info@wearewhoa.com",
