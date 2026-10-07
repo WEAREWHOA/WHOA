@@ -78,6 +78,12 @@ export default function AboutPage() {
             Shop WHOA
           </Link>
           <Link
+            href="/about/history"
+            className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold tracking-wide text-white/80 uppercase transition-colors hover:border-flame-2/60 hover:text-white"
+          >
+            Our history
+          </Link>
+          <Link
             href="/contact"
             className="rounded-full border border-white/20 px-6 py-3 text-sm font-semibold tracking-wide text-white/80 uppercase transition-colors hover:border-flame-2/60 hover:text-white"
           >

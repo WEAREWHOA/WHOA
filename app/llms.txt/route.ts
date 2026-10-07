@@ -50,6 +50,7 @@ export async function GET() {
 
 - [About WHOA](${SITE_URL}/about)
 - [Our story](${SITE_URL}/about/story)
+- [Our history, 2015 to today](${SITE_URL}/about/history)
 - [Partnerships, donations and how we try to keep this eco-friendly](${SITE_URL}/partnerships)
 - [The WHOA Podcast](${SITE_URL}/podcast)
 - [FAQ](${SITE_URL}/faq)

@@ -95,6 +95,23 @@ export default function AboutPage() {
             Find us in person →
           </span>
         </Link>
+
+        {/* Also full width, for the same reason as the card above: the
+            years and place names are what people search ("when was WHOA
+            founded"), so they're written into the link, not behind it. */}
+        <Link
+          href="/about/history"
+          className="card-surface group rounded-2xl border border-border p-6 transition-colors hover:border-flame-2/50 sm:col-span-2"
+        >
+          <h2 className="font-display text-2xl">Our History</h2>
+          <p className="mt-2 max-w-2xl text-sm text-muted">
+            From the first WHOA song and a hand-dyed tee in San Diego in 2015, through beach
+            pop-ups, artist collabs and Art Basel, to our own shop in Ocean Beach.
+          </p>
+          <span className="text-flame mt-4 inline-block text-xs font-semibold tracking-wide uppercase">
+            See the timeline →
+          </span>
+        </Link>
       </div>
 
       <h2 className="font-display mt-14 text-2xl tracking-wide">More info</h2>
