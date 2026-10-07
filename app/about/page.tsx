@@ -1,4 +1,5 @@
 import Link from "next/link";
+import AboutCard from "@/components/about/AboutCard";
 import PodcastBox from "@/components/about/PodcastBox";
 import type { Metadata } from "next";
 
@@ -22,96 +23,62 @@ export default function AboutPage() {
         About <span className="text-flame">WHOA</span>
       </h1>
 
-      <div className="mt-10 grid gap-6 sm:grid-cols-2">
-        <Link
-          href="/about/story"
-          className="card-surface group rounded-2xl border border-border p-6 transition-colors hover:border-flame-2/50"
-        >
-          <h2 className="font-display text-2xl">Our Story &amp; Mission</h2>
-          <p className="mt-2 text-sm text-muted">
-            &ldquo;WHOA&rdquo; is the word you say when you&apos;re too impressed to find any
-            other words — one-of-a-kind designs, made for individuality.
-          </p>
-          <span className="text-flame mt-4 inline-block text-xs font-semibold tracking-wide uppercase">
-            Read our story →
-          </span>
-        </Link>
+      {/* Six tiles, two columns, three clean rows.
+          
+          Two of these used to span both columns, from back when there were
+          five and a fifth tile would have left an orphan on the bottom
+          row. Six divides by two, so the exception no longer buys
+          anything and the uneven grid was just uneven.
 
-        <Link
-          href="/contact"
-          className="card-surface group rounded-2xl border border-border p-6 transition-colors hover:border-flame-2/50"
-        >
-          <h2 className="font-display text-2xl">Contact</h2>
-          <p className="mt-2 text-sm text-muted">
-            Pricing, wholesale orders, custom designs, or events — email, call, or send a message.
-          </p>
-          <span className="text-flame mt-4 inline-block text-xs font-semibold tracking-wide uppercase">
-            Get in touch →
-          </span>
-        </Link>
+          The order is intent, not alphabet, reading left to right and top
+          to bottom the way people actually scan a grid:
+
+            1-2  who WHOA is, and how it got here. The narrative pair,
+                 and /about/history is the page that answers the
+                 informational searches ("when was WHOA founded"), so it
+                 sits as high as the link equity on this page can put it.
+            3-4  the two that ask for something back. Retail Locations is
+                 the highest-intent tile on the page, the one somebody
+                 reads right before getting in a car, and its street
+                 names and neighbourhoods are the words people search
+                 for, so they stay written into the link rather than
+                 hidden behind "click here". Partnerships is the trust
+                 that makes the first one worth acting on.
+            5-6  the long tail. The podcast for anybody still reading,
+                 then Contact, which sits directly above the FAQ and
+                 policy links below it so the whole practical cluster
+                 ends the page together. */}
+      {/* auto-rows-fr so all three rows are the height of the tallest
+          tile, not just the tiles within each row. A grid already
+          equalises its items row by row, which left the last row shorter
+          than the two above it: six boxes that are nearly the same size
+          read worse than six that obviously are. */}
+      <div className="mt-10 grid auto-rows-fr gap-6 sm:grid-cols-2">
+        <AboutCard href="/about/story" title="Our Story &amp; Mission" cta="Read our story">
+          &ldquo;WHOA&rdquo; is the word you say when you&apos;re too impressed to find any other
+          words. One-of-a-kind designs, made for individuality.
+        </AboutCard>
+
+        <AboutCard href="/about/history" title="Our History" cta="See the timeline">
+          From the first WHOA song and a hand-dyed tee in Southern California in 2015, through
+          beach pop-ups, artist collabs and Art Basel, to our own shop in Ocean Beach.
+        </AboutCard>
+
+        <AboutCard href="/stores" title="Retail Locations" cta="Find us in person">
+          The WHOADEGA, our shop on Newport Ave in Ocean Beach. Our own section inside Pangaea
+          Outpost on Garnet Ave in Pacific Beach. And a stall wherever we&apos;re running an event.
+        </AboutCard>
+
+        <AboutCard href="/partnerships" title="Partnerships" cta="See who we support">
+          Where our donations go, how we try to keep this eco-friendly, and the artists and
+          musicians we work with.
+        </AboutCard>
 
         <PodcastBox />
 
-        {/* The fourth card, so the four close a square. It used to be a
-            wide bar under the other three holding every donation figure
-            and both collectives — too much to read in a summary grid, so
-            the detail moved to /partnerships. */}
-        <Link
-          href="/partnerships"
-          className="card-surface group rounded-2xl border border-border p-6 transition-colors hover:border-flame-2/50"
-        >
-          <h2 className="font-display text-2xl">Partnerships</h2>
-          <p className="mt-2 text-sm text-muted">
-            Where our donations go, how we try to keep this eco-friendly, and the artists and
-            musicians we work with.
-          </p>
-          <span className="text-flame mt-4 inline-block text-xs font-semibold tracking-wide uppercase">
-            See who we support →
-          </span>
-        </Link>
-
-        {/* Across both columns rather than a fifth box in the grid: four
-            cards close a square and a fifth would leave an orphan on the
-            bottom row.
-
-            It also earns the width. This is the only card that answers
-            "where can I actually go and buy this", which is a question
-            somebody asks right before getting in a car, and the street
-            names in it are the words people search for. A link from a
-            page that is already crawled this heavily, with the
-            neighbourhoods written out rather than hidden behind "click
-            here", is most of what makes /stores findable at all. */}
-        <Link
-          href="/stores"
-          className="card-surface group rounded-2xl border border-border p-6 transition-colors hover:border-flame-2/50 sm:col-span-2"
-        >
-          <h2 className="font-display text-2xl">Retail Locations</h2>
-          <p className="mt-2 max-w-2xl text-sm text-muted">
-            The WHOADEGA, our shop on Newport Ave in Ocean Beach. Our own section inside Pangaea
-            Outpost on Garnet Ave in Pacific Beach. And a stall wherever we&apos;re running an
-            event.
-          </p>
-          <span className="text-flame mt-4 inline-block text-xs font-semibold tracking-wide uppercase">
-            Find us in person →
-          </span>
-        </Link>
-
-        {/* Also full width, for the same reason as the card above: the
-            years and place names are what people search ("when was WHOA
-            founded"), so they're written into the link, not behind it. */}
-        <Link
-          href="/about/history"
-          className="card-surface group rounded-2xl border border-border p-6 transition-colors hover:border-flame-2/50 sm:col-span-2"
-        >
-          <h2 className="font-display text-2xl">Our History</h2>
-          <p className="mt-2 max-w-2xl text-sm text-muted">
-            From the first WHOA song and a hand-dyed tee in San Diego in 2015, through beach
-            pop-ups, artist collabs and Art Basel, to our own shop in Ocean Beach.
-          </p>
-          <span className="text-flame mt-4 inline-block text-xs font-semibold tracking-wide uppercase">
-            See the timeline →
-          </span>
-        </Link>
+        <AboutCard href="/contact" title="Contact" cta="Get in touch">
+          Pricing, wholesale orders, custom designs, or events. Email, call, or send a message.
+        </AboutCard>
       </div>
 
       <h2 className="font-display mt-14 text-2xl tracking-wide">More info</h2>
