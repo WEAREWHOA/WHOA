@@ -13,13 +13,13 @@ export interface HistoryEntry {
 }
 
 export const HISTORY_DESCRIPTION =
-  "WHOA's history, 2015 to today: from WASANI's first WHOA song and hand-dyed tees in San Diego to beach pop-ups, artist collabs, our Ocean Beach shop and SSBD.";
+  "WHOA's history, 2015 to today: from WASANI's first WHOA song and hand-dyed tees in Southern California to beach pop-ups, artist collabs, our Ocean Beach shop and SSBD.";
 
 export const HISTORY: HistoryEntry[] = [
   {
     year: "2015",
     title: "It starts with a song",
-    place: "San Diego",
+    place: "Southern California",
     milestones: [
       "WASANI and Reece release the official WHOA song.",
       "The first WHOA stickers are printed and the first WHOA t-shirt is made.",

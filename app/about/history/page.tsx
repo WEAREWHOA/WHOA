@@ -41,7 +41,14 @@ function buildJsonLd(): string {
           alternateName: "WE ARE WHOA",
           url: SITE_URL,
           foundingDate: "2015",
-          foundingLocation: { "@type": "Place", name: "San Diego, California" },
+          // Southern California, matching the page. The narrower claim
+          // belongs to the business rather than the founding: the
+          // Organization markup in lib/organization.ts still places WHOA
+          // in San Diego, California, which is what local search reads,
+          // and the shop and beach pop-up entries below name the city
+          // repeatedly. Structured data that contradicts the visible page
+          // is the one thing it must never do.
+          foundingLocation: { "@type": "Place", name: "Southern California" },
           founder: {
             "@type": "Person",
             name: "WASANI",
