@@ -101,8 +101,8 @@ function buildJsonLd(locations: StoreLocation[]): string {
   return JSON.stringify(jsonLd).replace(/</g, "\\u003c");
 }
 
-export default function StoresPage() {
-  const locations = allLocations();
+export default async function StoresPage() {
+  const locations = await allLocations();
   const counts = locations.reduce<Partial<Record<StoreKind, number>>>((acc, l) => {
     acc[l.kind] = (acc[l.kind] ?? 0) + 1;
     return acc;

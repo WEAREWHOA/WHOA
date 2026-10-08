@@ -1,4 +1,5 @@
-import { EVENTS, sortEventsByProximity, type EventInfo } from "@/lib/events";
+import { sortEventsByProximity, type EventInfo } from "@/lib/events";
+import { getAllEvents } from "@/lib/eventsStore";
 
 /**
  * Where you can buy WHOA in person.
@@ -150,9 +151,9 @@ export const PERMANENT_LOCATIONS: StoreLocation[] = [
  * Anything at Newport Ave is the shop itself rather than a pop-up, and
  * listing it twice would make one address look like two places to visit.
  */
-export function eventPopUps(now: Date = new Date()): StoreLocation[] {
+export async function eventPopUps(now: Date = new Date()): Promise<StoreLocation[]> {
   const upcoming = sortEventsByProximity(
-    EVENTS.filter((e) => {
+    (await getAllEvents()).filter((e) => {
       const end = e.endDate ?? e.startDate;
       if (!end) return false;
       // Compared as dates, not timestamps: an event is still on today
@@ -212,6 +213,6 @@ function parseLocation(location: string): StoreAddress | undefined {
 
 /** Everything, in the order the page lists it: the shop, then the
  *  pop-ups inside other shops, then whatever is on this month. */
-export function allLocations(now: Date = new Date()): StoreLocation[] {
-  return [...PERMANENT_LOCATIONS, ...eventPopUps(now)];
+export async function allLocations(now: Date = new Date()): Promise<StoreLocation[]> {
+  return [...PERMANENT_LOCATIONS, ...(await eventPopUps(now))];
 }

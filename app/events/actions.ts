@@ -6,15 +6,15 @@ import { getSquare, getSquareLocationId } from "@/lib/square";
 import { resolveAccount } from "@/lib/accountAuth";
 import { setSquareCustomerId } from "@/lib/store";
 import { findOrCreateSquareCustomerId } from "@/lib/squareCustomers";
-import { createRsvpRecord } from "@/lib/eventRsvps";
+import { countGuestsForEvent, createRsvpRecord } from "@/lib/eventRsvps";
 import { sendEventConfirmationEmail, sendTicketRecordFailureAlert } from "@/lib/email";
 import {
   clampTicketQuantity,
-  EVENTS,
   getCurrentPriceCents,
   isTicketingOpen,
   requiresDamageWaiver,
 } from "@/lib/events";
+import { getEventById } from "@/lib/eventsStore";
 import { SITE_URL } from "@/lib/site";
 import { eventTag, recordContactInBackground, subscribe, TAG } from "@/lib/newsletter";
 
@@ -64,7 +64,7 @@ export async function eventRsvpAction(input: {
   // without that being permission to market to them.
   joinList?: boolean;
 }): Promise<EventRsvpResult> {
-  const event = EVENTS.find((e) => e.id === input.eventId);
+  const event = await getEventById(input.eventId);
   if (!event) {
     return { ok: false, error: "That event couldn't be found." };
   }
@@ -98,6 +98,41 @@ export async function eventRsvpAction(input: {
   // A free RSVP is one person. Batching only makes sense for something
   // being paid for.
   const quantity = priceCents > 0 ? clampTicketQuantity(input.quantity ?? 1) : 1;
+
+  // Capacity, checked before anything is charged.
+  //
+  // Only created events carry one; the hand-written list has no such
+  // column, and `capacity in event` is how an EventInfo that happens to
+  // be a CustomEventRecord is told apart without importing the admin
+  // type into the public path.
+  //
+  // This is a check, not a lock. Two people buying the last two tickets
+  // in the same instant can both pass it, because holding a row lock
+  // across a Square charge is a worse failure than occasionally being
+  // one over: the alternative blocks a till on a payment provider's
+  // latency. A room that cannot absorb one extra guest should set the
+  // capacity one lower.
+  const capacity = (event as { capacity?: number | null }).capacity ?? null;
+  if (capacity != null) {
+    let alreadyBooked: number;
+    try {
+      alreadyBooked = await countGuestsForEvent(event.id);
+    } catch (err) {
+      console.error("Couldn't check capacity, refusing the booking:", err);
+      return { ok: false, error: "We couldn't check availability just now. Please try again." };
+    }
+
+    const remaining = capacity - alreadyBooked;
+    if (remaining <= 0) {
+      return { ok: false, error: "This event is sold out." };
+    }
+    if (quantity > remaining) {
+      return {
+        ok: false,
+        error: `Only ${remaining} ${remaining === 1 ? "spot is" : "spots are"} left.`,
+      };
+    }
+  }
   if (priceCents > 0 && !input.token) {
     return { ok: false, error: "Card details are required for a paid ticket." };
   }

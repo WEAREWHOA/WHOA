@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { getSessionAmbassadorCode } from "@/lib/auth";
 import { getByCode } from "@/lib/store";
 import { getRsvpById } from "@/lib/eventRsvps";
-import { EVENTS } from "@/lib/events";
+import { getEventById } from "@/lib/eventsStore";
 import { formatCents } from "@/lib/money";
 import { checkInByIdAction, undoCheckInAction } from "@/app/rsvp-admin/actions";
 
@@ -36,7 +36,7 @@ export default async function CheckinPage(props: PageProps<"/checkin/[rsvpId]">)
   });
   if (!rsvp) notFound();
 
-  const event = EVENTS.find((e) => e.id === rsvp.eventId);
+  const event = await getEventById(rsvp.eventId);
   if (!event) notFound();
 
   const sessionCode = await getSessionAmbassadorCode();

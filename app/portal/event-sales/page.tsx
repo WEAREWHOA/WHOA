@@ -1,7 +1,7 @@
 import EventSalesTab from "@/components/dashboard/tabs/EventSalesTab";
 import MediaLibrary from "@/components/portal/MediaLibrary";
 import PortalNotices, { text, type PortalSearchParams } from "@/components/portal/PortalNotices";
-import { EVENTS } from "@/lib/events";
+import { getAllEvents } from "@/lib/eventsStore";
 import { getScheduleForAccount, getSignupsForAccount } from "@/lib/eventSales";
 import { allowedKinds, listMedia } from "@/lib/media";
 import { requirePortalTab } from "@/lib/portalAccess";
@@ -22,7 +22,7 @@ export default async function PortalEventSalesPage(props: PageProps<"/portal/eve
     timeZone: "America/Los_Angeles",
     year: "numeric", month: "2-digit", day: "2-digit",
   }).format(new Date());
-  const upcoming = EVENTS
+  const upcoming = (await getAllEvents())
     .filter((e) => (e.endDate ?? e.startDate) >= today)
     .sort((a, b) => a.startDate.localeCompare(b.startDate));
 

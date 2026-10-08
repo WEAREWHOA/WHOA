@@ -3,7 +3,7 @@ import Link from "next/link";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 import SsbdCrewForm from "@/components/ssbd/SsbdCrewForm";
 import { getSessionAmbassadorCode } from "@/lib/auth";
-import { EVENTS } from "@/lib/events";
+import { getEventById } from "@/lib/eventsStore";
 import { getSignupsForAccount } from "@/lib/eventSales";
 import { getByCode } from "@/lib/store";
 import { SSBD_CREW_HUB, SSBD_EVENT_ID } from "@/lib/ssbdCrew";
@@ -22,7 +22,7 @@ export default async function SsbdCrewPage(props: PageProps<"/ssbd">) {
   const error = typeof params?.error === "string" ? params.error : undefined;
   const mode = params?.mode === "login" ? "login" : "signup";
 
-  const event = EVENTS.find((e) => e.id === SSBD_EVENT_ID);
+  const event = await getEventById(SSBD_EVENT_ID);
   const codeRequired = await ssbdCodeRequired();
 
   // Someone already signed in gets one button instead of a login form —

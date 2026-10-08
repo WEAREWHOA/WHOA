@@ -1,4 +1,5 @@
-import { EVENTS, type EventInfo } from "./events";
+import { type EventInfo } from "./events";
+import { getAllEvents } from "./eventsStore";
 import { getAllRsvps, type EventRsvpRecord } from "./eventRsvps";
 import { getPendingWorkSignups, type PendingSignupWithEvent } from "./eventSales";
 
@@ -86,7 +87,7 @@ export async function getEventsAdminOverview(): Promise<EventsAdminOverview> {
   const upcoming: EventAdminSummary[] = [];
   const past: EventAdminSummary[] = [];
 
-  for (const event of EVENTS) {
+  for (const event of await getAllEvents()) {
     const summary = summarizeEvent(event, byEvent.get(event.id) ?? []);
     const endDate = event.endDate ?? event.startDate;
     if (endDate >= todayKey) upcoming.push(summary);
