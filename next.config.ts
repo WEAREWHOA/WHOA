@@ -76,6 +76,13 @@ const legacyRedirects = [
   // own name.
   { source: "/buckethats", destination: "/shop?q=bucket+hat", statusCode: 301 },
   { source: "/eventcalendar", destination: "/events", statusCode: 301 },
+  // Still being crawled and still 404ing. Exact, not /collective/:path*:
+  // only the bare path has ever been requested, and this file's rule is
+  // that a pattern comes from a URL somebody actually asked for. The
+  // Art Collective rather than the Music one because that is the half
+  // with products, and the page is live even though the nav keeps it
+  // behind a padlock.
+  { source: "/collective", destination: "/art-collective", statusCode: 301 },
   // Square Online's collections index. Crawled and not indexed rather
   // than 404ing, which is the soft-404 shape again.
   { source: "/collections", destination: "/shop", statusCode: 301 },
