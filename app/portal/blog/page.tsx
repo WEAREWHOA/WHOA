@@ -1,4 +1,6 @@
 import BlogTab from "@/components/dashboard/tabs/BlogTab";
+import MediaLibrary from "@/components/portal/MediaLibrary";
+import { listMedia } from "@/lib/media";
 import { getPostById, listAllPosts } from "@/lib/blog";
 import { requirePortalTab } from "@/lib/portalAccess";
 
@@ -9,7 +11,7 @@ const NOTICES: Record<string, string> = {
 };
 
 export default async function PortalBlogPage(props: PageProps<"/portal/blog">) {
-  await requirePortalTab("blog");
+  const { account } = await requirePortalTab("blog");
   const params = (await props.searchParams) as Record<string, string | string[] | undefined>;
 
   const first = (key: string) => {
@@ -28,7 +30,17 @@ export default async function PortalBlogPage(props: PageProps<"/portal/blog">) {
   const notice = Object.keys(NOTICES).find((key) => first(key) === "1");
   const rawError = first("blogError");
 
+  // The image library sits on this tab rather than only on Settings,
+  // because uploading a cover and pasting its URL into the editor is one
+  // task, and sending somebody to another tab halfway through it is how
+  // a draft gets lost.
+  const media = await listMedia(account.code).catch((err) => {
+    console.error("Couldn't list blog media:", err);
+    return [];
+  });
+
   return (
+    <>
     <BlogTab
       posts={posts}
       editing={editing}
@@ -37,5 +49,7 @@ export default async function PortalBlogPage(props: PageProps<"/portal/blog">) {
       // says which slug rather than "something went wrong".
       error={rawError ? (rawError === "server" ? "Something went wrong. Try again." : rawError) : undefined}
     />
+    <MediaLibrary code={account.code} kind="blog" items={media} />
+    </>
   );
 }
