@@ -60,6 +60,11 @@ export const MEDIA_KINDS = {
     blurb: "Shots from events you've worked — setups, booths, crowds.",
     permission: "eventSales",
   },
+  blog: {
+    label: "Blog images",
+    blurb: "Cover photos and anything used inside a post. Upload here, then paste the URL into the editor.",
+    permission: "blog",
+  },
 } as const satisfies Record<
   string,
   { label: string; blurb: string; permission: keyof AccountPermissions | null }
