@@ -20,6 +20,16 @@ export default function Footer() {
           <Link href="/stores" className="transition-colors hover:text-foreground">
             Locations
           </Link>
+          {/* The blog lives here rather than in the main nav.
+              Architecturally it is the only placement that works: the
+              footer is on every page, so /blog is one click from
+              anywhere, which is what keeps posts shallow in the crawl.
+              Linked from nowhere it was an orphan, reachable only by the
+              sitemap, which gets a page crawled but passes it almost no
+              internal weight. */}
+          <Link href="/blog" className="transition-colors hover:text-foreground">
+            Blog
+          </Link>
           <Link href="/contact" className="transition-colors hover:text-foreground">
             Contact
           </Link>

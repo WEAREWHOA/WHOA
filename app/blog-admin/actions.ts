@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { deletePost, getPostById, savePost, slugify } from "@/lib/blog";
 import { requirePortalTab } from "@/lib/portalAccess";
+import { pacificWallTimeToUtc } from "@/lib/pacificTime";
 import { portalPath } from "@/lib/portalNav";
 
 /**
@@ -49,11 +50,15 @@ export async function savePostAction(formData: FormData) {
   let publishedAt: string | null = null;
   if (intent === "publish") {
     const scheduled = String(formData.get("publishedAt") || "").trim();
-    // A datetime-local value has no zone, so it is read as Pacific, which
-    // is where whoever is typing it is standing. Without this a post
-    // scheduled for 9am appears at 2am.
-    publishedAt = scheduled ? new Date(`${scheduled}:00-08:00`).toISOString() : new Date().toISOString();
-    if (Number.isNaN(new Date(publishedAt).getTime())) publishedAt = new Date().toISOString();
+    // A datetime-local value carries no zone, so it is read as Pacific,
+    // where whoever is typing it is standing. Through pacificWallTimeToUtc
+    // rather than a fixed offset: this was "-08:00", which is PST, so for
+    // the seven months of the year Pacific is on PDT every publish landed
+    // an hour in the future and the post stayed invisible until it caught
+    // up. An unparseable value publishes now rather than failing, which
+    // is what the button said it would do.
+    publishedAt = (scheduled ? pacificWallTimeToUtc(scheduled) : null)?.toISOString()
+      ?? new Date().toISOString();
   }
 
   const slug = slugify(slugInput || title);

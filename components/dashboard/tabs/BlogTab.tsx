@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { deletePostAction, savePostAction, unpublishPostAction } from "@/app/blog-admin/actions";
 import { describe, isPublished, readingMinutes, type BlogPost } from "@/lib/blog";
+import { utcToPacificWallTime } from "@/lib/pacificTime";
 import { portalPath } from "@/lib/portalNav";
 
 /**
@@ -11,21 +12,6 @@ import { portalPath } from "@/lib/portalNav";
  * long enough that losing it to a stray click would be unforgivable and
  * a plain page cannot be dismissed by one.
  */
-
-function pacificLocal(iso: string | null): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  // datetime-local wants "YYYY-MM-DDTHH:mm" in the viewer's own reading
-  // of the time, and whoever is typing it is in San Diego.
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Los_Angeles",
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", hour12: false,
-  }).formatToParts(d);
-  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
-}
 
 function statusOf(post: BlogPost): { label: string; tone: string } {
   if (!post.publishedAt) return { label: "Draft", tone: "text-muted" };
@@ -120,7 +106,7 @@ function Editor({ post }: { post: BlogPost | null }) {
           <label htmlFor="blog-when" className="text-sm font-medium">
             Publish at <span className="font-normal text-muted">(Pacific, blank means now)</span>
           </label>
-          <input id="blog-when" type="datetime-local" name="publishedAt" defaultValue={pacificLocal(post?.publishedAt ?? null)} className={FIELD} />
+          <input id="blog-when" type="datetime-local" name="publishedAt" defaultValue={utcToPacificWallTime(post?.publishedAt ?? null)} className={FIELD} />
           <p className="mt-2 text-xs text-muted">
             A future time schedules it. Nothing has to run for it to appear: it starts counting as
             published the moment that time passes.
