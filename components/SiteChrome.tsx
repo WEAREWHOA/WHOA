@@ -13,11 +13,15 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
   const isImmersive =
     pathname === "/" ||
     pathname?.startsWith("/pos") ||
-    // /water is the QR landing on an H2WHOA bottle, /go is the SSBD
-    // experience — both get their own ways into the site rather than a
-    // navbar wrapped around them.
-    pathname?.startsWith("/water") ||
-    pathname?.startsWith("/go");
+    // /water is the QR landing on an H2WHOA bottle: still its own sealed
+    // thing, with its own way into the site.
+    //
+    // /go is not, any more. It used to be the SSBD experience, a gated
+    // room with its own doors, and a navbar around that would have been
+    // a way out of something built to be walked through. It is now a
+    // plain landing page for a URL printed on flyers, and the first
+    // thing somebody who scans one needs is the rest of the site.
+    pathname?.startsWith("/water");
 
   if (isImmersive) {
     return <main className="flex flex-1 flex-col">{children}</main>;
