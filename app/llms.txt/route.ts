@@ -42,6 +42,7 @@ export async function GET() {
 - [Shop all products](${SITE_URL}/shop)
 - [Product feed (Google Merchant Center RSS format, with prices, stock and shipping)](${SITE_URL}/product-feed.xml)
 - [Upcycled Collection](${SITE_URL}/shop?q=upcycled)
+- [One of a kind headwear: hand-painted and hand-bleached hats](${SITE_URL}/oneofakindheadwear)
 - [Shipping rates, domestic and international](${SITE_URL}/shipping-policy)
 - [Return policy](${SITE_URL}/return-policy)
 - [Contact and custom orders](${SITE_URL}/contact)

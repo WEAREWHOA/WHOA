@@ -18,6 +18,10 @@ export const revalidate = 3600;
 const STATIC_ROUTES = [
   "/",
   "/shop",
+  // A URL people were already arriving at, now a real landing page
+  // rather than a 404. In the sitemap so it is crawled on its own merits
+  // rather than only through whatever links at it from outside.
+  "/oneofakindheadwear",
   "/art-collective",
   "/music-collective",
   "/events",
