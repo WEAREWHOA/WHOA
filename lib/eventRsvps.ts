@@ -1,7 +1,8 @@
 import { randomUUID } from "crypto";
 import { scheduleEventReminder } from "./eventReminders";
 import { getSupabase } from "./supabase";
-import { EVENTS, type EventInfo } from "./events";
+import { type EventInfo } from "./events";
+import { getEventMap } from "./eventsStore";
 
 export interface EventRsvpRecord {
   id: string;
@@ -157,6 +158,30 @@ export async function getRsvpsForAccount(accountCode: string): Promise<EventRsvp
 // Every RSVP/ticket on file, across every event — powers the EVENTS ADMIN
 // tab's KPIs and guest lists. Unlike getRsvpsForAccount this is unscoped, so
 // callers must already have confirmed the caller is allowed to see it.
+/**
+ * How many people are already booked into one event.
+ *
+ * Counted in people rather than bookings, because one booking can be
+ * five tickets on a single QR and the door cares about bodies. Only the
+ * quantity column is read, so this stays cheap enough to run on the
+ * purchase path.
+ */
+export async function countGuestsForEvent(eventId: string): Promise<number> {
+  const { data, error } = await getSupabase()
+    .from("event_rsvps")
+    .select("quantity")
+    .eq("event_id", eventId);
+
+  if (error) {
+    // Thrown rather than returned as zero. A capacity check that reads
+    // "nobody is here yet" because the database was unreachable would
+    // oversell the room, which is the one outcome worth refusing a sale
+    // over.
+    throw new Error(`Couldn't count guests for ${eventId}: ${error.message}`);
+  }
+  return (data ?? []).reduce((sum, row) => sum + (Number((row as { quantity: number }).quantity) || 1), 0);
+}
+
 export async function getAllRsvps(): Promise<EventRsvpRecord[]> {
   const { data, error } = await getSupabase()
     .from("event_rsvps")
@@ -192,8 +217,9 @@ export async function getEventHistoryForAccount(
     const upcoming: EventHistoryEntry[] = [];
     const past: EventHistoryEntry[] = [];
 
+    const eventsById = await getEventMap();
     for (const rsvp of rsvps) {
-      const event = EVENTS.find((e) => e.id === rsvp.eventId);
+      const event = eventsById.get(rsvp.eventId);
       if (!event) continue;
       const entry: EventHistoryEntry = { rsvp, event };
       const endDate = event.endDate ?? event.startDate;

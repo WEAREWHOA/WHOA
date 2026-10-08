@@ -1,5 +1,5 @@
 import { getAllRsvps } from "./eventRsvps";
-import { EVENTS } from "./events";
+import { getAllEvents } from "./eventsStore";
 import type { DoorEvent } from "@/components/dashboard/tabs/RsvpAdminTab";
 
 /**
@@ -37,7 +37,7 @@ export async function getDoorEvents(): Promise<DoorEvent[]> {
     else byEvent.set(rsvp.eventId, [rsvp]);
   }
 
-  return EVENTS.filter((event) => {
+  return (await getAllEvents()).filter((event) => {
     const last = event.endDate ?? event.startDate;
     return last >= from && event.startDate <= to && (byEvent.get(event.id)?.length ?? 0) > 0;
   })

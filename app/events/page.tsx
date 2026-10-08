@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 import EventsGrid from "@/components/events/EventsGrid";
 import EventsNewsletterBanner from "@/components/events/EventsNewsletterBanner";
-import { EVENTS } from "@/lib/events";
+import { getAllEvents } from "@/lib/eventsStore";
 
 export const metadata: Metadata = {
   // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
@@ -14,7 +14,9 @@ export const metadata: Metadata = {
   description: "Find WHOA at the WHOADEGA, shows, and festivals — RSVP or grab tickets.",
 };
 
-export default function EventsPage() {
+export default async function EventsPage() {
+  const events = await getAllEvents();
+
   return (
     <section className="relative flex flex-1 flex-col items-center overflow-hidden px-6 py-20">
       <PsychedelicBackground />
@@ -34,7 +36,7 @@ export default function EventsPage() {
       <EventsNewsletterBanner />
 
       <Suspense>
-        <EventsGrid events={EVENTS} />
+        <EventsGrid events={events} />
       </Suspense>
     </section>
   );

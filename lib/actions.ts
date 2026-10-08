@@ -18,7 +18,7 @@ import {
   updatePasswordHash,
 } from "./store";
 import { createSession, destroySession, getSessionAmbassadorCode, hashPassword, verifyPassword } from "./auth";
-import { EVENTS } from "./events";
+import { getEventById } from "./eventsStore";
 import { requestEventWorkSignup } from "./eventSales";
 import { saveMusicianProfile, type MusicProfileLink } from "./musicianProfiles";
 import {
@@ -341,7 +341,7 @@ export async function signupToWorkEventAction(formData: FormData) {
   const account = await getByCode(code);
   if (!account?.permissions.eventSales) redirect("/portal");
 
-  const event = EVENTS.find((e) => e.id === eventId);
+  const event = await getEventById(eventId);
   if (!event) redirect("/portal");
 
   const result = await requestEventWorkSignup(code, eventId);

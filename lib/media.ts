@@ -60,6 +60,11 @@ export const MEDIA_KINDS = {
     blurb: "Shots from events you've worked — setups, booths, crowds.",
     permission: "eventSales",
   },
+  event: {
+    label: "Event flyers",
+    blurb: "Flyers and photos for events you create. Upload here, then paste the URL into the event.",
+    permission: "eventsAdmin",
+  },
   blog: {
     label: "Blog images",
     blurb: "Cover photos and anything used inside a post. Upload here, then paste the URL into the editor.",

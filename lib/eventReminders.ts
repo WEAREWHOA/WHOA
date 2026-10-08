@@ -1,4 +1,4 @@
-import { EVENTS } from "@/lib/events";
+import { getEventById } from "@/lib/eventsStore";
 import { sendEventReminderEmail } from "@/lib/email";
 
 /**
@@ -48,7 +48,7 @@ export async function scheduleEventReminder(input: {
   to: string;
   name: string | null;
 }): Promise<string | null> {
-  const event = EVENTS.find((e) => e.id === input.eventId);
+  const event = await getEventById(input.eventId);
   if (!event?.startDate) return null;
 
   const sendAt = reminderTimeFor(event.startDate);

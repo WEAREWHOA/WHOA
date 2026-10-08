@@ -1,5 +1,6 @@
 import { getSupabase } from "./supabase";
-import { EVENTS, type EventInfo } from "./events";
+import { type EventInfo } from "./events";
+import { getEventMap } from "./eventsStore";
 
 export interface EventSalesApplicationInput {
   ambassadorCode: string;
@@ -148,10 +149,11 @@ export interface ScheduleEntry {
 export async function getScheduleForAccount(ambassadorCode: string): Promise<ScheduleEntry[]> {
   const signups = await getSignupsForAccount(ambassadorCode);
   const entries: ScheduleEntry[] = [];
+  const eventsById = await getEventMap();
 
   for (const signup of signups) {
     if (signup.status !== "approved") continue;
-    const event = EVENTS.find((e) => e.id === signup.eventId);
+    const event = eventsById.get(signup.eventId);
     if (event) entries.push({ signup, event });
   }
 
@@ -184,8 +186,9 @@ export async function getPendingWorkSignups(): Promise<PendingSignupWithEvent[]>
   })[];
 
   const result: PendingSignupWithEvent[] = [];
+  const eventsById = await getEventMap();
   for (const row of rows) {
-    const event = EVENTS.find((e) => e.id === row.event_id);
+    const event = eventsById.get(row.event_id);
     if (!event) continue;
     result.push({
       signup: mapSignup(row),
