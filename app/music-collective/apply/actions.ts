@@ -2,7 +2,11 @@
 
 import { redirect, unstable_rethrow } from "next/navigation";
 import { createAmbassador, getByEmail } from "@/lib/store";
-import { saveMusicianProfile, type MusicProfileLink } from "@/lib/musicianProfiles";
+import {
+  reopenMusicianApplication,
+  saveMusicianProfile,
+  type MusicProfileLink,
+} from "@/lib/musicianProfiles";
 import { createSession, hashPassword } from "@/lib/auth";
 import { sendMusicApplicationNotification } from "@/lib/email";
 
@@ -59,6 +63,11 @@ export async function applyMusicAction(formData: FormData) {
     }
 
     await saveMusicianProfile(code, { artistName, subgenre, tagline, bio, links });
+
+    // Somebody who was turned down before and has written in again is a
+    // new application, not a closed one -- put them back in the MUSIC
+    // ADMIN queue so this submission is actually seen.
+    await reopenMusicianApplication(code);
 
     // Best-effort — staff should hear about every application, but a
     // Resend hiccup must never block the submission that already

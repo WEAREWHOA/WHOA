@@ -4,6 +4,7 @@ import { getByCode, updatePermissions } from "@/lib/store";
 import { sendAmbassadorApprovedEmail } from "@/lib/email";
 import { reviewWorkSignup } from "@/lib/eventSales";
 import { reviewArtProduct } from "@/lib/artCollective";
+import { reviewMusician } from "@/lib/musicianProfiles";
 
 function htmlPage(title: string, message: string): string {
   return `<!doctype html>
@@ -92,9 +93,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         break;
 
       case "music_application":
-        if (record.subjectCode) {
-          await updatePermissions(record.subjectCode, { permissions: { music: decision === "approved" } });
-        }
+        // Goes through reviewMusician rather than straight to the
+        // permission so the MUSIC ADMIN queue clears too -- a decision
+        // made from this email and one made in the tab have to leave the
+        // same record behind, or the queue shows applicants who were
+        // answered days ago.
+        if (record.subjectCode) await reviewMusician(record.subjectCode, decision);
         message = decision === "approved" ? "Music Collective access granted." : "Application declined.";
         break;
 

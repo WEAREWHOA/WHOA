@@ -35,6 +35,7 @@ interface AmbassadorRow {
   perm_newsletter?: boolean;
   perm_reviews?: boolean;
   perm_blog?: boolean;
+  perm_music_admin?: boolean;
   is_super_admin: boolean;
   square_customer_id: string | null;
   orders?: OrderRow[];
@@ -90,6 +91,7 @@ const OPTIONAL_PERMISSION_COLUMNS = [
   "perm_newsletter",
   "perm_reviews",
   "perm_blog",
+  "perm_music_admin",
 ] as const;
 
 const missingColumns = new Set<string>();
@@ -229,6 +231,7 @@ function mapAmbassador(row: AmbassadorRow): Ambassador {
       newsletter: row.perm_newsletter ?? false,
       reviews: row.perm_reviews ?? false,
       blog: row.perm_blog ?? false,
+      musicAdmin: row.perm_music_admin ?? false,
     },
     isSuperAdmin: row.is_super_admin,
     squareCustomerId: row.square_customer_id ?? undefined,
@@ -351,6 +354,7 @@ export async function createAmbassador(input: {
     perm_newsletter: input.permissions?.newsletter ?? false,
     perm_reviews: input.permissions?.reviews ?? false,
     perm_blog: input.permissions?.blog ?? false,
+    perm_music_admin: input.permissions?.musicAdmin ?? false,
   });
 
   if (ambassadorError) {
@@ -487,6 +491,8 @@ export async function updatePermissions(
     patch.perm_newsletter = updates.permissions.newsletter;
   if (updates.permissions?.reviews !== undefined) patch.perm_reviews = updates.permissions.reviews;
   if (updates.permissions?.blog !== undefined) patch.perm_blog = updates.permissions.blog;
+  if (updates.permissions?.musicAdmin !== undefined)
+    patch.perm_music_admin = updates.permissions.musicAdmin;
   if (updates.isSuperAdmin !== undefined) patch.is_super_admin = updates.isSuperAdmin;
   if (updates.vendorSlug !== undefined) patch.vendor_slug = updates.vendorSlug || null;
   // Clearing this makes the next portal load re-derive it from the
