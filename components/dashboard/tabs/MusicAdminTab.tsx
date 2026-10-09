@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { MUSICIANS } from "@/lib/musicians";
+import { handWrittenSlug } from "@/lib/musicRoster";
 import type { MusicianApplication } from "@/lib/musicianProfiles";
 import {
   reviewMusicianAction,
@@ -148,6 +150,7 @@ function PendingCard({ artist }: { artist: MusicianApplication }) {
  */
 function RosterCard({ artist }: { artist: MusicianApplication }) {
   const linkByLabel = new Map(artist.links.map((link) => [link.label, link.url]));
+  const handWritten = handWrittenSlug(artist.artistName);
 
   return (
     <div className="card-surface rounded-xl border border-border p-4">
@@ -176,17 +179,36 @@ function RosterCard({ artist }: { artist: MusicianApplication }) {
 
       {/* Where the public meets them. Shown rather than described,
           because it is the thing to check after an edit. */}
-      {artist.slug && (
-        <p className="mt-3 text-xs">
+      {handWritten ? (
+        // Their page predates the portal and is maintained in the code,
+        // so it is not this profile that visitors read. Said out loud,
+        // because the alternative is an artist editing a bio that
+        // silently changes nothing.
+        <p className="mt-3 text-xs text-muted">
+          Their public page is the hand-written one at{" "}
           <a
-            href={`/music-collective/${artist.slug}`}
+            href={`/music-collective/${handWritten}`}
             target="_blank"
             rel="noreferrer"
             className="text-flame hover:underline"
           >
-            /music-collective/{artist.slug} ↗
+            /music-collective/{handWritten} ↗
           </a>
+          , which carries their story, past shows and photos. Edits here do not change it.
         </p>
+      ) : (
+        artist.slug && (
+          <p className="mt-3 text-xs">
+            <a
+              href={`/music-collective/${artist.slug}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-flame hover:underline"
+            >
+              /music-collective/{artist.slug} ↗
+            </a>
+          </p>
+        )
       )}
 
       <details className="mt-3 border-t border-border pt-3">
@@ -386,7 +408,7 @@ export default function MusicAdminTab({
       </div>
 
       <h4 className="mt-10 text-sm font-semibold tracking-wide uppercase">
-        The collective
+        Approved through the portal
         {roster.length > 0 && <span className="ml-2 font-normal text-muted">{roster.length}</span>}
       </h4>
       <p className="mt-1 text-xs text-muted">
@@ -396,7 +418,8 @@ export default function MusicAdminTab({
       <div className="mt-3">
         {roster.length === 0 ? (
           <p className="rounded-xl border border-border px-5 py-4 text-sm text-muted">
-            Nobody has been approved yet.
+            Nobody has been approved through an application yet. The artists already on the site
+            are below.
           </p>
         ) : (
           <div className="flex flex-col gap-4">
@@ -405,6 +428,48 @@ export default function MusicAdminTab({
             ))}
           </div>
         )}
+      </div>
+
+      {/* The artists who were on the site before any of this existed.
+          Without them here the tab reads as though two thirds of the
+          collective has gone missing: they have no portal account to
+          approve, because they never applied -- they are entries in
+          lib/musicians.ts, with stories, past shows and photos an
+          application form never asks for. Listed read-only, because the
+          only honest control for them is a code change. */}
+      <h4 className="mt-10 text-sm font-semibold tracking-wide uppercase">
+        Hand-written on the site
+        <span className="ml-2 font-normal text-muted">{MUSICIANS.length}</span>
+      </h4>
+      <p className="mt-1 text-xs text-muted">
+        On the public roster already, and not through this queue. They have no application and no
+        account here, so there is nothing to approve or remove — their pages carry a full story,
+        past shows and photos, and changing one is a code change rather than a click. If one of
+        them does get a portal account, their hand-written page stays the public one.
+      </p>
+      <div className="card-surface mt-3 rounded-xl border border-border px-4">
+        {MUSICIANS.map((musician) => (
+          <div
+            key={musician.slug}
+            className="flex flex-wrap items-center justify-between gap-3 border-b border-border py-3 last:border-0"
+          >
+            <div>
+              <p className="text-sm font-semibold">
+                {musician.name}
+                <span className="ml-2 text-xs font-normal text-muted">{musician.subgenre}</span>
+              </p>
+              <p className="text-xs text-muted">{musician.tagline}</p>
+            </div>
+            <a
+              href={`/music-collective/${musician.slug}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-flame shrink-0 text-xs hover:underline"
+            >
+              /music-collective/{musician.slug} ↗
+            </a>
+          </div>
+        ))}
       </div>
 
       {declined.length > 0 && (
