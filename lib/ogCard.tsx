@@ -41,6 +41,20 @@ function titleSize(title: string, max: number): number {
   return Math.round(max * 0.5);
 }
 
+/**
+ * Cuts a line that would run off the card.
+ *
+ * Satori does not clip overflow the way a browser does -- text simply
+ * keeps going and leaves the frame -- so anything that could be
+ * arbitrarily long is cut here instead. Lengths are the point at which
+ * each line stops fitting its box at the sizes set below.
+ */
+function clamp(text: string, max: number): string {
+  const trimmed = text.trim();
+  if (trimmed.length <= max) return trimmed;
+  return `${trimmed.slice(0, max - 1).trimEnd()}…`;
+}
+
 function Wordmark({ dark = false }: { dark?: boolean }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -107,7 +121,7 @@ function PhotoCard({
               fontFamily: "system-ui, sans-serif",
             }}
           >
-            {eyebrow}
+            {clamp(eyebrow, 38)}
           </span>
           <span
             style={{
@@ -119,7 +133,7 @@ function PhotoCard({
               fontFamily: "system-ui, sans-serif",
             }}
           >
-            {title}
+            {clamp(title, 72)}
           </span>
           {meta && (
             <span
@@ -131,7 +145,7 @@ function PhotoCard({
                 fontFamily: "system-ui, sans-serif",
               }}
             >
-              {meta}
+              {clamp(meta, 130)}
             </span>
           )}
         </div>
@@ -191,7 +205,7 @@ function TextCard({
               fontFamily: "system-ui, sans-serif",
             }}
           >
-            {eyebrow}
+            {clamp(eyebrow, 40)}
           </span>
         )}
         <span
@@ -205,7 +219,7 @@ function TextCard({
             fontFamily: "system-ui, sans-serif",
           }}
         >
-          {title}
+          {clamp(title, 60)}
         </span>
         {subtitle && (
           <span
@@ -218,7 +232,7 @@ function TextCard({
               fontFamily: "system-ui, sans-serif",
             }}
           >
-            {subtitle}
+            {clamp(subtitle, 140)}
           </span>
         )}
       </div>

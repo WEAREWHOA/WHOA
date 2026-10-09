@@ -51,7 +51,20 @@ const legacyRedirects = [
   // own product pages live at /shop/<itemId> — one segment. A greedy
   // pattern here would 301 every real product page into the shop index and
   // take the entire storefront down. Three segments only.
-  { source: "/shop/:category/:legacyId", destination: "/shop", statusCode: 301 },
+  //
+  // The negative lookahead is load-bearing. Next generates this site's
+  // product share cards at /shop/<item>/opengraph-image, which is three
+  // segments and so matched this rule exactly: every product link
+  // previewed with no image at all, because the scraper fetching the
+  // card was 301'd to the shop index and handed HTML. Nothing in the
+  // app could see it -- the route was correct, the metadata was
+  // correct, and a redirect written for Square Online in 2025 ate the
+  // request before either of them ran.
+  {
+    source: "/shop/:category/:legacyId((?!opengraph-image$).*)",
+    destination: "/shop",
+    statusCode: 301,
+  },
 
   // Square Online product pages (/product/<slug>/<catalog-id>) are NOT
   // here on purpose. They used to be a blanket 301 to /shop; they're now
