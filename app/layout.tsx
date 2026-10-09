@@ -36,18 +36,28 @@ export const metadata: Metadata = {
     default: "WHOA",
   },
   description: DESCRIPTION,
+  // Deliberately only the two fields that are true of every page.
+  //
+  // This used to pin a title, a description and an image here, and
+  // because nested metadata REPLACES a parent field rather than merging
+  // into it, every page on the site shared as "WHOA" with the ambassador
+  // blurb and one orange card -- a link to a hoodie previewed
+  // identically to a link to the returns policy.
+  //
+  // Left out, Next fills og:title and og:description from each page's own
+  // title and description, and the nearest opengraph-image file supplies
+  // the picture. So a page gets the right card by saying nothing, which
+  // is the only arrangement that stays right as pages are added.
   openGraph: {
     type: "website",
     siteName: "WHOA",
-    title: "WHOA",
-    description: DESCRIPTION,
-    images: ["/opengraph-image"],
   },
+  // Same reasoning. With no title, description or images of its own,
+  // Next mirrors whatever openGraph resolved to, so the two can never
+  // disagree -- which is how product links kept previewing the generic
+  // card on X while Facebook showed the product.
   twitter: {
     card: "summary_large_image",
-    title: "WHOA",
-    description: DESCRIPTION,
-    images: ["/opengraph-image"],
   },
   // Site verification. Through metadata rather than a hand-written tag in
   // the head, so it lands on every page and survives any change to the

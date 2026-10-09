@@ -8,7 +8,9 @@ export const metadata: Metadata = {
   title: "Blog",
   description:
     "Hand-painted apparel, one-of-one pieces, the artists behind them and what happens at a WHOA pop-up. Written from the shop in Ocean Beach.",
-  openGraph: { title: "The WHOA Blog", url: `${SITE_URL}/blog`, type: "website" },
+  // No openGraph block: it replaced the inherited one and took the
+  // image with it. The title and description above fill og and twitter,
+  // and opengraph-image.tsx beside this file supplies the card.
 };
 
 // Posts can be scheduled, so a page frozen at build time would sit on a

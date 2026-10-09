@@ -38,13 +38,24 @@ export async function generateMetadata(props: PageProps<"/blog/[slug]">): Promis
       publishedTime: post.publishedAt ?? undefined,
       modifiedTime: post.updatedAt,
       authors: post.authorName ? [post.authorName] : undefined,
-      images: post.coverImageUrl ? [{ url: post.coverImageUrl, alt: post.coverAlt ?? post.title }] : undefined,
+      // This post's own card, from opengraph-image.tsx beside this file:
+      // the cover photo with the headline set beside it, or type alone
+      // when the post has no cover. Named explicitly because declaring
+      // openGraph at all (which the article fields above require)
+      // replaces the inherited images, and a post that shared with no
+      // picture is how this was found.
+      images: [
+        {
+          url: `/blog/${post.slug}/opengraph-image`,
+          width: 1200,
+          height: 630,
+          alt: post.coverAlt ?? post.title,
+        },
+      ],
     },
-    twitter: {
-      card: post.coverImageUrl ? "summary_large_image" : "summary",
-      title: post.title,
-      description,
-    },
+    // Left to mirror openGraph. A card is always generated now, so the
+    // old "summary when there's no cover image" branch would downgrade a
+    // post that does in fact have a picture to show.
   };
 }
 

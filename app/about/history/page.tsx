@@ -13,6 +13,9 @@ export const metadata: Metadata = {
     description: HISTORY_DESCRIPTION,
     url: `${SITE_URL}/about/history`,
     type: "article",
+    // Named because declaring openGraph replaces the inherited images,
+    // and without this the page shared with no picture at all.
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "WHOA" }],
   },
 };
 

@@ -157,7 +157,11 @@ export async function generateMetadata(props: PageProps<"/shop/[itemId]">): Prom
   return {
     title: product.name,
     description: product.description || `Shop ${product.name} on WHOA.`,
-    openGraph: product.imageUrl ? { images: [product.imageUrl] } : undefined,
+    // No openGraph here on purpose. Declaring it would replace the
+    // whole inherited object, and this page's card comes from
+    // opengraph-image.tsx next door -- the product's own photo, its
+    // name and its price, composed at 1200x630 instead of a square
+    // Square photo centre-cropped by whoever is rendering the preview.
     // Points at the slug even when reached by an old id URL, so the two
     // never compete as duplicates in the index.
     alternates: { canonical: `/shop/${resolved.kind === "legacy-id" ? resolved.slug : itemId}` },

@@ -32,7 +32,18 @@ export async function generateMetadata(
       title: musician.name,
       description: musician.tagline || musician.bio,
       type: "profile",
-      images: musician.photos?.[0] ? [{ url: musician.photos[0], alt: musician.name }] : undefined,
+      // Their own card from opengraph-image.tsx beside this file, not
+      // the raw photo: a press shot is portrait and a share card is
+      // 1.91:1, so handing the photo over directly gets their face
+      // cropped out of it.
+      images: [
+        {
+          url: `/music-collective/${musician.slug}/opengraph-image`,
+          width: 1200,
+          height: 630,
+          alt: musician.name,
+        },
+      ],
     },
   };
 }

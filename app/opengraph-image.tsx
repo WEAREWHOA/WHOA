@@ -1,48 +1,22 @@
-import { ImageResponse } from "next/og";
+import { OG_CONTENT_TYPE, OG_SIZE, ogCard } from "@/lib/ogCard";
 
-export const size = { width: 1200, height: 630 };
-export const contentType = "image/png";
+export const size = OG_SIZE;
+export const contentType = OG_CONTENT_TYPE;
+export const alt = "WHOA — hand-painted, one-of-a-kind apparel from Ocean Beach, San Diego";
 
-// Generated from the theme's own flame gradient, same convention as
-// app/icon.tsx — no real marketing/OG asset exists yet.
+/**
+ * The card every page falls back to.
+ *
+ * It is a fallback now rather than the only card there is: product
+ * pages, posts and artist pages each render their own, and this covers
+ * the rest. Inherited by every route that doesn't have its own
+ * opengraph-image file, which is how the policy pages and the games get
+ * something branded without a file apiece.
+ */
 export default function OpengraphImage() {
-  return new ImageResponse(
-    (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "linear-gradient(135deg, #ff2f1a 0%, #ff7a00 55%, #ffb800 100%)",
-        }}
-      >
-        <span
-          style={{
-            fontSize: 220,
-            fontWeight: 900,
-            letterSpacing: -4,
-            color: "#0a0806",
-            fontFamily: "system-ui, sans-serif",
-          }}
-        >
-          WHOA
-        </span>
-        <span
-          style={{
-            marginTop: 12,
-            fontSize: 32,
-            fontWeight: 600,
-            color: "#0a0806",
-            fontFamily: "system-ui, sans-serif",
-          }}
-        >
-          Shop it. Share it. Earn on it.
-        </span>
-      </div>
-    ),
-    { ...size },
-  );
+  return ogCard({
+    eyebrow: "Ocean Beach, San Diego",
+    title: "WHOA",
+    subtitle: "Hand-painted, one-of-a-kind apparel. Pop-ups, art and music.",
+  });
 }
