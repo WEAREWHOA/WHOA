@@ -174,6 +174,21 @@ function RosterCard({ artist }: { artist: MusicianApplication }) {
       {artist.tagline && <p className="mt-3 text-sm">{artist.tagline}</p>}
       <ProfileLinks artist={artist} />
 
+      {/* Where the public meets them. Shown rather than described,
+          because it is the thing to check after an edit. */}
+      {artist.slug && (
+        <p className="mt-3 text-xs">
+          <a
+            href={`/music-collective/${artist.slug}`}
+            target="_blank"
+            rel="noreferrer"
+            className="text-flame hover:underline"
+          >
+            /music-collective/{artist.slug} ↗
+          </a>
+        </p>
+      )}
+
       <details className="mt-3 border-t border-border pt-3">
         <summary className="cursor-pointer text-xs font-semibold tracking-wide text-muted uppercase">
           Edit their profile
@@ -315,9 +330,12 @@ export default function MusicAdminTab({
       </span>
       <h3 className="font-display mt-1 text-2xl">Music Collective applications</h3>
       <p className="mt-1 text-sm text-muted">
-        Listen first — every link an applicant gave is below their bio. Approving unlocks their MUSIC
-        tab, emails them, and lets them submit vinyl, tapes and merch to the shop. Those product
-        submissions are reviewed in{" "}
+        Listen first — every link an applicant gave is below their bio. Approving puts them on{" "}
+        <Link href="/music-collective" className="text-flame hover:underline">
+          the public Music Collective page
+        </Link>{" "}
+        with their own artist page and sitemap entry, unlocks their MUSIC tab, emails them, and lets
+        them submit vinyl, tapes and merch to the shop. Those product submissions are reviewed in{" "}
         <Link href="/portal/art-admin" className="text-flame hover:underline">
           ART ADMIN
         </Link>
@@ -326,12 +344,14 @@ export default function MusicAdminTab({
 
       {reviewed === "approved" && (
         <p className="border-flame-2/40 bg-flame-2/10 text-flame-3 mt-4 rounded-lg border px-4 py-2 text-sm">
-          Approved — their MUSIC tab is unlocked and they have been emailed.
+          Approved — they are on the public Music Collective page, their MUSIC tab is unlocked, and
+          they have been emailed.
         </p>
       )}
       {reviewed === "declined" && (
         <p className="mt-4 rounded-lg border border-border px-4 py-2 text-sm text-muted">
-          Declined — they have been emailed, and their MUSIC tab is locked.
+          Declined — they have been emailed, their MUSIC tab is locked, and they are not on the
+          public page.
         </p>
       )}
       {saved && (
@@ -370,8 +390,8 @@ export default function MusicAdminTab({
         {roster.length > 0 && <span className="ml-2 font-normal text-muted">{roster.length}</span>}
       </h4>
       <p className="mt-1 text-xs text-muted">
-        Removing an artist locks their MUSIC tab and emails them. Nothing they have sold or submitted
-        is deleted, and Restore puts them straight back.
+        Removing an artist takes them off the public page, locks their MUSIC tab and emails them.
+        Nothing they have sold or submitted is deleted, and Restore puts them straight back.
       </p>
       <div className="mt-3">
         {roster.length === 0 ? (

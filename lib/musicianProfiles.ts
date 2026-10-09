@@ -1,6 +1,7 @@
 import { getSupabase } from "./supabase";
 import { getByCode, updatePermissions } from "./store";
 import { sendMusicDecisionEmail } from "./email";
+import { MUSICIANS } from "./musicians";
 
 export interface MusicProfileLink {
   label: string;
@@ -24,6 +25,13 @@ export interface MusicianProfile {
   tagline: string | null;
   bio: string | null;
   links: MusicProfileLink[];
+  /**
+   * The artist's public URL segment on /music-collective, set once when
+   * their application is approved and never derived on read -- see
+   * migration 0049. Null until then, and null for anyone approved before
+   * that migration ran, until ensureMusicianSlug gives them one.
+   */
+  slug: string | null;
   status: MusicianStatus;
   reviewedAt: string | null;
   reviewedBy: string | null;
@@ -39,6 +47,7 @@ interface MusicianProfileRow {
   tagline: string | null;
   bio: string | null;
   links: MusicProfileLink[];
+  slug?: string | null;
   // Optional in the type because they are optional in the database until
   // 0048 has been run. A select of * returns whatever columns exist, so
   // reads keep working through that gap; see reviewMusician for the
@@ -63,6 +72,7 @@ function mapProfile(row: MusicianProfileRow, hasAccess?: boolean): MusicianProfi
     tagline: row.tagline,
     bio: row.bio,
     links: Array.isArray(row.links) ? row.links : [],
+    slug: row.slug ?? null,
     // Before 0048 runs there is no status column, so it is derived the
     // way the app used to derive it: holding the permission means
     // approved, anything else is still waiting.
@@ -135,6 +145,99 @@ export async function listMusicianApplications(): Promise<MusicianApplication[]>
   });
 }
 
+/**
+ * The URL segment an artist name becomes.
+ *
+ * Deliberately the same shape as the blog's slugify: lowercase, ASCII
+ * hyphens, nothing else. An artist name is a stage name, so it can be
+ * anything -- emoji, a dot, four spaces -- and what comes out the far
+ * side still has to be a URL.
+ */
+export function musicSlug(input: string): string {
+  const slug = input
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60)
+    .replace(/-+$/g, "");
+
+  // A name made entirely of characters a URL can't carry still needs an
+  // address, and the account code is the one thing guaranteed to exist.
+  return slug || "artist";
+}
+
+/**
+ * Picks a slug nobody else is using.
+ *
+ * Checked against the hand-written roster in lib/musicians.ts as well as
+ * the table, because both lists are served from /music-collective/[slug]
+ * and a collision there means one of the two artists is unreachable. The
+ * account code is the tiebreaker rather than a counter: it is stable, so
+ * re-running this for the same artist produces the same answer instead of
+ * marching -2, -3, -4 up the table.
+ */
+async function uniqueMusicSlug(artistName: string, code: string): Promise<string> {
+  const base = musicSlug(artistName);
+  const staticSlugs = new Set(MUSICIANS.map((m) => m.slug));
+
+  // A missing column here means 0049 has not been run, in which case
+  // nothing in the table is holding a slug and the static roster is the
+  // whole of what's taken.
+  const { data, error } = await getSupabase()
+    .from("musician_profiles")
+    .select("ambassador_code, slug")
+    .not("slug", "is", null);
+
+  if (error && !isMissingColumn(error)) {
+    throw new Error(`Failed to check music slugs: ${error.message}`);
+  }
+
+  const taken = new Set(staticSlugs);
+  for (const row of (data ?? []) as { ambassador_code: string; slug: string }[]) {
+    // Their own current slug doesn't count against them.
+    if (row.ambassador_code !== code && row.slug) taken.add(row.slug);
+  }
+
+  if (!taken.has(base)) return base;
+
+  const withCode = `${base}-${code.toLowerCase()}`;
+  if (!taken.has(withCode)) return withCode;
+
+  // Three artists with one name and one of them holding the coded slug
+  // already is not a situation this site will reach, but a URL that is
+  // merely ugly beats a save that fails.
+  return `${withCode}-${Date.now().toString(36)}`;
+}
+
+/**
+ * Gives an already-approved artist a slug if they have none.
+ *
+ * The case this exists for is an artist approved before migration 0049
+ * added the column: they are on the roster, so they need a URL, and the
+ * first page that asks for one hands it to them. Returns null when the
+ * column isn't there yet, which is what keeps the public page rendering
+ * through that gap.
+ */
+export async function ensureMusicianSlug(code: string, artistName: string): Promise<string | null> {
+  const normalized = code.trim().toUpperCase();
+  const slug = await uniqueMusicSlug(artistName, normalized);
+
+  const { error } = await getSupabase()
+    .from("musician_profiles")
+    .update({ slug })
+    .eq("ambassador_code", normalized)
+    .is("slug", null);
+
+  if (error) {
+    if (isMissingColumn(error)) return null;
+    throw new Error(`Failed to set music slug: ${error.message}`);
+  }
+
+  return slug;
+}
+
 /** Does this error mean 0048 has not been run on this database yet? */
 function isMissingColumn(error: { message?: string; code?: string }): boolean {
   return error.code === "42703" || /column .* does not exist/i.test(error.message ?? "");
@@ -188,9 +291,29 @@ export async function reviewMusician(
     );
   }
 
+  // Approval is what puts them on /music-collective, so it is also where
+  // their public URL is decided -- once, and then left alone, so that a
+  // later rename in their own portal moves the heading on the page and
+  // not the address of it.
+  //
+  // Its own statement, not a field on the update above, because the two
+  // columns arrived in different migrations: folding the slug in would
+  // mean that with 0048 run and 0049 not, one unknown column threw away
+  // the status write as well.
+  if (decision === "approved" && profile && !profile.slug) {
+    try {
+      await ensureMusicianSlug(normalized, profile.artistName);
+    } catch (err) {
+      // They are approved either way, and the public roster assigns a
+      // slug to anyone still missing one the next time it is read.
+      console.error("Failed to assign a music slug on approval:", err);
+    }
+  }
+
   // Last, and best-effort. The decision is already recorded, so a Resend
   // outage must not turn a handled application into a failed one that
   // comes back to the queue and gets decided twice.
+  //
   // Re-deciding something that was already decided that way -- two staff
   // clicking Approve on the same row, or a decision clicked in the email
   // and then again in the tab -- must not email the artist twice.

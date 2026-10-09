@@ -136,6 +136,7 @@ export const MUSICIANS: Musician[] = [
   },
 ];
 
-export function getMusician(slug: string) {
-  return MUSICIANS.find((musician) => musician.slug === slug);
-}
+// Looking one up by slug lives in lib/musicRoster.ts now
+// (getRosterMusician): the roster is this list plus the approved
+// applicants, and a helper that only ever searched half of it was a
+// 404 waiting to happen.

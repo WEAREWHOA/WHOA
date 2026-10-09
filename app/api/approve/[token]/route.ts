@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { consumeApprovalToken, getApprovalToken } from "@/lib/approvalTokens";
 import { getByCode, updatePermissions } from "@/lib/store";
 import { sendAmbassadorApprovedEmail } from "@/lib/email";
 import { reviewWorkSignup } from "@/lib/eventSales";
 import { reviewArtProduct } from "@/lib/artCollective";
 import { reviewMusician } from "@/lib/musicianProfiles";
+import { MUSIC_ROSTER_TAG } from "@/lib/musicRoster";
 
 function htmlPage(title: string, message: string): string {
   return `<!doctype html>
@@ -99,7 +101,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         // same record behind, or the queue shows applicants who were
         // answered days ago.
         if (record.subjectCode) await reviewMusician(record.subjectCode, decision);
-        message = decision === "approved" ? "Music Collective access granted." : "Application declined.";
+        // Approving from this email puts them on the public roster, so
+        // the roster's cache has to be dropped here too.
+        revalidateTag(MUSIC_ROSTER_TAG, "max");
+        message = decision === "approved"
+          ? "Music Collective access granted — they're on the site."
+          : "Application declined.";
         break;
 
       case "art_application":

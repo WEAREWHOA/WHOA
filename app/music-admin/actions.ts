@@ -1,8 +1,10 @@
 "use server";
 
+import { revalidateTag } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { getSessionAmbassadorCode } from "@/lib/auth";
 import { getByCode } from "@/lib/store";
+import { MUSIC_ROSTER_TAG } from "@/lib/musicRoster";
 import {
   reviewMusician,
   saveMusicianProfile,
@@ -65,6 +67,12 @@ export async function reviewMusicianAction(formData: FormData) {
     redirect("/portal/music-admin?musicAdminError=server");
   }
 
+  // The public roster is cached for five minutes; a decision has to show
+  // up on the site before then. Second argument is the cache profile this
+  // Next version requires -- revalidateTag(tag) alone does not
+  // type-check, and "max" is what the Square webhook uses.
+  revalidateTag(MUSIC_ROSTER_TAG, "max");
+
   redirect(`/portal/music-admin?musicReviewed=${decision === "approved" ? "approved" : "declined"}`);
 }
 
@@ -103,6 +111,12 @@ export async function saveMusicianProfileAsAdminAction(formData: FormData) {
     console.error("saveMusicianProfileAsAdminAction failed:", err);
     redirect("/portal/music-admin?musicAdminError=server");
   }
+
+  // The public roster is cached for five minutes; a decision has to show
+  // up on the site before then. Second argument is the cache profile this
+  // Next version requires -- revalidateTag(tag) alone does not
+  // type-check, and "max" is what the Square webhook uses.
+  revalidateTag(MUSIC_ROSTER_TAG, "max");
 
   redirect("/portal/music-admin?musicAdminSaved=1");
 }

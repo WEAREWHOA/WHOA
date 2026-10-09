@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 import { listProducts, productPath } from "@/lib/catalog";
 import { ARTISTS } from "@/lib/artists";
-import { MUSICIANS } from "@/lib/musicians";
+import { getMusicRoster } from "@/lib/musicRoster";
 import { SITE_URL } from "@/lib/site";
 import { listPublishedPosts } from "@/lib/blog";
 
@@ -99,8 +99,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     entries.push({ url: `${SITE_URL}/art-collective/${artist.slug}` });
   }
 
-  for (const musician of MUSICIANS) {
-    entries.push({ url: `${SITE_URL}/music-collective/${musician.slug}` });
+  // The hand-written roster plus every approved applicant, so an artist
+  // approved this morning is discoverable rather than waiting for the
+  // next deploy. getMusicRoster already falls back to the hand-written
+  // list on a database failure, so this can't drop the section.
+  for (const musician of await getMusicRoster()) {
+    entries.push({
+      url: `${SITE_URL}/music-collective/${musician.slug}`,
+      images: musician.photos?.[0] ? [musician.photos[0]] : undefined,
+    });
   }
 
   return entries;

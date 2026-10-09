@@ -2,8 +2,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { MUSICIANS, getMusician } from "@/lib/musicians";
+import { MUSICIANS } from "@/lib/musicians";
+import { getRosterMusician } from "@/lib/musicRoster";
 
+/**
+ * Only the hand-written roster is prerendered. An artist approved after
+ * the last deploy has no build-time entry to prerender from, so their
+ * page is rendered on demand instead -- which is Next's default for an
+ * unlisted param and the reason dynamicParams is left alone.
+ */
 export function generateStaticParams() {
   return MUSICIANS.map((musician) => ({ slug: musician.slug }));
 }
@@ -12,18 +19,27 @@ export async function generateMetadata(
   props: PageProps<"/music-collective/[slug]">,
 ): Promise<Metadata> {
   const { slug } = await props.params;
-  const musician = getMusician(slug);
+  const musician = await getRosterMusician(slug);
   if (!musician) return {};
 
   return {
     title: musician.name,
     description: musician.tagline || musician.bio,
+    // Self-canonical, so an artist's page can't be read as a duplicate
+    // of the roster it is listed on.
+    alternates: { canonical: `/music-collective/${musician.slug}` },
+    openGraph: {
+      title: musician.name,
+      description: musician.tagline || musician.bio,
+      type: "profile",
+      images: musician.photos?.[0] ? [{ url: musician.photos[0], alt: musician.name }] : undefined,
+    },
   };
 }
 
 export default async function MusicianPage(props: PageProps<"/music-collective/[slug]">) {
   const { slug } = await props.params;
-  const musician = getMusician(slug);
+  const musician = await getRosterMusician(slug);
   if (!musician) notFound();
 
   const [c1, c2, c3] = musician.gradient;
@@ -99,13 +115,28 @@ export default async function MusicianPage(props: PageProps<"/music-collective/[
                 key={src}
                 className="relative aspect-[3/4] overflow-hidden rounded-2xl border border-border"
               >
-                <Image
-                  src={src}
-                  alt={`${musician.name}`}
-                  fill
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                  className="object-cover"
-                />
+                {/* Local files under /public are optimised by next/image.
+                    An artist's own uploads are served from Supabase
+                    Storage, which next/image refuses without a
+                    remotePatterns entry, so those render as a plain
+                    image -- the same split the blog's covers use. */}
+                {src.startsWith("/") ? (
+                  <Image
+                    src={src}
+                    alt={`${musician.name}`}
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    className="object-cover"
+                  />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={src}
+                    alt={`${musician.name}`}
+                    loading="lazy"
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                )}
               </div>
             ))}
           </div>

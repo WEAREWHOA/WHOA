@@ -256,6 +256,64 @@ export async function listMedia(code: string): Promise<MediaItem[]> {
 }
 
 /**
+ * Media for several accounts at once, oldest first.
+ *
+ * One query per batch of accounts rather than one per account: the public
+ * Music Collective roster needs photos for everybody on it, and a page
+ * that fires a query per artist gets slower every time somebody is
+ * approved.
+ *
+ * Oldest first on purpose. The first photo is the one that ends up on an
+ * artist's card, and ordering newest-first would reshuffle the roster's
+ * faces every time one of them uploaded a flyer.
+ *
+ * Paged, because PostgREST caps a response at its own db-max-rows (1,000
+ * here) and silently returns a short page rather than erroring -- the same
+ * cap that quietly truncated the analytics numbers. A short page is the
+ * end of the data; a full one means ask again.
+ */
+export async function listMediaForAccounts(
+  codes: string[],
+  kinds: MediaKind[],
+): Promise<Map<string, MediaItem[]>> {
+  const byAccount = new Map<string, MediaItem[]>();
+  const unique = [...new Set(codes.map((c) => c.trim().toUpperCase()))].filter(Boolean);
+  if (unique.length === 0 || kinds.length === 0) return byAccount;
+
+  const CODE_CHUNK = 50;
+  const PAGE_SIZE = 1000;
+
+  for (let i = 0; i < unique.length; i += CODE_CHUNK) {
+    const chunk = unique.slice(i, i + CODE_CHUNK);
+
+    for (let from = 0; ; from += PAGE_SIZE) {
+      const { data, error } = await getSupabase()
+        .from("account_media")
+        .select("*")
+        .in("ambassador_code", chunk)
+        .in("kind", kinds)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (error) throw new Error(`Failed to load media: ${error.message}`);
+
+      const rows = (data ?? []) as MediaRow[];
+      for (const row of rows) {
+        const code = row.ambassador_code;
+        const list = byAccount.get(code);
+        if (list) list.push(toMediaItem(row));
+        else byAccount.set(code, [toMediaItem(row)]);
+      }
+
+      if (rows.length < PAGE_SIZE) break;
+    }
+  }
+
+  return byAccount;
+}
+
+/**
  * Removes one file, from Storage and from the index.
  *
  * Scoped to the owner in the query itself, not just by a check beforehand,
