@@ -48,6 +48,12 @@ const PERMISSION_ROWS = [
     hint: "ART ADMIN tab — approve or decline submitted products. Super Admins already have this.",
   },
   {
+    field: "perm_music_admin",
+    permission: "musicAdmin",
+    label: "Music Admin",
+    hint: "MUSIC ADMIN tab — approve or decline Music Collective applications and manage the roster. Grants access on somebody else's behalf, so it is not the same as Music Collective. Super Admins already have this.",
+  },
+  {
     field: "perm_event_sales",
     permission: "eventSales",
     label: "Event Sales",

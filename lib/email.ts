@@ -431,6 +431,70 @@ export async function sendAmbassadorApprovedEmail(input: {
   }
 }
 
+/**
+ * Tells a Music Collective applicant what was decided.
+ *
+ * Both outcomes get an email. The MUSIC tab promises "we'll follow up by
+ * email once it's reviewed", and silence after a decline reads as a
+ * decision that was never made -- which is how an applicant ends up
+ * writing in a third time.
+ */
+export async function sendMusicDecisionEmail(input: {
+  name: string;
+  email: string;
+  artistName: string;
+  approved: boolean;
+}): Promise<void> {
+  const portalUrl = `${SITE_URL}/portal/music`;
+
+  const html = input.approved
+    ? wrapEmail(`
+        <p style="margin:0;color:#ff7a00;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;font-weight:600;">
+          Approved
+        </p>
+        <h1 style="margin:8px 0 0;color:#f7f0e6;font-size:26px;">Welcome to the WHOA Music Collective</h1>
+        <p style="margin:12px 0 0;color:#b8ada0;font-size:14px;line-height:1.6;">
+          Hi ${escapeHtml(input.name)} &mdash; ${escapeHtml(input.artistName)} is in. Your MUSIC tab is
+          unlocked, so your bio, genre and links are yours to edit any time, and you can submit vinyl,
+          tapes or merch to the shop from the same place.
+        </p>
+        <p style="margin:24px 0 0;">
+          <a href="${portalUrl}" style="display:inline-block;background:#ff7a00;color:#0a0806;font-size:14px;font-weight:600;text-decoration:none;padding:12px 22px;border-radius:999px;">
+            Open your Music tab
+          </a>
+        </p>
+        <p style="margin:20px 0 0;color:#6b6157;font-size:11px;line-height:1.5;">
+          Sent to ${escapeHtml(input.name)} because you applied to the WHOA Music Collective.
+        </p>`)
+    : wrapEmail(`
+        <h1 style="margin:0;color:#f7f0e6;font-size:26px;">About your Music Collective application</h1>
+        <p style="margin:12px 0 0;color:#b8ada0;font-size:14px;line-height:1.6;">
+          Hi ${escapeHtml(input.name)} &mdash; thanks for sending ${escapeHtml(input.artistName)} over. We
+          listened, and we are not able to add you to the collective right now.
+        </p>
+        <p style="margin:12px 0 0;color:#b8ada0;font-size:14px;line-height:1.6;">
+          This is about what we can book and release this season, not a verdict on the music. Send new
+          work whenever you have it and we will listen again.
+        </p>
+        <p style="margin:20px 0 0;color:#6b6157;font-size:11px;line-height:1.5;">
+          Sent to ${escapeHtml(input.name)} because you applied to the WHOA Music Collective.
+        </p>`);
+
+  const { error } = await getResend().emails.send({
+    from: FROM_ADDRESS,
+    to: input.email,
+    replyTo: REPLY_TO,
+    subject: input.approved
+      ? "You're in — welcome to the WHOA Music Collective"
+      : "Your WHOA Music Collective application",
+    html,
+  });
+
+  if (error) {
+    throw new Error(`Resend failed to send music decision email: ${error.message}`);
+  }
+}
+
 export async function sendContactMessageNotification(input: {
   name: string;
   email: string;

@@ -85,6 +85,21 @@ export default function MusicTab({
           This is what shows on your artist page — keep it up to date any time.
         </p>
 
+        {/* The page exists the moment they are approved, so the link is
+            the quickest way for them to see what everyone else sees.
+            Absent only for an artist approved before their page had a
+            stored address, until the roster next assigns one. */}
+        {profile?.slug && (
+          <p className="mt-2 text-sm">
+            <Link
+              href={`/music-collective/${profile.slug}`}
+              className="text-flame font-medium hover:underline"
+            >
+              View your live page
+            </Link>
+          </p>
+        )}
+
         {saved && (
           <p className="mt-4 rounded-lg border border-flame-2/40 bg-flame-2/10 px-4 py-2 text-sm text-flame-3">
             Profile saved.

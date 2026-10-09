@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 import MusicianCard from "@/components/musiccollective/MusicianCard";
-import { MUSICIANS } from "@/lib/musicians";
+import { getMusicRoster } from "@/lib/musicRoster";
 
 export const metadata: Metadata = {
   // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
@@ -13,7 +13,11 @@ export const metadata: Metadata = {
   description: "The DJs and producers behind WHOA Wednesday and the WHOADEGA speaker stack.",
 };
 
-export default function MusicCollectivePage() {
+export default async function MusicCollectivePage() {
+  // The hand-written artists plus everyone approved in MUSIC ADMIN. An
+  // application alone never reaches this page -- see lib/musicRoster.ts.
+  const roster = await getMusicRoster();
+
   return (
     <section className="relative flex flex-1 flex-col items-center overflow-hidden px-6 py-20">
       <PsychedelicBackground />
@@ -37,8 +41,8 @@ export default function MusicCollectivePage() {
       </div>
 
       <div className="relative z-10 mt-14 flex w-full max-w-6xl flex-wrap items-start justify-center gap-x-8 gap-y-14">
-        {MUSICIANS.map((musician, i) => (
-          <MusicianCard key={musician.slug} musician={musician} delay={i * 0.45} />
+        {roster.map((musician, i) => (
+          <MusicianCard key={musician.slug} musician={musician} delay={Math.min(i, 7) * 0.45} />
         ))}
       </div>
     </section>

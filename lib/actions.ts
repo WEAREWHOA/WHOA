@@ -3,7 +3,9 @@
 import { CAMPAIGN_LIST_IDS, savePreferences, type CampaignPreferences } from "./campaignLists";
 import { portalPath, tabForMediaKind, tabForSubmitter } from "./portalNav";
 
+import { revalidateTag } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
+import { MUSIC_ROSTER_TAG } from "./musicRoster";
 import {
   createAmbassador,
   createLink,
@@ -406,6 +408,14 @@ export async function saveMusicianProfileAction(formData: FormData) {
     console.error("saveMusicianProfileAction failed:", err);
     redirect(portalPath("music", "musicError=server"));
   }
+
+  // An approved artist's profile is a public page now, so their own edit
+  // has to reach it rather than waiting out the roster's cache.
+  // The public roster is cached for five minutes; a decision has to show
+  // up on the site before then. Second argument is the cache profile this
+  // Next version requires -- revalidateTag(tag) alone does not
+  // type-check, and "max" is what the Square webhook uses.
+  revalidateTag(MUSIC_ROSTER_TAG, "max");
 
   redirect(portalPath("music", "musicSaved=1"));
 }

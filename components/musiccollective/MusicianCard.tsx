@@ -26,6 +26,7 @@ export default function MusicianCard({ musician, delay = 0 }: { musician: Musici
   const [c1, c2, c3] = musician.gradient;
   const seed = musician.patternSeed;
   const photo = musician.photos?.[0];
+  const local = photo?.startsWith("/") ?? false;
 
   return (
     <Link
@@ -70,7 +71,13 @@ export default function MusicianCard({ musician, delay = 0 }: { musician: Musici
             opacity: 0.7,
           }}
         />
-        {photo && (
+        {/* A local file under /public goes through next/image; an
+            uploaded one does not, because it is served from Supabase
+            Storage and next/image refuses a remote host that isn't in
+            remotePatterns. Same split as the blog's cover images, and
+            the same local-or-not test the artist page uses to decide
+            whether a link opens in a new tab. */}
+        {photo && local && (
           <Image
             src={photo}
             alt=""
@@ -82,6 +89,15 @@ export default function MusicianCard({ musician, delay = 0 }: { musician: Musici
             // Dead centre crops foreheads.
             className="object-cover object-[center_30%]"
             priority={false}
+          />
+        )}
+        {photo && !local && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={photo}
+            alt=""
+            loading="lazy"
+            className="absolute inset-0 h-full w-full object-cover object-[center_30%]"
           />
         )}
         <div className="event-card-noise absolute inset-0" />

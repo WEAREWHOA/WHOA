@@ -58,6 +58,7 @@ export async function requirePortal(): Promise<PortalAccess> {
       rolodex: admin || p.rolodex,
       "event-sales": p.eventSales,
       "art-admin": admin || p.artAdmin,
+      "music-admin": admin || p.musicAdmin,
       blog: admin || p.blog,
     },
   };

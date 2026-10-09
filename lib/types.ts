@@ -63,6 +63,11 @@ export interface AccountPermissions {
   // goes into the structured data Google reads, so it is granted one
   // account at a time like the other admin tabs.
   reviews: boolean;
+  // MUSIC ADMIN tab: approves or declines Music Collective applications
+  // and manages the roster. Separate from `music`, which is an artist's
+  // own profile tab -- holding that one must not let an artist approve
+  // themselves.
+  musicAdmin: boolean;
   // BLOG tab: writing, editing and publishing posts on /blog.
   blog: boolean;
   // ANALYTICS tab: traffic, revenue, payouts and funnels for the whole
