@@ -17,7 +17,14 @@ const TILES = [
   {
     href: "/ambassadors",
     title: "Brand Ambassador Program",
-    description: "Give your people 15% off and earn 10% commission on every sale.",
+    // No percentages here on purpose. This tile is one line on a hub page
+    // that nobody revisits to re-read, so a figure printed here goes stale
+    // silently the day the rates change, and anyone who saw it once
+    // carries the old number around. /ambassadors is one click away and
+    // states the current terms in full -- that page, the portal and the
+    // emails stay specific, because each of them is where somebody is
+    // actually deciding or being paid.
+    description: "Share WHOA with your people, give them a discount, and earn on every sale.",
     gradient: "linear-gradient(160deg, #3a0a05, #8a2a15 55%, #ff2f1a)",
   },
   {
