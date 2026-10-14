@@ -5,8 +5,20 @@ import Script from "next/script";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/components/cart/CartProvider";
 import { formatCents } from "@/lib/money";
-import { applyPromoCodeAction, checkoutAction, quoteCheckoutAction, saveCheckoutDraftAction } from "@/app/checkout/actions";
+import {
+  applyPromoCodeAction,
+  checkoutAction,
+  quoteCheckoutAction,
+  saveCheckoutDraftAction,
+  type CheckoutResult,
+} from "@/app/checkout/actions";
 import { AMBASSADOR_DISCOUNT_PERCENT } from "@/lib/checkoutOrder";
+import {
+  PICKUP_ADDRESS,
+  PICKUP_HOURS_URL,
+  PICKUP_LEAD_TIME,
+  PICKUP_STORE_NAME,
+} from "@/lib/pickup";
 import { subscribeCheckoutAction } from "@/app/newsletter/actions";
 import { SHIPPING_COUNTRIES, countryName, isDomestic, nextTierSaving, normalizeCountry } from "@/lib/shipping";
 import { accountSignOutAction, getAccountAction } from "@/app/account/actions";
@@ -77,6 +89,11 @@ function CheckoutFields({
   const [city, setCity] = useState(draft?.city ?? "");
   const [state, setState] = useState(draft?.state ?? "");
   const [country, setCountry] = useState(draft?.country || "US");
+  // Ship or collect. Shipping stays the default: it is what most orders
+  // are, and a pickup chosen by accident is a customer driving to Ocean
+  // Beach for nothing.
+  const [method, setMethod] = useState<"ship" | "pickup">("ship");
+  const pickup = method === "pickup";
   const [zip, setZip] = useState(draft?.zip ?? "");
   const [phone, setPhone] = useState(draft?.phone ?? "");
 
@@ -97,13 +114,16 @@ function CheckoutFields({
   // the nudge can't promise a tier the order won't actually reach.
   const shippingNudge = nextTierSaving(country, Math.max(0, totalCents - discountCents));
   const finalCents = quote ? quote.totalCents : totalCents - estimatedDiscountCents;
+  // The nudge is about postage, so it has nothing to say to somebody
+  // who is coming to the shop.
+  const showShippingNudge = !pickup && shippingNudge;
 
   // Ask Square what this cart actually costs — including any tax
   // configured on the items, which nothing on this page can work out for
   // itself. Re-runs when a promo code lands, since that changes the price.
   useEffect(() => {
     let cancelled = false;
-    quoteCheckoutAction(lines, country)
+    quoteCheckoutAction(lines, country, method)
       .then((result) => {
         if (!cancelled) setQuoteState({ value: result });
       })
@@ -116,7 +136,7 @@ function CheckoutFields({
     return () => {
       cancelled = true;
     };
-  }, [lines, ambassadorCode, country]);
+  }, [lines, ambassadorCode, country, method]);
 
   // Once per visit to checkout. The cart reads as empty on the first
   /**
@@ -286,6 +306,32 @@ function CheckoutFields({
     // what it hands back wins — it is what they picked in the payment
     // sheet. The typed form is the fallback, and the only source at all
     // for the card path and for Cash App Pay.
+    // Collecting skips all of this. A wallet will still hand back an
+    // address if it has one -- Apple Pay does not know the order is
+    // being picked up -- and using it would post an order the customer
+    // said they were coming for.
+    if (pickup) {
+      if (!phone.trim()) {
+        setError("Add a phone number so we can reach you about your order.");
+        return;
+      }
+
+      setSubmitting(true);
+      setError(null);
+
+      const pickupOutcome = await checkoutAction({
+        token,
+        lines,
+        customerName: buyer?.name?.trim() || name,
+        customerEmail: buyer?.email?.trim() || email,
+        password: account ? undefined : password || undefined,
+        pickup: { phone: buyer?.phone?.trim() || phone },
+      });
+
+      await finishCheckout(pickupOutcome);
+      return;
+    }
+
     const shippingAddress = buyer?.address
       ? {
           ...buyer.address,
@@ -328,6 +374,19 @@ function CheckoutFields({
       shippingAddress,
     });
 
+    await finishCheckout(outcome, buyer);
+  }
+
+  /**
+   * Everything after the charge, shared by both fulfilment paths.
+   *
+   * Extracted rather than copied when pickup arrived: the newsletter
+   * record, the purchase tracking, clearing the cart and the redirect
+   * all have to happen on a collected order exactly as they do on a
+   * posted one, and two copies of that would drift the first time one
+   * of them was edited.
+   */
+  async function finishCheckout(outcome: CheckoutResult, buyer?: WalletBuyer) {
     if (!outcome.ok) {
       setError(outcome.error ?? "Something went wrong.");
       setSubmitting(false);
@@ -474,21 +533,25 @@ function CheckoutFields({
         )}
 
         <div className="mt-2 flex justify-between text-sm">
-          <span className="text-muted">Shipping</span>
+          <span className="text-muted">{pickup ? "Pickup" : "Shipping"}</span>
           {/* Only "Free" once Square has actually priced the order. With
               no quote, shippingCents is a default rather than an answer,
               and printing "Free" would promise postage the order is
-              still going to be charged for. */}
+              still going to be charged for. Collecting is the exception:
+              there is no postage to price, so it can say so straight
+              away. */}
           <span>
-            {!quote
-              ? "Calculated at checkout"
-              : shippingCents > 0
-                ? formatCents(shippingCents)
-                : "Free"}
+            {pickup
+              ? "Free"
+              : !quote
+                ? "Calculated at checkout"
+                : shippingCents > 0
+                  ? formatCents(shippingCents)
+                  : "Free"}
           </span>
         </div>
 
-        {quote && shippingNudge && (
+        {quote && showShippingNudge && (
           <p className="mt-1 text-xs text-flame-3">
             Spend {formatCents(shippingNudge.addCents)} more for{" "}
             {shippingNudge.newRateCents === 0 ? "free shipping" : `${formatCents(shippingNudge.newRateCents)} shipping`}.
@@ -515,7 +578,11 @@ function CheckoutFields({
           label="WHOA order"
           referenceId={referenceId}
           formRef={formRef}
-          requestShipping
+          /* A wallet collecting a shipping address for an order being
+             picked up asks the customer for something nobody will use,
+             and hands back an address the pickup path then has to
+             ignore. */
+          requestShipping={!pickup}
           onToken={submitWithToken}
           onBeforeRedirect={saveDraft}
           busy={submitting}
@@ -600,6 +667,65 @@ function CheckoutFields({
         )}
 
         <div>
+          <span className="text-sm font-medium">How do you want it?</span>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {(
+              [
+                { value: "ship", label: "Ship it", note: "Anywhere in the world" },
+                { value: "pickup", label: "Pick up", note: "Free, at the WHOADEGA" },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setMethod(option.value)}
+                aria-pressed={method === option.value}
+                className={`rounded-lg border px-4 py-3 text-left transition-colors ${
+                  method === option.value
+                    ? "border-flame-2 bg-flame-2/10"
+                    : "border-border-strong bg-surface-raised hover:border-border"
+                }`}
+              >
+                <span className="block text-sm font-medium">{option.label}</span>
+                <span className="mt-0.5 block text-xs text-muted">{option.note}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {pickup ? (
+          <div>
+            <span className="text-sm font-medium">Collect from</span>
+            <div className="mt-2 rounded-lg border border-border-strong bg-surface-raised px-4 py-4">
+              <p className="text-sm font-semibold">{PICKUP_STORE_NAME}</p>
+              <p className="mt-0.5 text-sm text-muted">{PICKUP_ADDRESS}</p>
+              <p className="mt-3 text-xs text-muted">{PICKUP_LEAD_TIME}</p>
+              {/* Hours are not printed anywhere on purpose -- they move,
+                  and a wrong one sends somebody to a locked door. */}
+              <a
+                href={PICKUP_HOURS_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="text-flame mt-3 inline-block text-xs hover:underline"
+              >
+                Today&apos;s hours and directions ↗
+              </a>
+            </div>
+            <input
+              type="tel"
+              required
+              aria-label="Phone (so we can reach you about your order)"
+              placeholder="Phone (so we can reach you about your order)"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
+            />
+            <p className="mt-2 text-xs text-muted">
+              We&apos;ll email you when it&apos;s ready to collect.
+            </p>
+          </div>
+        ) : (
+        <div>
           <span className="text-sm font-medium">Shipping address</span>
 
           <input
@@ -681,6 +807,7 @@ function CheckoutFields({
             total, and shows in the summary above.
           </p>
         </div>
+        )}
 
         <div>
           <span className="text-sm font-medium">Card</span>

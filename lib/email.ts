@@ -2,6 +2,12 @@ import { Resend } from "resend";
 import { formatCents } from "./money";
 import { createApprovalLinks, type ApprovalKind } from "./approvalTokens";
 import { SITE_URL } from "./siteUrl";
+import {
+  PICKUP_ADDRESS,
+  PICKUP_HOURS_URL,
+  PICKUP_LEAD_TIME,
+  PICKUP_STORE_NAME,
+} from "./pickup";
 
 let client: Resend | null = null;
 
@@ -58,6 +64,8 @@ function buildOrderHtml(input: {
   lines: OrderConfirmationLine[];
   shippingCents?: number;
   shipTo?: string;
+  /** Collecting from the shop rather than having it posted. */
+  pickup?: boolean;
   totalCents: number;
 }): string {
   const rows = input.lines
@@ -93,6 +101,27 @@ function buildOrderHtml(input: {
         ).replace(/\n/g, "<br/>")}</p>`
     : "";
 
+  // Where to go, when it will be ready, and how to be bumped up the
+  // queue. No opening hours: they change, and an hour printed in an
+  // email somebody opens next week is how a customer ends up at a locked
+  // door. The map link is where the shop keeps them current.
+  const pickupBlock = input.pickup
+    ? `
+        <p style="margin:20px 0 0;color:#6b6157;font-size:11px;text-transform:uppercase;letter-spacing:0.05em;">Collect from</p>
+        <p style="margin:4px 0 0;color:#f7f0e6;font-size:14px;line-height:1.5;font-weight:600;">${escapeHtml(
+          PICKUP_STORE_NAME,
+        )}</p>
+        <p style="margin:2px 0 0;color:#b8ada0;font-size:13px;line-height:1.5;">${escapeHtml(
+          PICKUP_ADDRESS,
+        )}</p>
+        <p style="margin:12px 0 0;color:#b8ada0;font-size:13px;line-height:1.6;">${escapeHtml(
+          PICKUP_LEAD_TIME,
+        )}</p>
+        <p style="margin:12px 0 0;color:#b8ada0;font-size:13px;line-height:1.6;">
+          <a href="${PICKUP_HOURS_URL}" style="color:#ff7a00;">Today's opening hours and directions</a>
+        </p>`
+    : "";
+
   return wrapEmail(`
         <p style="margin:0;color:#ff7a00;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;font-weight:600;">Order confirmed</p>
         <h1 style="margin:8px 0 0;color:#f7f0e6;font-size:28px;">Thanks, ${escapeHtml(input.customerName)}</h1>
@@ -110,6 +139,7 @@ function buildOrderHtml(input: {
           </tr>
         </table>
         ${shipToBlock}
+        ${pickupBlock}
         <p style="margin:24px 0 0;color:#6b6157;font-size:12px;font-family:monospace;">Order ${escapeHtml(input.orderId)}</p>
         <p style="margin:24px 0 0;color:#b8ada0;font-size:13px;line-height:1.5;">
           Questions about your order? Just reply to this email.
@@ -194,6 +224,9 @@ export async function sendOrderConfirmationEmail(input: {
   shippingCents?: number;
   /** Where it's going, already formatted for display. */
   shipTo?: string;
+  /** Collecting from the shop: swaps the destination block for the
+   *  address, the lead time and a link to the live opening hours. */
+  pickup?: boolean;
   totalCents: number;
 }): Promise<void> {
   const resend = getResend();
@@ -202,7 +235,9 @@ export async function sendOrderConfirmationEmail(input: {
     from: FROM_ADDRESS,
     to: input.to,
     replyTo: REPLY_TO,
-    subject: `Your WHOA order is confirmed`,
+    subject: input.pickup
+      ? "Your WHOA order is confirmed — we'll have it ready"
+      : "Your WHOA order is confirmed",
     html: buildOrderHtml(input),
   });
 

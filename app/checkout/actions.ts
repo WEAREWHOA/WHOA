@@ -21,6 +21,7 @@ import {
   type CheckoutQuote,
 } from "@/lib/checkoutOrder";
 import { formatShipTo, isDomestic, normalizeCountry, shippingRateCents } from "@/lib/shipping";
+import { PICKUP_LEAD_TIME } from "@/lib/pickup";
 import type { CartLine, ShippingAddress } from "@/lib/types";
 import type { Country, Money } from "square";
 
@@ -94,6 +95,10 @@ export async function quoteCheckoutAction(
   /** Destination, so the quote includes the right postage. Defaults to
    *  the US until they pick one. */
   country?: string,
+  /** Collecting from the shop means no postage at all, and the quote has
+   *  to say so before the card is charged -- otherwise the summary adds
+   *  shipping to an order that is never being shipped. */
+  method: "ship" | "pickup" = "ship",
 ): Promise<CheckoutQuote | null> {
   if (lines.length === 0) return null;
 
@@ -117,14 +122,17 @@ export async function quoteCheckoutAction(
         })
       : new Set<string>();
 
-    const shippingCents = shippingRateCents(
-      country,
-      discountedMerchandiseCents({
-        lines,
-        ambassadorCode: ambassador?.code,
-        excludedProductIds,
-      }),
-    );
+    const shippingCents =
+      method === "pickup"
+        ? 0
+        : shippingRateCents(
+            country,
+            discountedMerchandiseCents({
+              lines,
+              ambassadorCode: ambassador?.code,
+              excludedProductIds,
+            }),
+          );
 
     const response = await getSquare().orders.calculate({
       order: {
@@ -179,9 +187,18 @@ export async function checkoutAction(input: {
   // register. Blank/omitted means "just check out as a guest."
   password?: string;
   // Omitted for the POS register's in-person sales — a customer standing
-  // at the booth doesn't need a shipment fulfillment. Always present, and
-  // validated, for the online storefront's checkout.
+  // at the booth doesn't need a shipment fulfillment. Present, and
+  // validated, for an online order that is being shipped.
   shippingAddress?: ShippingAddress;
+  /**
+   * Collecting from the shop instead of having it posted.
+   *
+   * A third case, not the absence of the second. An order with no
+   * shipping address used to mean exactly one thing -- the till -- and
+   * several decisions still read it that way, so pickup says what it is
+   * rather than being inferred from what it lacks.
+   */
+  pickup?: { phone: string };
 }): Promise<CheckoutResult> {
   if (input.lines.length === 0) {
     return { ok: false, error: "Your cart is empty." };
@@ -208,6 +225,17 @@ export async function checkoutAction(input: {
     if (!shipping.phone?.trim()) {
       return { ok: false, error: "A phone number is required for shipping." };
     }
+  }
+
+  // Same reasoning as the shipping phone: somebody has to be reachable
+  // about the order. More so here, where the whole promise is that we
+  // will call if there is a problem and they can call to be bumped up
+  // the queue.
+  if (input.pickup && !input.pickup.phone.trim()) {
+    return { ok: false, error: "A phone number is required for pickup." };
+  }
+  if (!input.customerEmail.trim() && input.pickup) {
+    return { ok: false, error: "An email is required for pickup, so we can tell you it's ready." };
   }
 
   // Sign the buyer in or create their account before touching stock or
@@ -339,7 +367,31 @@ export async function checkoutAction(input: {
           // comes from the browser.
           shippingCents,
         }),
-        fulfillments: shipping
+        // Three shapes, one field. A posted order gets a SHIPMENT, a
+        // collected one gets a PICKUP, and a sale rung up at the till
+        // gets neither because the customer already has the goods.
+        //
+        // ASAP rather than a scheduled slot: no collection time is
+        // offered on the checkout, because a time chosen by a stranger
+        // at 2am is a promise the shop has to break. The note carries
+        // what was actually promised instead, so it is on the order in
+        // Square where whoever packs it will see it.
+        fulfillments: input.pickup
+          ? [
+              {
+                type: "PICKUP" as const,
+                pickupDetails: {
+                  scheduleType: "ASAP" as const,
+                  note: PICKUP_LEAD_TIME,
+                  recipient: {
+                    displayName: input.customerName.trim(),
+                    emailAddress: input.customerEmail || undefined,
+                    phoneNumber: input.pickup.phone.trim(),
+                  },
+                },
+              },
+            ]
+          : shipping
           ? [
               {
                 type: "SHIPMENT",
@@ -408,12 +460,15 @@ export async function checkoutAction(input: {
     // "you left something behind" about an order they just paid for.
     await markRecovered(input.customerEmail);
 
-    // A till sale, identified by having no shipping address. The online
+    // A till sale, identified by having neither a shipping address nor a
+    // pickup -- an online order collected from the shop has no address
+    // either, and recording that buyer as a walk-in would put them in
+    // the wrong segment and skip the consent the checkout form took. The online
     // storefront records its own buyer from the checkout form, where the
     // opt-in box decides whether they are subscribed or merely recorded;
     // the register collects an address for a receipt and asks nothing, so
     // the row says exactly that.
-    if (!input.shippingAddress) {
+    if (!input.shippingAddress && !input.pickup) {
       const [firstName, ...restOfName] = input.customerName.trim().split(/\s+/);
       recordContactInBackground({
         email: input.customerEmail,
@@ -437,6 +492,7 @@ export async function checkoutAction(input: {
       })),
       shippingCents: shipping ? shippingCents : undefined,
       shipTo: shipping ? formatShipTo(shipping) : undefined,
+      pickup: input.pickup ? true : undefined,
       totalCents: Number(totalMoney.amount),
     }).catch((err) => {
       console.error("Failed to send order confirmation email", err);
