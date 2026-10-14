@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useCart } from "@/components/cart/CartProvider";
 import { formatCents } from "@/lib/money";
 import { applyPromoCodeAction, checkoutAction, quoteCheckoutAction, saveCheckoutDraftAction } from "@/app/checkout/actions";
+import { AMBASSADOR_DISCOUNT_PERCENT } from "@/lib/checkoutOrder";
 import { subscribeCheckoutAction } from "@/app/newsletter/actions";
 import { SHIPPING_COUNTRIES, countryName, isDomestic, nextTierSaving, normalizeCountry } from "@/lib/shipping";
 import { accountSignOutAction, getAccountAction } from "@/app/account/actions";
@@ -83,7 +84,9 @@ function CheckoutFields({
   // call fails. It can't know about tax, and it assumes every item takes
   // the ambassador discount — Art Collective items don't — so it's a
   // fallback, not the number to trust.
-  const estimatedDiscountCents = ambassadorCode ? Math.round(totalCents * 0.15) : 0;
+  const estimatedDiscountCents = ambassadorCode
+    ? Math.round((totalCents * AMBASSADOR_DISCOUNT_PERCENT) / 100)
+    : 0;
 
   const discountCents = quote ? quote.discountCents : estimatedDiscountCents;
   const taxCents = quote?.taxCents ?? 0;
@@ -414,11 +417,38 @@ function CheckoutFields({
 
         {ambassadorCode ? (
           <>
-            <div className="text-flame-3 mt-2 flex justify-between text-sm">
-              <span>Ambassador discount (15%)</span>
-              <span>-{formatCents(discountCents)}</span>
-            </div>
-            {promoApplied && <p className="text-flame-3 mt-1 text-xs">Promo code applied.</p>}
+            {/* A valid code on a cart of ineligible items used to render
+                as "Ambassador discount (15%)  -$0.00" over "Promo code
+                applied", which reads as a checkout that is broken rather
+                than a rule that is being applied. The code IS on the
+                order; Square priced the discount at zero because nothing
+                in the cart carries the eligible marker in its
+                description. So say that instead of promising a
+                percentage that is not coming off.
+
+                Gated on the quote having arrived: until Square answers,
+                discountCents is the cart's own optimistic estimate, and
+                a zero there means "not priced yet", not "not eligible". */}
+            {quote && discountCents === 0 ? (
+              <>
+                <div className="mt-2 flex justify-between text-sm text-muted">
+                  <span>Ambassador discount</span>
+                  <span>Not applied</span>
+                </div>
+                <p className="mt-1 text-xs text-muted">
+                  Your code is valid, but nothing in this cart is eligible for it. One-of-a-kind
+                  artist pieces, consignment and guest brands are always full price.
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="text-flame-3 mt-2 flex justify-between text-sm">
+                  <span>Ambassador discount ({AMBASSADOR_DISCOUNT_PERCENT}%)</span>
+                  <span>-{formatCents(discountCents)}</span>
+                </div>
+                {promoApplied && <p className="text-flame-3 mt-1 text-xs">Promo code applied.</p>}
+              </>
+            )}
           </>
         ) : (
           <div className="mt-4">
