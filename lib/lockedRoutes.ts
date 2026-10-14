@@ -7,11 +7,16 @@
  * has effectively found the thing unlocked. Opening an area back up is
  * deleting a line here, not hunting through components.
  *
- * The pages themselves stay live and reachable by URL: artists and
- * musicians already mid-application, and staff checking their own work,
- * still need them. This governs what the public site invites you to click.
+ * The pages themselves stay live and reachable by URL: artists already
+ * mid-application, and staff checking their own work, still need them.
+ * This governs what the public site invites you to click.
+ *
+ * The Music Collective came off this list once there were approved
+ * artists on it with pages of their own. A padlock reading "Coming
+ * Soon!" over a page that is finished, listed in the sitemap and linked
+ * from /go is the site arguing with itself.
  */
-export const LOCKED_ROUTES: readonly string[] = ["/art-collective", "/music-collective"];
+export const LOCKED_ROUTES: readonly string[] = ["/art-collective"];
 
 /** The words shown next to the padlock, in one place so they never drift. */
 export const COMING_SOON_LABEL = "Coming Soon!";

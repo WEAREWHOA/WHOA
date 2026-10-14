@@ -17,13 +17,9 @@ export const metadata: Metadata = {
   title: "Retail Locations",
   description:
     "Where to buy WHOA in person: our Ocean Beach shop the WHOADEGA at 4847 Newport Ave, our section inside Pangaea Outpost at 909 Garnet Ave in Pacific Beach, plus event pop-ups around San Diego.",
-  openGraph: {
-    title: "WHOA Retail Locations",
-    description:
-      "Find WHOA in person. The WHOADEGA in Ocean Beach, our section inside Pangaea Outpost in Pacific Beach, and event pop-ups around San Diego.",
-    url: `${SITE_URL}/stores`,
-    type: "website",
-  },
+  // No openGraph block: it was replacing the inherited one and taking
+  // the image with it, so this page shared with no picture at all. The
+  // title and description above now fill og and twitter by themselves.
 };
 
 const KIND_ORDER: StoreKind[] = ["retail-store", "retail-popup", "event-popup"];

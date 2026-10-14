@@ -16,12 +16,8 @@ export const metadata: Metadata = {
   alternates: { canonical: "/oneofakindheadwear" },
   title: TITLE,
   description: DESCRIPTION,
-  openGraph: {
-    title: `${TITLE} · WHOA`,
-    description: DESCRIPTION,
-    url: `${SITE_URL}/oneofakindheadwear`,
-    type: "website",
-  },
+  // No openGraph block -- see app/stores/page.tsx. Declaring one without
+  // images is what left this page sharing with no picture.
 };
 
 /**

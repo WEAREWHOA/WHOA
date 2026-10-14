@@ -71,6 +71,19 @@ function visualsFor(code: string): Pick<Musician, "accent" | "gradient" | "rotat
   };
 }
 
+/**
+ * The hand-written roster entry this artist name already is, if any.
+ *
+ * Matched on the slug rather than the raw name, so "Dr. Play", "dr play"
+ * and "DR. PLAY" all resolve to the artist already on the page. Returns
+ * that artist's URL segment, which is what the MUSIC ADMIN tab needs in
+ * order to point at the page their edits are not changing.
+ */
+export function handWrittenSlug(artistName: string): string | null {
+  const slug = musicSlug(artistName);
+  return MUSICIANS.some((musician) => musician.slug === slug) ? slug : null;
+}
+
 function toMusician(artist: MusicianApplication, slug: string, photos: string[]): Musician {
   return {
     slug,
@@ -119,6 +132,20 @@ async function readApproved(): Promise<Musician[]> {
   const roster: Musician[] = [];
 
   for (const artist of approved) {
+    // Already on the page by hand. WASANI, Dr. Play and Lamel predate the
+    // application form, and if one of them later gets a portal account
+    // their profile is a second record of the same artist -- which, left
+    // alone, is the same person on the roster twice and two URLs
+    // competing for their own name in search.
+    //
+    // The hand-written entry wins because it is strictly richer: a
+    // multi-paragraph story, past shows, fun facts and the inbound links
+    // that already point at it. Their portal profile still works for
+    // everything else it does, and the MUSIC ADMIN tab says plainly that
+    // their public page is the hand-written one rather than leaving the
+    // edits looking lost.
+    if (handWrittenSlug(artist.artistName)) continue;
+
     // A stored slug is the URL. Anyone approved before migration 0049 is
     // given one here, once; if that write can't happen (the column isn't
     // there yet) the derived name is used for this render, which keeps
