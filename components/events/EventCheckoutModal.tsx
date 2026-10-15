@@ -9,6 +9,7 @@ import { accountSignOutAction, getAccountAction } from "@/app/account/actions";
 import { markRsvped } from "@/components/events/useRsvp";
 import WalletButtons, { type WalletBuyer } from "@/components/checkout/WalletButtons";
 import { eventCheckoutDraft, newReferenceId, type EventCheckoutDraft } from "@/lib/checkoutDrafts";
+import HumanCheck, { type HumanCheckValue } from "@/components/forms/HumanCheck";
 import {
   SQUARE_APPLICATION_ID as APPLICATION_ID,
   SQUARE_CARD_STYLE,
@@ -45,6 +46,7 @@ export default function EventCheckoutModal({
   const [cardReady, setCardReady] = useState(!isPaid);
   const cardReadyRef = useRef(!isPaid);
   const [submitting, setSubmitting] = useState(false);
+  const [human, setHuman] = useState<HumanCheckValue | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   // Where the ticket was actually sent — with a wallet that can be the
@@ -221,6 +223,7 @@ export default function EventCheckoutModal({
     setError(null);
 
     const outcome = await eventRsvpAction({
+      ...human,
       eventId: event.id,
       name: buyerName,
       email: buyerEmail,
@@ -528,6 +531,8 @@ export default function EventCheckoutModal({
                   </p>
                 )}
   
+                <HumanCheck onChange={setHuman} />
+
                 <button
                   type="submit"
                   disabled={submitting || (isPaid && (!cardReady || !APPLICATION_ID || !LOCATION_ID))}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { loginAction, registerAction } from "@/lib/actions";
+import HumanCheck from "@/components/forms/HumanCheck";
 
 const loginErrors: Record<string, string> = {
   missing: "Enter your ambassador code (or email) and your password.",
@@ -11,6 +12,7 @@ const loginErrors: Record<string, string> = {
 
 const signupErrors: Record<string, string> = {
   missing: "Enter a valid email to continue.",
+  human: "We couldn't verify that came from a person. Reload the page and try again.",
   "weak-password": "Password must be at least 8 characters.",
   exists: "An account with that email already exists — log in instead.",
   server: "Something went wrong creating your account — please try again.",
@@ -99,6 +101,8 @@ export default function LoginForm({
                 className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
               />
             </div>
+
+            <HumanCheck />
 
             <button type="submit" className="btn-flame mt-2 rounded-full px-8 py-4 text-base">
               Create account

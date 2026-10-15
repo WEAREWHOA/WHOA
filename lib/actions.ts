@@ -4,6 +4,7 @@ import { CAMPAIGN_LIST_IDS, savePreferences, type CampaignPreferences } from "./
 import { portalPath, tabForMediaKind, tabForSubmitter } from "./portalNav";
 
 import { revalidateTag } from "next/cache";
+import { humanCheckFromForm, verifyHuman } from "./humanCheck";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { MUSIC_ROSTER_TAG } from "./musicRoster";
 import {
@@ -96,6 +97,17 @@ export async function logoutAction() {
 // plain account with just the Customer tab. Extra tabs are unlocked by a
 // Super Admin (or automatically by the full /apply ambassador flow).
 export async function registerAction(formData: FormData) {
+  // Creating accounts is the half of this form worth protecting. Sign-in
+  // deliberately has no check: it would put friction in front of every
+  // returning customer, and the thing it would be defending against --
+  // credential stuffing -- is better answered by rate limiting than by
+  // a puzzle a script farm solves for a tenth of a cent.
+  const human = await verifyHuman(humanCheckFromForm(formData));
+  if (!human.ok) {
+    console.warn("registerAction rejected a submission:", human.reason);
+    redirect("/login?mode=signup&error=human");
+  }
+
   const email = String(formData.get("email") || "").trim();
   const password = String(formData.get("password") || "");
 

@@ -1,5 +1,6 @@
 "use server";
 
+import { humanCheckFromForm, verifyHuman } from "@/lib/humanCheck";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { createAmbassador, getByEmail } from "@/lib/store";
 import { createSession, hashPassword } from "@/lib/auth";
@@ -7,6 +8,15 @@ import { sendAmbassadorApplicationNotification } from "@/lib/email";
 import { recordContactInBackground, TAG } from "@/lib/newsletter";
 
 export async function applyAction(formData: FormData) {
+
+  // Before anything is read or written. A rejected submission is told
+  // one generic thing whichever check it tripped, so a script learns
+  // nothing from the difference.
+  const human = await verifyHuman(humanCheckFromForm(formData));
+  if (!human.ok) {
+    console.warn("%s rejected a submission: %s", "applyAction", human.reason);
+    redirect("/apply?error=human");
+  }
   const name = String(formData.get("name") || "").trim();
   const email = String(formData.get("email") || "").trim();
   const instagram = String(formData.get("instagram") || "").trim();

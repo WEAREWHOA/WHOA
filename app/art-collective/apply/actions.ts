@@ -1,5 +1,6 @@
 "use server";
 
+import { humanCheckFromForm, verifyHuman } from "@/lib/humanCheck";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { createAmbassador, getByEmail } from "@/lib/store";
 import { saveArtProfile, type ArtLink } from "@/lib/artCollective";
@@ -14,6 +15,15 @@ const LINK_FIELDS: { label: string; field: string }[] = [
 ];
 
 export async function applyArtAction(formData: FormData) {
+
+  // Before anything is read or written. A rejected submission is told
+  // one generic thing whichever check it tripped, so a script learns
+  // nothing from the difference.
+  const human = await verifyHuman(humanCheckFromForm(formData));
+  if (!human.ok) {
+    console.warn("%s rejected a submission: %s", "applyArtAction", human.reason);
+    redirect("/art-collective/apply?error=human");
+  }
   const name = String(formData.get("name") || "").trim();
   const email = String(formData.get("email") || "")
     .trim()

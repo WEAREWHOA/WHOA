@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 
 import { subscribeFooterAction } from "@/app/newsletter/actions";
+import HumanCheck, { type HumanCheckValue } from "@/components/forms/HumanCheck";
 
 /**
  * The email field in the site footer.
@@ -19,6 +20,7 @@ export default function FooterSignup() {
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "done">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [human, setHuman] = useState<HumanCheckValue | null>(null);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -26,7 +28,7 @@ export default function FooterSignup() {
     setState("sending");
     setError(null);
 
-    const result = await subscribeFooterAction(email).catch(() => ({
+    const result = await subscribeFooterAction(email, human ?? undefined).catch(() => ({
       ok: false,
       error: "Couldn't sign you up right now. Please try again later.",
     }));
@@ -78,6 +80,9 @@ export default function FooterSignup() {
         </p>
       )}
       <p className="text-xs text-muted">New drops, events and nothing else. Unsubscribe any time.</p>
+      {/* In the footer of every page, so the widget stays out of the way
+          until Cloudflare decides it has something to ask. */}
+      <HumanCheck onChange={setHuman} />
     </form>
   );
 }

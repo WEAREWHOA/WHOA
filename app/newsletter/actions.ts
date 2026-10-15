@@ -1,6 +1,7 @@
 "use server";
 
 import { recordContact, subscribe, TAG } from "@/lib/newsletter";
+import { HUMAN_CHECK_ERROR, verifyHuman, type HumanCheckInput } from "@/lib/humanCheck";
 
 /**
  * The public one: anyone can call it, because anyone can subscribe.
@@ -9,7 +10,20 @@ import { recordContact, subscribe, TAG } from "@/lib/newsletter";
  * already subscribed" turns a signup box into a tool for checking whether
  * a given person is on it, which isn't a question a stranger gets to ask.
  */
-export async function subscribeFooterAction(email: string): Promise<{ ok: boolean; error?: string }> {
+export async function subscribeFooterAction(
+  email: string,
+  human?: HumanCheckInput,
+): Promise<{ ok: boolean; error?: string }> {
+  // One field, so the clock floor is lowered: somebody pasting an
+  // address into a footer box genuinely does it in under two seconds,
+  // and a check that called that a bot would reject real signups. The
+  // honeypot does most of the work here.
+  const check = await verifyHuman(human ?? {}, { minSeconds: 1 });
+  if (!check.ok) {
+    console.warn("subscribeFooterAction rejected a submission:", check.reason);
+    return { ok: false, error: HUMAN_CHECK_ERROR };
+  }
+
   const result = await subscribe({ email, source: "footer" }).catch((err) => {
     console.error("Footer newsletter signup failed:", err);
     return { ok: false, error: "Couldn't sign you up right now. Please try again later." };
