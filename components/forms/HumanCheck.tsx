@@ -2,7 +2,7 @@
 
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
-import { TURNSTILE_SITE_KEY } from "@/lib/humanCheck";
+import { TURNSTILE_SITE_KEY } from "@/lib/turnstileWeb";
 
 /**
  * The three hidden halves of lib/humanCheck.ts, as one component.

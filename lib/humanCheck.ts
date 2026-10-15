@@ -22,6 +22,12 @@ import { headers } from "next/headers";
  *   a network call and on somebody having set two environment
  *   variables.
  *
+ * SERVER ONLY. This module reads next/headers, so importing it from a
+ * client component pulls that into the browser bundle and fails the
+ * build. The site key the widget needs lives in lib/turnstileWeb.ts for
+ * exactly that reason -- the same split as lib/square.ts and
+ * lib/squareWeb.ts.
+ *
  * INERT UNTIL CONFIGURED. With no TURNSTILE_SECRET_KEY, the token check
  * is skipped and the honeypot and clock still run. That is deliberate:
  * this ships before the keys exist, and a verification step that
@@ -32,9 +38,6 @@ import { headers } from "next/headers";
  */
 
 const VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
-
-/** Public, so it reaches the browser. Empty means the widget isn't rendered. */
-export const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
 function secretKey(): string {
   return process.env.TURNSTILE_SECRET_KEY ?? "";
