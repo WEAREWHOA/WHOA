@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { submitContactAction } from "@/app/contact/actions";
 import { CONTACT_TOPICS } from "@/lib/contact";
+import HumanCheck, { type HumanCheckValue } from "@/components/forms/HumanCheck";
 
 const MAX_MESSAGE = 4000;
 
@@ -15,13 +16,16 @@ export default function ContactForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  // This form calls the action with an object rather than posting
+  // FormData, so the hidden fields have to be carried across by hand.
+  const [human, setHuman] = useState<HumanCheckValue | null>(null);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
 
-    const outcome = await submitContactAction({ name, email, topic, message });
+    const outcome = await submitContactAction({ name, email, topic, message, ...human });
 
     if (!outcome.ok) {
       setError(outcome.error ?? "Something went wrong.");
@@ -145,6 +149,8 @@ export default function ContactForm() {
           {error}
         </p>
       )}
+
+      <HumanCheck onChange={setHuman} className="relative mt-4" />
 
       <button
         type="submit"

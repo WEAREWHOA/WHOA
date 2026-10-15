@@ -9,6 +9,7 @@ import { getByCode } from "@/lib/store";
 import { moderateReview, replyToReview, submitReview, type SubmitResult } from "@/lib/reviews";
 import { reviewerForToken } from "@/lib/reviewRequests";
 import { recordContactInBackground, TAG } from "@/lib/newsletter";
+import { HUMAN_CHECK_ERROR, verifyHuman, type HumanCheckInput } from "@/lib/humanCheck";
 
 /**
  * The public one: anyone who bought something can say what they think,
@@ -17,7 +18,7 @@ import { recordContactInBackground, TAG } from "@/lib/newsletter";
  * It takes a review; it never publishes one. Approval is a separate act
  * by a person, in the portal.
  */
-export async function submitReviewAction(input: {
+export async function submitReviewAction(input: HumanCheckInput & {
   productId: string;
   productSlug?: string | null;
   productName: string;
@@ -46,6 +47,16 @@ export async function submitReviewAction(input: {
   // Signed in, if they happen to be. Never required: making people make
   // an account to review something is how you end up with no reviews.
   const accountCode = await getSessionAmbassadorCode().catch(() => null);
+
+  // Before the review is written, the contact is recorded or the token
+  // is spent. A product review is public text under a product -- it is
+  // in the structured data Google reads, which makes it worth a script's
+  // time.
+  const human = await verifyHuman(input);
+  if (!human.ok) {
+    console.warn("submitReviewAction rejected a submission:", human.reason);
+    return { ok: false, error: HUMAN_CHECK_ERROR };
+  }
 
   // Vercel puts the real client address first in x-forwarded-for. Only
   // ever hashed, inside submitReview.

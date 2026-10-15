@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { applyAction } from "./actions";
+import HumanCheck from "@/components/forms/HumanCheck";
 
 export const metadata: Metadata = {
   // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
@@ -16,6 +17,8 @@ const errorMessages: Record<string, string> = {
   "weak-password": "Password must be at least 8 characters.",
   "password-mismatch": "Passwords don't match.",
   server: "Something went wrong creating your account — please try again.",
+  human:
+    "We couldn't verify that came from a person. Reload the page and try again.",
 };
 
 export default async function ApplyPage(props: PageProps<"/apply">) {
@@ -115,6 +118,8 @@ export default async function ApplyPage(props: PageProps<"/apply">) {
               className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
             />
           </div>
+
+          <HumanCheck />
 
           <button type="submit" className="btn-flame mt-2 rounded-full px-8 py-4 text-base">
             Create my account

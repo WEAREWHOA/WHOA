@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 
 import { submitReviewAction } from "@/app/reviews/actions";
+import HumanCheck, { type HumanCheckValue } from "@/components/forms/HumanCheck";
 
 // Written out rather than imported from lib/reviews: that module reaches
 // for node:crypto, Square and Supabase, and importing a constant from it
@@ -42,6 +43,7 @@ export default function ReviewForm({
   const [rating, setRating] = useState(0);
   const [hovered, setHovered] = useState(0);
   const [state, setState] = useState<"idle" | "sending" | "done">("idle");
+  const [human, setHuman] = useState<HumanCheckValue | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -53,6 +55,7 @@ export default function ReviewForm({
     setError(null);
 
     const result = await submitReviewAction({
+      ...human,
       productId,
       productSlug,
       productName,
@@ -189,6 +192,8 @@ export default function ReviewForm({
           ? "We already know this is your order, so it will show as a verified purchase. Someone here reads every review before it goes up."
           : "Your email is never shown. We use it to check the purchase against our orders and to reply if we need to. Someone here reads every review before it goes up."}
       </p>
+
+      <HumanCheck onChange={setHuman} />
 
       <div className="flex flex-wrap gap-3">
         <button

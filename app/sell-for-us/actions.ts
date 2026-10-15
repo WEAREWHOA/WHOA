@@ -1,5 +1,6 @@
 "use server";
 
+import { humanCheckFromForm, verifyHuman } from "@/lib/humanCheck";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { createAmbassador, getByEmail } from "@/lib/store";
 import { recordEventSalesApplication } from "@/lib/eventSales";
@@ -8,6 +9,15 @@ import { sendEventSalesApplicationNotification } from "@/lib/email";
 import { recordContactInBackground, TAG } from "@/lib/newsletter";
 
 export async function applySellForUsAction(formData: FormData) {
+
+  // Before anything is read or written. A rejected submission is told
+  // one generic thing whichever check it tripped, so a script learns
+  // nothing from the difference.
+  const human = await verifyHuman(humanCheckFromForm(formData));
+  if (!human.ok) {
+    console.warn("%s rejected a submission: %s", "applySellForUsAction", human.reason);
+    redirect("/sell-for-us?error=human");
+  }
   const name = String(formData.get("name") || "").trim();
   const email = String(formData.get("email") || "")
     .trim()

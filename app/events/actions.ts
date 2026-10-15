@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "crypto";
+import { HUMAN_CHECK_ERROR, verifyHuman, type HumanCheckInput } from "@/lib/humanCheck";
 import QRCode from "qrcode";
 import { getSquare, getSquareLocationId } from "@/lib/square";
 import { resolveAccount } from "@/lib/accountAuth";
@@ -34,7 +35,7 @@ export interface EventRsvpResult {
   quantity?: number;
 }
 
-export async function eventRsvpAction(input: {
+export async function eventRsvpAction(input: HumanCheckInput & {
   eventId: string;
   name: string;
   email: string;
@@ -88,6 +89,15 @@ export async function eventRsvpAction(input: {
   const email = input.email.trim();
   if (!email || !email.includes("@")) {
     return { ok: false, error: "A valid email is required." };
+  }
+
+  // A free RSVP is a real thing of value -- a place on a guest list, a
+  // confirmation email, and a row in the capacity count that can sell
+  // the event out. Checked before any of those are spent.
+  const human = await verifyHuman(input);
+  if (!human.ok) {
+    console.warn("eventRsvpAction rejected a submission:", human.reason);
+    return { ok: false, error: HUMAN_CHECK_ERROR };
   }
 
   // Computed server-side, from today's real date, at the moment of charge —

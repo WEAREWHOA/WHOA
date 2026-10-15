@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type PointerEvent, type FormEvent } from "react";
 import GarmentSilhouette from "./GarmentSilhouette";
 import { submitDesignAction } from "@/app/custom-design/actions";
+import HumanCheck, { type HumanCheckValue } from "@/components/forms/HumanCheck";
 import {
   GARMENT_TEMPLATES,
   GARMENT_VIEWBOX,
@@ -57,6 +58,7 @@ export default function CustomDesignEditor() {
   const [form, setForm] = useState({ name: "", email: "", phone: "" });
   const [submitState, setSubmitState] = useState<"idle" | "submitting">("idle");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [human, setHuman] = useState<HumanCheckValue | null>(null);
 
   // Image templates only: composites the raw ink onto the visible canvas,
   // masked to the garment's actual silhouette via "destination-in".
@@ -298,6 +300,7 @@ export default function CustomDesignEditor() {
       name: form.name,
       email: form.email,
       phone: form.phone,
+      ...human,
     });
 
     if (result.ok) {
@@ -515,6 +518,8 @@ export default function CustomDesignEditor() {
             />
 
             {submitError && <p className="text-xs text-flame-3">{submitError}</p>}
+
+            <HumanCheck onChange={setHuman} />
 
             <div className="mt-2 flex gap-3">
               <button
