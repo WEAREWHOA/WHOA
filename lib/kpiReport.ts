@@ -566,6 +566,19 @@ export async function getAnalytics(periodDays = 30): Promise<AnalyticsSnapshot> 
   const cardsComplete = [...stampsByAccount.values()].filter((n) => n >= 6).length;
 
   // ── prizes ─────────────────────────────────────────────────────────
+  // The spin wheel writes into the same table under prize = 'spin',
+  // so the whole thing is already in hand. Counted by reward, because
+  // "how many did we give away" means how many of each thing walked out
+  // of the shop -- the stock itself is untouched by any of this, by
+  // design, so this report is the only record of it.
+  const spinPrizes = gamePrizes.filter((p) => p.prize === "spin");
+  const spinGiftCards = spinPrizes.filter((p) => p.reward.includes("GIFT CARD")).length;
+  const spinStickers = spinPrizes.filter((p) => p.reward.includes("STICKER")).length;
+  const spinKeychains = spinPrizes.filter((p) => p.reward === "KEYCHAIN").length;
+  const spinLighters = spinPrizes.filter((p) => p.reward === "LIGHTER").length;
+  // Won the middle prize and has not said which they want yet.
+  const spinUndecided = spinPrizes.filter((p) => p.reward === "KEYCHAIN OR LIGHTER").length;
+
   const scavengerPrizes = gamePrizes.filter((p) => p.prize === "scavenger");
   const snakePrizes = gamePrizes.filter((p) => p.prize === "snake");
   const stickerPicks = gamePrizes.filter((p) => p.reward === "FREE STICKER").length;
@@ -707,6 +720,20 @@ export async function getAnalytics(periodDays = 30): Promise<AnalyticsSnapshot> 
         { label: "Filled all six", value: cardsComplete },
         { label: "Claimed a prize", value: scavengerPrizes.length },
         { label: "Collected it", value: scavengerPrizes.filter((p) => p.redeemed_at).length },
+      ],
+    },
+    {
+      id: "spin",
+      title: "Spin the wheel",
+      blurb: "One spin per account. What has been promised, and what has been handed over.",
+      steps: [
+        { label: "Spins taken", value: spinPrizes.length },
+        { label: "$50 gift cards", value: spinGiftCards },
+        { label: "Keychains", value: spinKeychains },
+        { label: "Lighters", value: spinLighters },
+        { label: "Not yet picked", value: spinUndecided },
+        { label: "Sticker packs", value: spinStickers },
+        { label: "Collected in person", value: spinPrizes.filter((p) => p.redeemed_at).length },
       ],
     },
     {
