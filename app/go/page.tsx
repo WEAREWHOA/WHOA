@@ -7,8 +7,8 @@ import PsychedelicBackground from "@/components/home/PsychedelicBackground";
  *
  * It used to be the SSBD experience: a sign-up gate, a portal animation,
  * four element doors and a scavenger strip. All of that is gone. What is
- * left is the four things somebody scanning a flyer actually wants, with
- * the site's own nav around it rather than a sealed room.
+ * left is the handful of things somebody scanning a flyer actually
+ * wants, with the site's own nav around it rather than a sealed room.
  *
  * Deliberately kept out of the index. It has no content of its own, only
  * links to pages that do, so letting it rank would put a thin hub in
@@ -18,7 +18,8 @@ import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 export const metadata: Metadata = {
   robots: { index: false, follow: true },
   title: "Start here",
-  description: "RSVP to an event, shop online, join the Music Collective, or sign in to WHOA.",
+  description:
+    "RSVP to an event, shop online, join the Music Collective, spin the prize wheel, or sign in to WHOA.",
 };
 
 interface Door {
@@ -46,6 +47,13 @@ const DOORS: Door[] = [
     label: "Join the Music Collective",
     blurb: "Artists and producers in the WHOA world. Sign up to apply and we will come back to you.",
     cta: "Apply to join",
+  },
+  {
+    href: "/spin",
+    label: "Spin the Wheel",
+    blurb:
+      "One spin per account, and everybody wins something. Stickers, a keychain or lighter, or a $50 gift card.",
+    cta: "Take your spin",
   },
   {
     // Both halves of the same page: /login signs in, ?mode=signup opens
@@ -76,7 +84,7 @@ export default function GoPage() {
         </p>
       </div>
 
-      {/* auto-rows-fr so all four read as the same size whatever the
+      {/* auto-rows-fr so they all read as the same size whatever the
           blurbs come out at, the same rule the About grid uses. */}
       <div className="relative z-10 mt-12 grid w-full max-w-4xl auto-rows-fr gap-6 sm:grid-cols-2">
         {DOORS.map((door) => (

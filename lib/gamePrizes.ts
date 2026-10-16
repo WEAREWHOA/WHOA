@@ -11,6 +11,21 @@ import { getSupabase } from "./supabase";
 /** No lookalike characters — staff read these off someone's screen. */
 const CODE_ALPHABET = "ACDEFHJKLMNPRTWXY3479";
 
+/**
+ * A short code a person reads aloud and a staff member types.
+ *
+ * Shared with the spin wheel (lib/spinWheel.ts), which writes to the
+ * same table: one alphabet, so no prize anywhere can come out with an
+ * O that is really a zero.
+ */
+export function makePrizeCode(prefix: string): string {
+  let code = "";
+  for (let i = 0; i < 6; i += 1) {
+    code += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
+  }
+  return `${prefix}-${code}`;
+}
+
 export type PrizeGame = "snake" | "scavenger";
 
 /** What a prize can be. Stored as the words staff hand it over by. */
@@ -24,11 +39,7 @@ export function isReward(value: unknown): value is Reward {
 const PREFIX: Record<PrizeGame, string> = { snake: "SNK", scavenger: "SSBD" };
 
 function makeCode(game: PrizeGame): string {
-  let code = "";
-  for (let i = 0; i < 6; i += 1) {
-    code += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
-  }
-  return `${PREFIX[game]}-${code}`;
+  return makePrizeCode(PREFIX[game]);
 }
 
 export interface PrizeClaim {
