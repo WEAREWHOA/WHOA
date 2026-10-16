@@ -27,6 +27,8 @@ import {
 
 const SIZE = 340;
 const R = SIZE / 2;
+/** The dark centre cap. Labels start outside it, or they get clipped. */
+const HUB = 30;
 const SLICES = WHEEL_SLICES.length;
 const SWEEP = 360 / SLICES;
 
@@ -41,6 +43,8 @@ interface Slice {
   /** Degrees clockwise from twelve o'clock. */
   start: number;
   mid: number;
+  /** On the left half, where a radial label would read upside down. */
+  flipped: boolean;
 }
 
 const WHEEL: Slice[] = WHEEL_SLICES.map((id, index) => {
@@ -59,8 +63,27 @@ const WHEEL: Slice[] = WHEEL_SLICES.map((id, index) => {
     ink: isTop || index % 2 === 1 ? "#0a0806" : "#f7f0e6",
     start: index * SWEEP,
     mid: index * SWEEP + SWEEP / 2,
+    flipped: index * SWEEP + SWEEP / 2 > 180,
   };
 });
+
+/**
+ * Where the wheel has to stop for the pointer to sit on this prize.
+ *
+ * Picks among the slices carrying it, then a point inside that slice,
+ * inset from both edges so a rounding error can't land on the line.
+ * Random every time, so the same prize never stops in the same place
+ * twice.
+ */
+function restingAngle(prizeId: string): number {
+  const candidates = WHEEL.filter((slice) => slice.id === prizeId);
+  const slice = candidates[Math.floor(Math.random() * candidates.length)] ?? WHEEL[WHEEL.length - 1];
+  const inset = SWEEP * 0.2;
+  const target = slice.start + inset + Math.random() * (SWEEP - inset * 2);
+  // The pointer is at twelve o'clock, so the wheel turns back by the
+  // slice's own angle to bring it under the pointer.
+  return 360 - target;
+}
 
 /** A slice as an SVG path, measured clockwise from the top. */
 function slicePath(start: number): string {
@@ -85,7 +108,11 @@ export default function SpinWheel({
   const [error, setError] = useState<string | null>(null);
   // Degrees of rotation. Only ever increases, so each spin turns
   // forwards rather than rewinding to a smaller angle.
-  const [angle, setAngle] = useState(0);
+  // Somebody who has already spun should find the wheel resting on
+  // what they won rather than at twelve o'clock as though it never
+  // happened. Computed once in a lazy initial state, so it is the
+  // first paint and the browser has nothing to animate from.
+  const [angle, setAngle] = useState(() => (initial ? restingAngle(initial.segmentId) : 0));
   // The result is held back until the wheel stops, or the prize would
   // appear on screen while it is still turning.
   const [revealed, setRevealed] = useState(Boolean(initial));
@@ -105,24 +132,14 @@ export default function SpinWheel({
     }
 
     const won = outcome.result;
-    // Any slice carrying the prize will do, picked at random so the
-    // same prize doesn't always stop in the same place. A prize with no
-    // slice can't happen -- lib/spinWheel.ts throws at import if one
-    // ever has none -- but falling back to the last slice beats
-    // throwing in front of somebody who has just won something.
-    const candidates = WHEEL.filter((slice) => slice.id === won.segmentId);
-    const slice = candidates[Math.floor(Math.random() * candidates.length)] ?? WHEEL[WHEEL.length - 1];
-
-    // Land somewhere inside the slice rather than dead centre, inset
-    // from both edges so a rounding error can't stop on the line.
-    const inset = SWEEP * 0.2;
-    const target = slice.start + inset + Math.random() * (SWEEP - inset * 2);
-
-    // The pointer is at the top, so the wheel has to turn backwards by
-    // the slice's own angle to bring it under the pointer. Five whole
-    // turns first, for the show.
-    const landing = 360 * 5 + (360 - target);
-    setAngle((previous) => previous + landing);
+    // Five to eight whole turns before it settles, so no two spins
+    // look alike even when they win the same thing. Added to whatever
+    // the wheel is already at rather than set absolutely, so it always
+    // turns forwards instead of rewinding.
+    const turns = 5 + Math.floor(Math.random() * 4);
+    const current = ((angle % 360) + 360) % 360;
+    const landing = 360 * turns + (restingAngle(won.segmentId) - current);
+    setAngle(angle + landing);
 
     // Matches the CSS transition below. The result is already saved, so
     // a closed tab mid-spin loses the animation and not the prize.
@@ -130,7 +147,7 @@ export default function SpinWheel({
       setResult(won);
       setRevealed(true);
       setSpinning(false);
-    }, 4200);
+    }, 4300);
   }
 
   async function handleChoice(choice: string) {
@@ -182,18 +199,30 @@ export default function SpinWheel({
           }}
         />
 
+        {/* The rotation lives on this div and not on the <svg>.
+            A CSS transform transition applied to an SVG root is not
+            reliably animated -- transform-origin is interpreted
+            differently there, and Safari has shipped versions that
+            simply jump to the end value. A plain element always
+            animates, and always about its own centre. */}
+        <div
+          style={{
+            width: SIZE,
+            height: SIZE,
+            transform: `rotate(${angle}deg)`,
+            transformOrigin: "50% 50%",
+            // A long ease-out is what makes it read as a wheel slowing
+            // down rather than a graphic being rotated.
+            transition: "transform 4.2s cubic-bezier(0.17, 0.67, 0.16, 1)",
+            willChange: "transform",
+          }}
+        >
         <svg
           width={SIZE}
           height={SIZE}
           viewBox={`0 0 ${SIZE} ${SIZE}`}
           role="img"
           aria-label="Prize wheel"
-          style={{
-            transform: `rotate(${angle}deg)`,
-            // A long ease-out is what makes it read as a wheel slowing
-            // down rather than a graphic being rotated.
-            transition: "transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)",
-          }}
         >
           {WHEEL.map((slice) => (
             <path
@@ -208,25 +237,40 @@ export default function SpinWheel({
           {WHEEL.map((slice) => (
             <text
               key={`${slice.index}-label`}
-              x={R - 12}
+              // Starts just clear of the hub and runs OUTWARD to the
+              // rim. Anchored at the start for that reason: anchored at
+              // the end it ran backwards across the middle of the wheel
+              // and the words were clipped by the hub.
+              //
+              // On the left half the whole label is turned through 180
+              // degrees and anchored from the other side, so it still
+              // runs outward but reads the right way up. Without that,
+              // half the wheel is upside down.
+              x={slice.flipped ? R - HUB - 8 : R + HUB + 8}
               y={R}
               fill={slice.ink}
-              fontSize={10}
+              // Stepped down for the long one. At a flat 11 the
+              // keychain label reached within two pixels of the rim,
+              // which is close enough that a different font fallback
+              // would touch it.
+              fontSize={slice.short.length > 14 ? 9.5 : 11}
               fontWeight={800}
-              textAnchor="end"
+              letterSpacing={0.2}
+              textAnchor={slice.flipped ? "end" : "start"}
               dominantBaseline="middle"
-              // Set along the slice's own centre line, reading outward
-              // from the hub. Radial rather than across the slice,
-              // because "KEYCHAIN / LIGHTER" has nowhere near the room
-              // to sit horizontally in a 22.5 degree wedge.
-              transform={`rotate(${slice.mid - 90} ${R} ${R})`}
+              // Set along the slice's own centre line. Radial rather
+              // than across the slice, because "KEYCHAIN / LIGHTER" has
+              // nowhere near the room to sit horizontally in a 22.5
+              // degree wedge.
+              transform={`rotate(${slice.mid - 90 + (slice.flipped ? 180 : 0)} ${R} ${R})`}
             >
               {slice.short}
             </text>
           ))}
 
-          <circle cx={R} cy={R} r={26} fill="#0a0806" stroke="#f7f0e6" strokeWidth={3} />
+          <circle cx={R} cy={R} r={HUB} fill="#0a0806" stroke="#f7f0e6" strokeWidth={3} />
         </svg>
+        </div>
       </div>
 
       {!done && (
