@@ -41,8 +41,8 @@ export default async function SpinPage() {
         <h1 className="text-psychedelic font-display mt-3 text-5xl tracking-wide sm:text-6xl">
           Spin the wheel
         </h1>
-        <p className="mt-4 text-sm leading-relaxed text-white/70">
-          Everybody wins something. Claim it in person with a WHOA team member.
+        <p className="mt-4 text-sm leading-relaxed tracking-wide text-white/70 uppercase">
+          Claim it in person with a WHOA team member present. Everybody wins something.
         </p>
       </div>
 
