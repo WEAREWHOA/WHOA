@@ -3,7 +3,12 @@
 import Link from "next/link";
 import { useState } from "react";
 import { chooseSpinPrizeAction, spinWheelAction } from "@/app/spin/actions";
-import { SPIN_SEGMENTS, SMALL_CHOICES, type SpinResult } from "@/lib/spinWheel";
+import {
+  SMALL_CHOICES,
+  SPIN_SEGMENTS,
+  WHEEL_SLICES,
+  type SpinResult,
+} from "@/lib/spinWheel";
 
 /**
  * The wheel.
@@ -13,53 +18,59 @@ import { SPIN_SEGMENTS, SMALL_CHOICES, type SpinResult } from "@/lib/spinWheel";
  * here decides anything, which is why the prize table being readable in
  * the bundle costs nothing.
  *
- * The wedges are sized by their real odds, so the two per cent slice is
- * a sliver. That is the honest way to draw it, and it also makes the
- * rare one look rare, which is the whole appeal.
+ * Sixteen equal slices, because that is what a prize wheel looks like.
+ * The slices are NOT the odds -- those live in SPIN_SEGMENTS and are
+ * applied server-side before this ever runs. When a prize comes back,
+ * the pointer lands on one of the slices carrying it, picked at random
+ * so the same prize does not always stop in the same place.
  */
 
-const SIZE = 320;
+const SIZE = 340;
 const R = SIZE / 2;
+const SLICES = WHEEL_SLICES.length;
+const SWEEP = 360 / SLICES;
 
-interface Wedge {
+const SEGMENT_BY_ID = new Map(SPIN_SEGMENTS.map((segment) => [segment.id, segment]));
+
+interface Slice {
+  index: number;
   id: string;
-  label: string;
+  short: string;
   color: string;
   ink: string;
-  /** Degrees, clockwise from twelve o'clock. */
+  /** Degrees clockwise from twelve o'clock. */
   start: number;
-  end: number;
   mid: number;
 }
 
-const WEDGES: Wedge[] = (() => {
-  let cursor = 0;
-  return SPIN_SEGMENTS.map((segment) => {
-    const sweep = (segment.weight / 100) * 360;
-    const wedge: Wedge = {
-      id: segment.id,
-      label: segment.label,
-      color: segment.color,
-      ink: segment.ink,
-      start: cursor,
-      end: cursor + sweep,
-      mid: cursor + sweep / 2,
-    };
-    cursor += sweep;
-    return wedge;
-  });
-})();
+const WHEEL: Slice[] = WHEEL_SLICES.map((id, index) => {
+  const segment = SEGMENT_BY_ID.get(id);
+  // The two ordinary prizes alternate between the flame reds and
+  // oranges so neighbouring slices never share a colour; the gift card
+  // keeps its gold wherever it lands, because it is the one people are
+  // looking for.
+  const alternating = index % 2 === 0 ? "#ff2f1a" : "#ff7a00";
+  const isTop = id === "gift-card";
+  return {
+    index,
+    id,
+    short: segment?.short ?? "",
+    color: isTop ? "#ffd12f" : alternating,
+    ink: isTop || index % 2 === 1 ? "#0a0806" : "#f7f0e6",
+    start: index * SWEEP,
+    mid: index * SWEEP + SWEEP / 2,
+  };
+});
 
-/** A wedge as an SVG path, measured clockwise from the top. */
-function wedgePath(start: number, end: number): string {
+/** A slice as an SVG path, measured clockwise from the top. */
+function slicePath(start: number): string {
   const point = (deg: number) => {
     const rad = ((deg - 90) * Math.PI) / 180;
     return [R + R * Math.cos(rad), R + R * Math.sin(rad)];
   };
   const [x1, y1] = point(start);
-  const [x2, y2] = point(end);
-  const large = end - start > 180 ? 1 : 0;
-  return `M ${R} ${R} L ${x1} ${y1} A ${R} ${R} 0 ${large} 1 ${x2} ${y2} Z`;
+  const [x2, y2] = point(start + SWEEP);
+  return `M ${R} ${R} L ${x1} ${y1} A ${R} ${R} 0 0 1 ${x2} ${y2} Z`;
 }
 
 export default function SpinWheel({
@@ -94,17 +105,21 @@ export default function SpinWheel({
     }
 
     const won = outcome.result;
-    const wedge = WEDGES.find((w) => w.id === won.segmentId) ?? WEDGES[WEDGES.length - 1];
+    // Any slice carrying the prize will do, picked at random so the
+    // same prize doesn't always stop in the same place. A prize with no
+    // slice can't happen -- lib/spinWheel.ts throws at import if one
+    // ever has none -- but falling back to the last slice beats
+    // throwing in front of somebody who has just won something.
+    const candidates = WHEEL.filter((slice) => slice.id === won.segmentId);
+    const slice = candidates[Math.floor(Math.random() * candidates.length)] ?? WHEEL[WHEEL.length - 1];
 
-    // Land the pointer inside the winning wedge, a little off its
-    // centre so two spins of the same prize don't stop identically.
-    // Inset from the edges so a sliver-thin wedge can't be missed by a
-    // rounding error.
-    const inset = Math.min(2, (wedge.end - wedge.start) / 4);
-    const target = wedge.start + inset + Math.random() * (wedge.end - wedge.start - inset * 2);
+    // Land somewhere inside the slice rather than dead centre, inset
+    // from both edges so a rounding error can't stop on the line.
+    const inset = SWEEP * 0.2;
+    const target = slice.start + inset + Math.random() * (SWEEP - inset * 2);
 
     // The pointer is at the top, so the wheel has to turn backwards by
-    // the wedge's own angle to bring it under the pointer. Five whole
+    // the slice's own angle to bring it under the pointer. Five whole
     // turns first, for the show.
     const landing = 360 * 5 + (360 - target);
     setAngle((previous) => previous + landing);
@@ -180,31 +195,33 @@ export default function SpinWheel({
             transition: "transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)",
           }}
         >
-          {WEDGES.map((wedge) => (
+          {WHEEL.map((slice) => (
             <path
-              key={wedge.id}
-              d={wedgePath(wedge.start, wedge.end)}
-              fill={wedge.color}
+              key={slice.index}
+              d={slicePath(slice.start)}
+              fill={slice.color}
               stroke="#0a0806"
               strokeWidth={2}
             />
           ))}
 
-          {WEDGES.map((wedge) => (
+          {WHEEL.map((slice) => (
             <text
-              key={`${wedge.id}-label`}
-              x={R}
+              key={`${slice.index}-label`}
+              x={R - 12}
               y={R}
-              fill={wedge.ink}
-              fontSize={wedge.end - wedge.start < 20 ? 10 : 13}
-              fontWeight={700}
-              textAnchor="middle"
-              // Rotated onto the wedge's own centre line and pushed out
-              // towards the rim, which is the only way a label fits in
-              // a slice this thin.
-              transform={`rotate(${wedge.mid} ${R} ${R}) translate(0 ${-R * 0.58})`}
+              fill={slice.ink}
+              fontSize={10}
+              fontWeight={800}
+              textAnchor="end"
+              dominantBaseline="middle"
+              // Set along the slice's own centre line, reading outward
+              // from the hub. Radial rather than across the slice,
+              // because "KEYCHAIN / LIGHTER" has nowhere near the room
+              // to sit horizontally in a 22.5 degree wedge.
+              transform={`rotate(${slice.mid - 90} ${R} ${R})`}
             >
-              {wedge.label}
+              {slice.short}
             </text>
           ))}
 

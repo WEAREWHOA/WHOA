@@ -25,8 +25,10 @@ export type SpinPrizeId = "gift-card" | "small" | "stickers";
 
 export interface SpinSegment {
   id: SpinPrizeId;
-  /** What the wheel and the claim screen say. */
+  /** What the claim screen says, and what staff hand over. */
   label: string;
+  /** The shorter form, for a 22.5 degree slice of wheel. */
+  short: string;
   /** Chances out of 100. Must total 100 -- asserted below. */
   weight: number;
   /** The wedge colour, from the site's own flame palette. */
@@ -38,16 +40,76 @@ export interface SpinSegment {
 /**
  * The prize table.
  *
- * The weights are also the wedge sizes on the wheel, deliberately: a
- * wheel whose gift-card slice looked like a third of the circle while
- * paying out two times in a hundred would be a lie told in pictures.
- * Two per cent is a sliver, and it should look like one.
+ * The weights are the odds and nothing else. They are NOT the wedge
+ * sizes: the wheel is sixteen equal slices, which is what a prize wheel
+ * looks like, and the slice it stops on is chosen from the ones bearing
+ * the prize the server already drew. So the picture is a fair wheel and
+ * the draw is a weighted one, and the only number that decides anything
+ * is in this table.
  */
 export const SPIN_SEGMENTS: SpinSegment[] = [
-  { id: "gift-card", label: "$50 GIFT CARD", weight: 2, color: "#ffd12f", ink: "#0a0806" },
-  { id: "small", label: "KEYCHAIN OR LIGHTER", weight: 28, color: "#ff7a00", ink: "#0a0806" },
-  { id: "stickers", label: "STICKER PACK", weight: 70, color: "#ff2f1a", ink: "#f7f0e6" },
+  {
+    id: "gift-card",
+    label: "$50 GIFT CARD",
+    short: "$50 GIFT CARD",
+    weight: 2,
+    color: "#ffd12f",
+    ink: "#0a0806",
+  },
+  {
+    id: "small",
+    label: "KEYCHAIN OR LIGHTER",
+    short: "KEYCHAIN / LIGHTER",
+    weight: 28,
+    color: "#ff7a00",
+    ink: "#0a0806",
+  },
+  {
+    id: "stickers",
+    label: "STICKER PACK",
+    short: "STICKERS",
+    weight: 70,
+    color: "#ff2f1a",
+    ink: "#f7f0e6",
+  },
 ];
+
+/**
+ * Which prize each of the sixteen slices carries, clockwise from the
+ * top.
+ *
+ * One gift card, five keychain/lighter and ten stickers: near enough to
+ * the real odds that the wheel does not misrepresent them, spread out
+ * so no prize sits in one solid block. The count per prize does not
+ * decide anything -- drawSegment does -- it only decides where the
+ * pointer can come to rest.
+ */
+export const WHEEL_SLICES: SpinPrizeId[] = [
+  "gift-card",
+  "stickers",
+  "small",
+  "stickers",
+  "stickers",
+  "small",
+  "stickers",
+  "stickers",
+  "small",
+  "stickers",
+  "stickers",
+  "small",
+  "stickers",
+  "stickers",
+  "small",
+  "stickers",
+];
+
+// Every prize has to be reachable on the wheel, or a winner would have
+// nowhere for the pointer to stop. Checked at import, like the weights.
+for (const segment of SPIN_SEGMENTS) {
+  if (!WHEEL_SLICES.includes(segment.id)) {
+    throw new Error(`No wheel slice carries the prize "${segment.id}"`);
+  }
+}
 
 const TOTAL_WEIGHT = SPIN_SEGMENTS.reduce((sum, segment) => sum + segment.weight, 0);
 if (TOTAL_WEIGHT !== 100) {
