@@ -164,26 +164,34 @@ export interface SpinResult {
   needsChoice: boolean;
 }
 
-const COLUMNS = "code, reward, claimed_at, redeemed_at, segment";
+const COLUMNS = "code, reward, claimed_at, redeemed_at";
 
 interface Row {
   code: string;
   reward: string;
   claimed_at: string;
   redeemed_at: string | null;
-  segment?: string | null;
+}
+
+/**
+ * Which wedge a stored prize came from.
+ *
+ * Derived from the reward rather than stored in a column of its own.
+ * There was a `segment` column here briefly and it was a bug: this
+ * table (migration 0030) has no such column, so every insert was
+ * rejected and every spin failed. Deriving it costs nothing and cannot
+ * drift, because the three rewards are distinguishable by their own
+ * text -- including after a choice is made, where "KEYCHAIN" and
+ * "LIGHTER" both fall through to the middle prize they came from.
+ */
+function segmentOf(reward: string): SpinPrizeId {
+  if (reward.includes("GIFT CARD")) return "gift-card";
+  if (reward.includes("STICKER")) return "stickers";
+  return "small";
 }
 
 function toResult(row: Row, alreadySpun: boolean): SpinResult {
-  // The segment is derived from the reward where the column isn't
-  // there, so this keeps working against the table as it stands today.
-  const segmentId: SpinPrizeId =
-    (row.segment as SpinPrizeId | undefined) ??
-    (row.reward.includes("GIFT CARD")
-      ? "gift-card"
-      : row.reward.includes("STICKER")
-        ? "stickers"
-        : "small");
+  const segmentId = segmentOf(row.reward);
 
   return {
     segmentId,
@@ -196,30 +204,19 @@ function toResult(row: Row, alreadySpun: boolean): SpinResult {
   };
 }
 
-/** Columns that exist for certain, for a database without the optional one. */
-const SAFE_COLUMNS = "code, reward, claimed_at, redeemed_at";
-
-function missingColumn(error: { message?: string; code?: string }): boolean {
-  return error.code === "42703" || /column .* does not exist/i.test(error.message ?? "");
-}
-
 /** This account's spin, or null if they have not spun. */
 export async function getSpin(accountCode: string): Promise<SpinResult | null> {
   const code = accountCode.trim().toUpperCase();
 
-  for (const columns of [COLUMNS, SAFE_COLUMNS]) {
-    const { data, error } = await getSupabase()
-      .from("game_prize_claims")
-      .select(columns)
-      .eq("account_code", code)
-      .eq("prize", SPIN_PRIZE)
-      .maybeSingle();
+  const { data, error } = await getSupabase()
+    .from("game_prize_claims")
+    .select(COLUMNS)
+    .eq("account_code", code)
+    .eq("prize", SPIN_PRIZE)
+    .maybeSingle();
 
-    if (!error) return data ? toResult(data as unknown as Row, true) : null;
-    if (!missingColumn(error)) throw new Error(`Failed to read the spin: ${error.message}`);
-  }
-
-  return null;
+  if (error) throw new Error(`Failed to read the spin: ${error.message}`);
+  return data ? toResult(data as unknown as Row, true) : null;
 }
 
 /**
@@ -239,21 +236,16 @@ export async function spin(accountCode: string): Promise<SpinResult> {
 
   const segment = drawSegment();
 
-  const insert = async (withSegment: boolean) =>
-    getSupabase()
-      .from("game_prize_claims")
-      .insert({
-        account_code: code,
-        prize: SPIN_PRIZE,
-        code: makePrizeCode("SPIN"),
-        reward: segment.label,
-        ...(withSegment ? { segment: segment.id } : {}),
-      })
-      .select(withSegment ? COLUMNS : SAFE_COLUMNS)
-      .single();
-
-  let result = await insert(true);
-  if (result.error && missingColumn(result.error)) result = await insert(false);
+  const result = await getSupabase()
+    .from("game_prize_claims")
+    .insert({
+      account_code: code,
+      prize: SPIN_PRIZE,
+      code: makePrizeCode("SPIN"),
+      reward: segment.label,
+    })
+    .select(COLUMNS)
+    .single();
 
   if (result.error) {
     // 23505 is a unique violation: another request won the race. Read
