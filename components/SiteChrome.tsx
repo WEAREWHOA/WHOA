@@ -21,7 +21,11 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
     // a way out of something built to be walked through. It is now a
     // plain landing page for a URL printed on flyers, and the first
     // thing somebody who scans one needs is the rest of the site.
-    pathname?.startsWith("/water");
+    pathname?.startsWith("/water") ||
+    // /box is the same shape: the card inside a WHOA Gift Box is the
+    // only way to it, so it keeps its own warm palette and its own
+    // three ways into the site rather than a navbar around a thank you.
+    pathname?.startsWith("/box");
 
   if (isImmersive) {
     return <main className="flex flex-1 flex-col">{children}</main>;

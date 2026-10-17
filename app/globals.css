@@ -2415,3 +2415,95 @@ body {
   border-radius: 0.75rem;
   border: 1px solid var(--border);
 }
+
+/* ── WHOA GIFT BOX · /box ─────────────────────────────────────────────
+   The landing behind the card in a gift box. Scoped under .box-root for
+   the same reason .water-root is: this one is warm and gold, the bottle
+   is cold and blue, and neither should leak into the other or into the
+   site's own flame. */
+.box-root {
+  --box-deep: #120c06;
+  --box-surface: #1e150b;
+  --box-line: rgba(247, 239, 226, 0.14);
+  --box-bright: #f0b429;
+  --box-text: #f7efe2;
+  --box-dim: #cbb89a;
+
+  min-height: 100vh;
+  background:
+    radial-gradient(130% 70% at 50% 0%, #3a2409 0%, var(--box-deep) 62%),
+    var(--box-deep);
+  color: var(--box-text);
+}
+
+.box-eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--box-bright);
+}
+
+.box-divider {
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 0.6em;
+  color: rgba(240, 180, 41, 0.45);
+}
+
+.box-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border: 1px solid var(--box-line);
+  border-radius: 16px;
+  background: rgba(30, 21, 11, 0.6);
+  padding: 22px;
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+.box-card:hover {
+  border-color: var(--box-bright);
+  transform: translateY(-2px);
+}
+
+/* The note from whoever packed it. Ruled like a card tucked in the lid. */
+.box-note {
+  border: 1px solid var(--box-line);
+  border-left: 3px solid var(--box-bright);
+  border-radius: 14px;
+  background: rgba(30, 21, 11, 0.55);
+  padding: 26px 28px;
+}
+
+.box-btn,
+.box-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 13px 26px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  transition:
+    filter 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+.box-btn {
+  background: var(--box-bright);
+  color: #120c06;
+}
+.box-btn:hover {
+  filter: brightness(1.08);
+}
+.box-btn-ghost {
+  border: 1px solid var(--box-line);
+  color: var(--box-dim);
+}
+.box-btn-ghost:hover {
+  border-color: var(--box-bright);
+  color: var(--box-text);
+}
