@@ -15,6 +15,14 @@ import type { Metadata } from "next";
  * person should have one. So the page opens with gratitude and only
  * then offers somewhere to go, rather than the other way round.
  *
+ * Deliberately general about WHO. A box can go to a customer, an
+ * artist, an ambassador, crew, or a friend of the shop, and one page
+ * has to thank all of them without any of them reading a line that
+ * plainly means somebody else. So it names a few ways in -- bought a
+ * piece, put work on the shelves, turned up on a Wednesday -- and then
+ * says "however you came into this", which is the sentence that has to
+ * carry anybody the examples missed.
+ *
  * noindex, deliberately, and out of the sitemap. Nobody is searching
  * for it, the rest of its content is already on /about, and a page
  * thanking somebody for a free box has no business turning up in
@@ -77,11 +85,14 @@ export default function BoxPage() {
             on it, and packed it by hand.
           </p>
           <p className="text-[#f7efe2]">
-            We do not make many of these. They go to the people who showed up — who wore the gear
-            before anybody knew what it was, who came to the thing on a Wednesday, who told a friend,
-            who helped when helping was not anybody&apos;s job.
+            We do not make many of these. They go to the people who make WHOA what it is. Somebody
+            who bought a piece and wore it like they meant it. An artist who put their work on our
+            shelves. Somebody who came to the thing on a Wednesday, told a friend, or helped when
+            helping was not anybody&apos;s job.
           </p>
-          <p>That is you. We noticed. That is the whole reason this is in your hands.</p>
+          <p>
+            However you came into this — we noticed. That is the whole reason this is in your hands.
+          </p>
         </div>
 
         <p className="box-divider mt-14">WHOA GIFT BOX</p>
