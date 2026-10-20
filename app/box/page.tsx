@@ -10,10 +10,10 @@ import type { Metadata } from "next";
  * navbar. Its own warm palette too, scoped under .box-root -- the
  * bottle page is cold and blue, this one is a gift.
  *
- * The whole job of this page is to say thank you properly. These boxes
- * are not sold and not won; somebody at WHOA decided a particular
- * person should have one. So the page opens with gratitude and only
- * then offers somewhere to go, rather than the other way round.
+ * The whole job of this page is to say thank you properly. Somebody at
+ * WHOA decided a particular person should have one of these. So the
+ * page opens with gratitude and only then offers somewhere to go,
+ * rather than the other way round.
  *
  * Deliberately general about WHO. A box can go to a customer, an
  * artist, an ambassador, crew, or a friend of the shop, and one page
@@ -81,8 +81,7 @@ export default function BoxPage() {
 
         <div className="mx-auto mt-10 flex max-w-lg flex-col gap-5 text-base leading-relaxed text-[#cbb89a]">
           <p>
-            This box was not bought and it was not won. Somebody here thought of you, put your name
-            on it, and packed it by hand.
+            Somebody here thought of you, put your name on it, and packed it by hand.
           </p>
           <p className="text-[#f7efe2]">
             We do not make many of these. They go to the people who make WHOA what it is. Somebody

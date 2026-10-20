@@ -41,7 +41,7 @@ const DONATIONS = [
  */
 const ECO_AIMS = [
   {
-    title: "Upcycled first",
+    title: "Upcycled Collections",
     body: "Every hand-bleached and hand-painted piece starts as a garment that already exists. Nothing has to be manufactured from scratch for a design to be one of a kind.",
   },
   {
