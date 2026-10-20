@@ -20,10 +20,13 @@ const signupErrors: Record<string, string> = {
 
 export default function LoginForm({
   from,
+  next,
   mode = "login",
   error,
 }: {
   from: string;
+  /** Where to land after signing in or signing up. Already validated. */
+  next?: string;
   mode?: "login" | "signup";
   error?: string;
 }) {
@@ -102,6 +105,8 @@ export default function LoginForm({
               />
             </div>
 
+            {next && <input type="hidden" name="next" value={next} />}
+
             <HumanCheck />
 
             <button type="submit" className="btn-flame mt-2 rounded-full px-8 py-4 text-base">
@@ -127,6 +132,7 @@ export default function LoginForm({
 
           <form action={loginAction} className="mt-8 flex flex-col gap-5">
             <input type="hidden" name="from" value={from} />
+            {next && <input type="hidden" name="next" value={next} />}
 
             <div>
               <label htmlFor="identifier" className="text-sm font-medium">

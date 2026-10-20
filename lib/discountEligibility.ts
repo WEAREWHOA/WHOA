@@ -1,44 +1,42 @@
 /**
- * Whether a product takes ambassador/promo discounts, read off the marker
- * in its own Square description.
+ * Whether a product takes ambassador/promo discounts, read off its own
+ * Square description.
  *
- * WHOA's own goods carry a line like:
- *   ✅ ELIGIBLE for WHOA discounts OR purchase with WHOA gift card ✅
- * and everything else (Art Collective artists' work, consignment, guest
- * brands) carries:
+ * EXCLUSION ONLY. Everything is eligible unless its description carries
+ *
  *   🚫 NOT ELIGIBLE for WHOA discounts OR purchase with WHOA gift card 🚫
  *
- * The description is the right home for this because it's already where
- * the rule is stated to the customer — one place to edit in Square, and
- * what the shopper reads is what the checkout enforces. The previous rule
- * keyed off Square's "Art Collective" category, which only worked for
- * exactly that one group and silently discounted anything else that
- * shouldn't have been.
+ * which is the line staff already read off a tag in the shop. One
+ * marker, one meaning, in the place the rule is already written down
+ * for a customer.
  *
- * Two deliberate choices:
+ * It used to be the other way round -- eligible only with a ✅ marker,
+ * unmarked meaning no -- and that was wrong for this shop in a way that
+ * cost real money. The ✅ line had been deleted from a lot of products
+ * to tidy up how the description read, long before it became the
+ * website's trigger, so items everybody knew qualified were quietly
+ * taking no discount at all. A rule whose safe default is "no" is only
+ * safe when somebody is maintaining the markers; here the markers were
+ * maintained for the exclusions and nothing else.
  *
- * - **Unmarked means not eligible.** A product nobody has labelled yet
- *   doesn't get discounted. Erring the other way gives money away on
- *   items that were never meant to be included, and the mistake is
- *   invisible until the numbers are reconciled.
- * - **The negative wins.** "NOT ELIGIBLE" contains the word "ELIGIBLE", so
- *   it is checked first; a description carrying both markers is treated as
- *   excluded.
+ * So the default is yes, and the one thing anybody has to remember is
+ * to put the 🚫 line on work that is not ours to discount -- which is
+ * the thing they were already doing.
  *
- * Matching is deliberately loose — the emoji alone, or the words alone,
- * are each enough — so re-typed or re-formatted descriptions keep working.
+ * Matching stays deliberately loose: the emoji alone, or the words
+ * alone, are each enough, so a re-typed or re-formatted description
+ * keeps excluding what it meant to exclude.
  */
 
 /** 🚫, or "not eligible"/"ineligible" in any spacing or casing. */
 const EXCLUDED = /🚫|\bNOT\s+ELIGIBLE\b|\bINELIGIBLE\b|\bNON[- ]?ELIGIBLE\b/;
 
-/** ✅, or a bare "eligible" that survived the exclusion test above. */
-const INCLUDED = /✅|\bELIGIBLE\b/;
-
 export function isDiscountEligible(description: string | null | undefined): boolean {
-  if (!description) return false;
+  // No description at all is eligible, like everything else. A product
+  // nobody has written anything about is far more likely to be an
+  // ordinary WHOA item than somebody's consignment piece, and the
+  // consignment pieces are the ones that get the marker.
+  if (!description) return true;
 
-  const text = description.toUpperCase();
-  if (EXCLUDED.test(text)) return false;
-  return INCLUDED.test(text);
+  return !EXCLUDED.test(description.toUpperCase());
 }

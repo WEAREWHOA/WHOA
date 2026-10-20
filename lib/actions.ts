@@ -5,6 +5,7 @@ import { portalPath, tabForMediaKind, tabForSubmitter } from "./portalNav";
 
 import { revalidateTag } from "next/cache";
 import { humanCheckFromForm, verifyHuman } from "./humanCheck";
+import { safeReturnTo } from "./returnTo";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { MUSIC_ROSTER_TAG } from "./musicRoster";
 import {
@@ -50,12 +51,17 @@ import { sendEventWorkSignupNotification, sendArtProductSubmissionNotification }
 import type { PayoutSettings } from "./types";
 
 export async function loginAction(formData: FormData) {
+  // Where the error goes back to, and where success goes on to. The
+  // second is new: sign-in used to land on /portal whatever page sent
+  // somebody here.
+  const next = safeReturnTo(formData.get("next"), "/portal");
+  const nextParam = next === "/portal" ? "" : `&next=${encodeURIComponent(next)}`;
   const from = String(formData.get("from") || "/login");
   const identifier = String(formData.get("identifier") || "").trim();
   const password = String(formData.get("password") || "");
 
   if (!identifier || !password) {
-    redirect(`${from}?error=missing`);
+    redirect(`${from}?error=missing${nextParam}`);
   }
 
   let target: string;
@@ -65,22 +71,22 @@ export async function loginAction(formData: FormData) {
       : await getCredentialsByCode(identifier);
 
     if (!credentials) {
-      redirect(`${from}?error=notfound`);
+      redirect(`${from}?error=notfound${nextParam}`);
     }
 
     const valid = await verifyPassword(password, credentials.passwordHash);
     if (!valid) {
-      redirect(`${from}?error=invalid`);
+      redirect(`${from}?error=invalid${nextParam}`);
     }
 
     await createSession(credentials.code);
-    target = "/portal";
+    target = next;
   } catch (err) {
     // redirect()/notFound() work by throwing — let those pass through
     // untouched and only treat genuine failures as errors.
     unstable_rethrow(err);
     console.error("loginAction failed:", err);
-    redirect(`${from}?error=server`);
+    redirect(`${from}?error=server${nextParam}`);
   }
 
   redirect(target);
@@ -102,28 +108,32 @@ export async function registerAction(formData: FormData) {
   // returning customer, and the thing it would be defending against --
   // credential stuffing -- is better answered by rate limiting than by
   // a puzzle a script farm solves for a tenth of a cent.
+  const next = safeReturnTo(formData.get("next"), "/portal");
+  const nextParam = next === "/portal" ? "" : `&next=${encodeURIComponent(next)}`;
+  const signupError = (code: string) => `/login?mode=signup&error=${code}${nextParam}`;
+
   const human = await verifyHuman(humanCheckFromForm(formData));
   if (!human.ok) {
     console.warn("registerAction rejected a submission:", human.reason);
-    redirect("/login?mode=signup&error=human");
+    redirect(signupError("human"));
   }
 
   const email = String(formData.get("email") || "").trim();
   const password = String(formData.get("password") || "");
 
   if (!email || !email.includes("@")) {
-    redirect("/login?mode=signup&error=missing");
+    redirect(signupError("missing"));
   }
 
   if (password.length < 8) {
-    redirect("/login?mode=signup&error=weak-password");
+    redirect(signupError("weak-password"));
   }
 
   let target: string;
   try {
     const existing = await getByEmail(email);
     if (existing) {
-      redirect("/login?mode=signup&error=exists");
+      redirect(signupError("exists"));
     }
 
     const name = email.split("@")[0]?.replace(/[._-]+/g, " ").trim() || "Member";
@@ -131,11 +141,14 @@ export async function registerAction(formData: FormData) {
     const ambassador = await createAmbassador({ name, email, passwordHash });
 
     await createSession(ambassador.code);
-    target = "/portal?new=1";
+    // A brand-new account still wants the "?new=1" welcome when it is
+    // landing on the portal; anywhere else, the page it came from has
+    // its own idea of what to show somebody who just signed up.
+    target = next === "/portal" ? "/portal?new=1" : next;
   } catch (err) {
     unstable_rethrow(err);
     console.error("registerAction failed:", err);
-    redirect("/login?mode=signup&error=server");
+    redirect(signupError("server"));
   }
 
   redirect(target);

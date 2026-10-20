@@ -601,9 +601,12 @@ export async function getDiscountIneligibleProductIds(productIds: string[]): Pro
       if (!isDiscountEligible(description)) result.add(obj.id);
     }
 
-    // An id Square didn't return — deleted, or not visible to this token —
-    // is excluded too. Anything we can't read the marker on doesn't get
-    // discounted.
+    // An id Square didn't return — deleted, or not visible to this token
+    // — is still excluded. That is not the same as a product with no
+    // marker, which is eligible: there we read the description and it
+    // said nothing, here we could not read it at all, and guessing in
+    // favour of a discount on an item we cannot see is how somebody
+    // else's consignment piece gets sold at 15% off.
     for (const id of idBatch) {
       if (!seen.has(id)) result.add(id);
     }

@@ -26,7 +26,8 @@ function EventSignupRow({
   signup?: EventSalesSignup;
 }) {
   return (
-    <div className="card-surface flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border p-5">
+    <div className="card-surface rounded-2xl border border-border p-5">
+      <div className="flex flex-wrap items-center justify-between gap-4">
       <div>
         <p className="font-display text-lg">{event.title}</p>
         <p className="mt-0.5 text-sm text-muted">
@@ -69,6 +70,20 @@ function EventSignupRow({
           </button>
         </form>
       )}
+      </div>
+
+      {/* On every event, not once at the top of the page. Somebody who
+          needs to cancel is looking at the one event they cannot work,
+          and the instruction has to be on it -- a notice they scrolled
+          past when they signed up weeks ago is not where they will
+          look. */}
+      <p className="mt-4 border-t border-border pt-3 text-xs leading-relaxed text-muted">
+        If you need to cancel an event, please contact WASANI or email us at{" "}
+        <a href="mailto:info@wearewhoa.com" className="text-flame hover:underline">
+          info@wearewhoa.com
+        </a>{" "}
+        ASAP.
+      </p>
     </div>
   );
 }

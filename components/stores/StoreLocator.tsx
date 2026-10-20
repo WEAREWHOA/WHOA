@@ -34,6 +34,37 @@ export default function StoreLocator({ locations }: { locations: StoreLocation[]
     <>
       {active?.address && (
         <section className="mt-10" aria-label="Map of WHOA locations">
+          {/* Above the map, not under it.
+              A Google embed pins one place at a time, so the only way
+              Pangaea is on this map is somebody choosing it -- and the
+              buttons were below the frame where nobody scrolling past a
+              map of Ocean Beach would ever see them. Every mappable
+              location is now offered before the map, so the second shop
+              reads as a place we are rather than a thing to go hunting
+              for. */}
+          {mappable.length > 1 && (
+            <div className="mb-3 flex flex-wrap gap-2">
+              {mappable.map((l) => (
+                <button
+                  key={l.slug}
+                  type="button"
+                  onClick={() => setActiveSlug(l.slug)}
+                  aria-pressed={l.slug === active.slug}
+                  className={`rounded-full border px-4 py-2 text-xs font-semibold tracking-wide uppercase transition-colors ${
+                    l.slug === active.slug
+                      ? "border-flame-2 bg-flame-2/15 text-flame-3"
+                      : "border-border-strong text-muted hover:border-flame-2/50 hover:text-foreground"
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <StoreKindIcon kind={l.kind} className="h-3.5 w-3.5" />
+                    {l.name}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* The map is a third-party frame, which is the one thing on
               this page a privacy browser, an ad blocker or a flaky
               connection can take away. There's no styling a cross-origin
@@ -70,28 +101,6 @@ export default function StoreLocator({ locations }: { locations: StoreLocation[]
             .
           </p>
 
-          {mappable.length > 1 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {mappable.map((l) => (
-                <button
-                  key={l.slug}
-                  type="button"
-                  onClick={() => setActiveSlug(l.slug)}
-                  aria-pressed={l.slug === active.slug}
-                  className={`rounded-full border px-4 py-2 text-xs font-semibold tracking-wide uppercase transition-colors ${
-                    l.slug === active.slug
-                      ? "border-flame-2 bg-flame-2/15 text-flame-3"
-                      : "border-border-strong text-muted hover:border-flame-2/50 hover:text-foreground"
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <StoreKindIcon kind={l.kind} className="h-3.5 w-3.5" />
-                    {l.name}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
         </section>
       )}
 
