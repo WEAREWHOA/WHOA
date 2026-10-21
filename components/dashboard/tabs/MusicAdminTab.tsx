@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { MUSICIANS } from "@/lib/musicians";
-import { handWrittenSlug } from "@/lib/musicRoster";
+import {
+  handWrittenSlug,
+  musicCollectiveHasLaunched,
+  musicCollectiveLaunchDate,
+} from "@/lib/musicRoster";
 import type { MusicianApplication } from "@/lib/musicianProfiles";
 import {
   reviewMusicianAction,
@@ -340,6 +344,16 @@ export default function MusicAdminTab({
   saved?: boolean;
   error?: string;
 }) {
+  const launched = musicCollectiveHasLaunched();
+  const launchDate = musicCollectiveLaunchDate();
+  const launchLabel = launchDate
+    ? launchDate.toLocaleDateString("en-US", {
+        timeZone: "America/Los_Angeles",
+        month: "long",
+        day: "numeric",
+      })
+    : null;
+
   const pending = artists.filter((a) => a.status === "pending");
   const roster = artists.filter((a) => a.status === "approved");
   const declined = artists.filter((a) => a.status === "declined");
@@ -352,22 +366,35 @@ export default function MusicAdminTab({
       </span>
       <h3 className="font-display mt-1 text-2xl">Music Collective applications</h3>
       <p className="mt-1 text-sm text-muted">
-        Listen first — every link an applicant gave is below their bio. Approving puts them on{" "}
+        Listen first — every link an applicant gave is below their bio. Approving unlocks their MUSIC
+        tab, emails them, lets them submit vinyl, tapes and merch to the shop, and puts them on{" "}
         <Link href="/music-collective" className="text-flame hover:underline">
           the public Music Collective page
         </Link>{" "}
-        with their own artist page and sitemap entry, unlocks their MUSIC tab, emails them, and lets
-        them submit vinyl, tapes and merch to the shop. Those product submissions are reviewed in{" "}
+        with their own artist page and sitemap entry. Those product submissions are reviewed in{" "}
         <Link href="/portal/art-admin" className="text-flame hover:underline">
           ART ADMIN
         </Link>
         , which is the same queue for every seller.
       </p>
 
+      {!launched && launchLabel && (
+        <p className="border-flame-2/40 bg-flame-2/10 text-flame-3 mt-4 rounded-lg border px-4 py-3 text-sm">
+          <span className="font-semibold">Not public yet.</span> Approving unlocks an artist&apos;s
+          MUSIC tab straight away, but nobody approved appears on the public Music Collective page
+          until it launches on {launchLabel}. Their own page is a 404 until then too. This switches
+          over by itself — nothing to deploy on the day.
+        </p>
+      )}
+
       {reviewed === "approved" && (
         <p className="border-flame-2/40 bg-flame-2/10 text-flame-3 mt-4 rounded-lg border px-4 py-2 text-sm">
-          Approved — they are on the public Music Collective page, their MUSIC tab is unlocked, and
-          they have been emailed.
+          Approved — their MUSIC tab is unlocked and they have been emailed.
+          {launched
+            ? " They are on the public Music Collective page."
+            : launchLabel
+              ? ` They go on the public page when it launches on ${launchLabel}.`
+              : ""}
         </p>
       )}
       {reviewed === "declined" && (

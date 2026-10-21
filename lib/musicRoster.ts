@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { MUSICIANS, type Musician } from "./musicians";
 import { listMediaForAccounts } from "./media";
+import { pacificWallTimeToUtc } from "./pacificTime";
 import {
   ensureMusicianSlug,
   listMusicianApplications,
@@ -29,6 +30,37 @@ import {
  */
 
 export const MUSIC_ROSTER_TAG = "music-roster";
+
+/**
+ * When the Music Collective opens to the public.
+ *
+ * Applications are being taken and approved now, but nobody approved
+ * goes on the site until the launch. Until then /music-collective is
+ * the hand-written roster it has always been, and an approved artist's
+ * own page is a 404 -- which matters, because a page that exists early
+ * can be found early, and the whole point of a launch date is that
+ * everybody arrives on the same day.
+ *
+ * Written as Pacific wall time and converted, not as a UTC instant.
+ * Midnight on the 28th means midnight in Ocean Beach; hardcoding an
+ * offset would be an hour out for seven months of the year.
+ *
+ * It flips by itself. Nothing has to be deployed on the day, and
+ * deleting this constant plus the two checks below is how it is made
+ * permanent afterwards.
+ */
+const LAUNCH_AT = pacificWallTimeToUtc("2026-10-28T00:00");
+
+export function musicCollectiveHasLaunched(now: Date = new Date()): boolean {
+  // An unparseable date would hide the roster forever rather than show
+  // it early, which is the safer way for this to fail.
+  return LAUNCH_AT !== null && now.getTime() >= LAUNCH_AT.getTime();
+}
+
+/** For the MUSIC ADMIN tab, which has to say when they go live. */
+export function musicCollectiveLaunchDate(): Date | null {
+  return LAUNCH_AT;
+}
 
 /**
  * Colourways for applicants, since the form doesn't ask for one.
@@ -188,6 +220,11 @@ const approvedMusicians = unstable_cache(readApproved, ["music-roster"], {
  * its newest members.
  */
 export async function getMusicRoster(): Promise<Musician[]> {
+  // Checked here rather than inside the cached read, so the roster
+  // opens the moment the date passes instead of up to five minutes
+  // later when the cache next turns over.
+  if (!musicCollectiveHasLaunched()) return [...MUSICIANS];
+
   try {
     return [...MUSICIANS, ...(await approvedMusicians())];
   } catch (err) {
@@ -206,6 +243,11 @@ export async function getMusicRoster(): Promise<Musician[]> {
 export async function getRosterMusician(slug: string): Promise<Musician | undefined> {
   const builtIn = MUSICIANS.find((musician) => musician.slug === slug);
   if (builtIn) return builtIn;
+
+  // Before launch an approved artist has no public page at all, not a
+  // page that is merely unlinked. Returning undefined is what makes the
+  // route 404.
+  if (!musicCollectiveHasLaunched()) return undefined;
 
   try {
     return (await approvedMusicians()).find((musician) => musician.slug === slug);
