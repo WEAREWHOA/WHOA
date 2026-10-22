@@ -9,6 +9,7 @@ import type { MusicianApplication } from "@/lib/musicianProfiles";
 import {
   reviewMusicianAction,
   saveMusicianProfileAsAdminAction,
+  setMusicianVisibilityAction,
 } from "@/app/music-admin/actions";
 
 const LINK_FIELDS: { label: string; field: string }[] = [
@@ -23,6 +24,8 @@ const LINK_FIELDS: { label: string; field: string }[] = [
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid: "That decision didn't come through — try again.",
+  migration:
+    "Showing and hiding artists needs migration 0050_music_site_visibility.sql to be run first. Nothing has changed on the site.",
   missing: "An artist name is required.",
   server: "Something went wrong — try again.",
 };
@@ -169,6 +172,21 @@ function RosterCard({ artist }: { artist: MusicianApplication }) {
               Tab locked
             </span>
           )}
+
+          {/* Separate from Remove on purpose, and worded so the two
+              cannot be confused: this one only decides whether they are
+              on the public page. Remove takes their tab, their
+              submissions and sends a decline email. */}
+          <form action={setMusicianVisibilityAction}>
+            <input type="hidden" name="code" value={artist.ambassadorCode} />
+            <input type="hidden" name="hidden" value={artist.siteHidden ? "0" : "1"} />
+            <button
+              type="submit"
+              className="rounded-full border border-border-strong px-4 py-2 text-xs font-semibold tracking-wide uppercase transition-colors hover:border-flame-2 hover:text-foreground"
+            >
+              {artist.siteHidden ? "Show on site" : "Hide from site"}
+            </button>
+          </form>
           <DecisionButton
             code={artist.ambassadorCode}
             decision={artist.hasAccess ? "declined" : "approved"}
@@ -183,6 +201,12 @@ function RosterCard({ artist }: { artist: MusicianApplication }) {
 
       {/* Where the public meets them. Shown rather than described,
           because it is the thing to check after an edit. */}
+      {artist.siteHidden && (
+        <p className="mt-3 text-xs font-semibold tracking-wide text-muted uppercase">
+          Hidden from the public page
+        </p>
+      )}
+
       {handWritten ? (
         // Their page predates the portal and is maintained in the code,
         // so it is not this profile that visitors read. Said out loud,
@@ -335,12 +359,15 @@ function DeclinedRow({ artist }: { artist: MusicianApplication }) {
 export default function MusicAdminTab({
   artists,
   reviewed,
+  visibility,
   saved,
   error,
 }: {
   artists: MusicianApplication[];
   /** "approved" or "declined" — which banner to show after a decision. */
   reviewed?: string;
+  /** "hidden" or "shown", after the visibility toggle. */
+  visibility?: string;
   saved?: boolean;
   error?: string;
 }) {
@@ -403,6 +430,18 @@ export default function MusicAdminTab({
           public page.
         </p>
       )}
+      {reviewed === undefined && visibility === "hidden" && (
+        <p className="mt-4 rounded-lg border border-border px-4 py-2 text-sm text-muted">
+          Taken off the public page. They keep their MUSIC tab, their submissions and anything owed
+          to them — only the roster changed.
+        </p>
+      )}
+      {visibility === "shown" && (
+        <p className="border-flame-2/40 bg-flame-2/10 text-flame-3 mt-4 rounded-lg border px-4 py-2 text-sm">
+          Back on the public Music Collective page.
+        </p>
+      )}
+
       {saved && (
         <p className="border-flame-2/40 bg-flame-2/10 text-flame-3 mt-4 rounded-lg border px-4 py-2 text-sm">
           Profile saved.

@@ -143,7 +143,12 @@ function toMusician(artist: MusicianApplication, slug: string, photos: string[])
 async function readApproved(): Promise<Musician[]> {
   const all = await listMusicianApplications();
   const approved = all
-    .filter((artist) => artist.status === "approved" && artist.hasAccess)
+    // Three conditions, all of them meaning something different.
+    // status is the decision, hasAccess is the permission that decision
+    // granted, and siteHidden is a separate call about the page itself
+    // -- somebody can be fully approved, working and paid, and still be
+    // off the public roster today because staff took them down.
+    .filter((artist) => artist.status === "approved" && artist.hasAccess && !artist.siteHidden)
     // Oldest first, so the roster grows at the end instead of reordering
     // itself whenever somebody new is approved.
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));

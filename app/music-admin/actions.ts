@@ -7,6 +7,7 @@ import { getByCode } from "@/lib/store";
 import { MUSIC_ROSTER_TAG } from "@/lib/musicRoster";
 import {
   reviewMusician,
+  setMusicianSiteHidden,
   saveMusicianProfile,
   type MusicProfileLink,
 } from "@/lib/musicianProfiles";
@@ -74,6 +75,33 @@ export async function reviewMusicianAction(formData: FormData) {
   revalidateTag(MUSIC_ROSTER_TAG, "max");
 
   redirect(`/portal/music-admin?musicReviewed=${decision === "approved" ? "approved" : "declined"}`);
+}
+
+/**
+ * Shows or hides one approved artist on the public Music Collective
+ * page, without touching whether they are approved.
+ */
+export async function setMusicianVisibilityAction(formData: FormData) {
+  const reviewer = await requireMusicAdmin();
+
+  const code = String(formData.get("code") || "").trim();
+  const hidden = String(formData.get("hidden") || "") === "1";
+  if (!code) redirect("/portal/music-admin?musicAdminError=invalid");
+
+  try {
+    await setMusicianSiteHidden(code, hidden, reviewer.code);
+  } catch (err) {
+    unstable_rethrow(err);
+    console.error("setMusicianVisibilityAction failed:", err);
+    // The one failure worth naming out loud is the unrun migration:
+    // silence there means staff think somebody is hidden when they are
+    // still on the site.
+    const reason = err instanceof Error && err.message.includes("0050") ? "migration" : "server";
+    redirect(`/portal/music-admin?musicAdminError=${reason}`);
+  }
+
+  revalidateTag(MUSIC_ROSTER_TAG, "max");
+  redirect(`/portal/music-admin?musicVisibility=${hidden ? "hidden" : "shown"}`);
 }
 
 /**
