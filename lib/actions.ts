@@ -10,7 +10,9 @@ import { redirect, unstable_rethrow } from "next/navigation";
 import { MUSIC_ROSTER_TAG } from "./musicRoster";
 import {
   createAmbassador,
+  createCustomPromoCode,
   createLink,
+  deleteCustomPromoCode,
   deleteLink,
   deactivateAccount,
   getByCode,
@@ -22,6 +24,7 @@ import {
   updatePasswordHash,
 } from "./store";
 import { createSession, destroySession, getSessionAmbassadorCode, hashPassword, verifyPassword } from "./auth";
+import { requirePortalTab } from "./portalAccess";
 import { getEventById } from "./eventsStore";
 import { requestEventWorkSignup } from "./eventSales";
 import { saveMusicianProfile, type MusicProfileLink } from "./musicianProfiles";
@@ -169,6 +172,50 @@ export async function createLinkAction(formData: FormData) {
 
   await createLink(code, label);
   redirect(portalPath("ambassador", "linkAdded=1"));
+}
+
+/**
+ * Take the one promo code an ambassador names for themselves.
+ *
+ * Gated on the ambassador permission rather than just on the session
+ * matching the posted code, because a promo code is worth money: any
+ * code resolved at checkout takes 15% off and attributes the sale, and
+ * getLinkBySlug does not care which permissions the account behind it
+ * holds. Without this gate any signed-in customer could post here and
+ * mint themselves a standing discount nobody approved.
+ */
+export async function createCustomPromoCodeAction(formData: FormData) {
+  const { account } = await requirePortalTab("ambassador");
+  const requested = String(formData.get("promoCode") || "");
+
+  let result: Awaited<ReturnType<typeof createCustomPromoCode>>;
+  try {
+    result = await createCustomPromoCode(account.code, requested);
+  } catch (err) {
+    unstable_rethrow(err);
+    console.error("createCustomPromoCode failed:", err);
+    redirect(portalPath("ambassador", "codeError=server"));
+  }
+
+  if (!result.ok) {
+    redirect(portalPath("ambassador", `codeError=${result.reason}`));
+  }
+
+  redirect(portalPath("ambassador", "codeAdded=1"));
+}
+
+export async function deleteCustomPromoCodeAction() {
+  const { account } = await requirePortalTab("ambassador");
+
+  try {
+    await deleteCustomPromoCode(account.code);
+  } catch (err) {
+    unstable_rethrow(err);
+    console.error("deleteCustomPromoCode failed:", err);
+    redirect(portalPath("ambassador", "codeError=server"));
+  }
+
+  redirect(portalPath("ambassador", "codeDeleted=1"));
 }
 
 export async function deleteLinkAction(formData: FormData) {

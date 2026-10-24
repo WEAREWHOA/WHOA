@@ -1,6 +1,6 @@
 import AmbassadorTab from "@/components/dashboard/tabs/AmbassadorTab";
 import MediaLibrary from "@/components/portal/MediaLibrary";
-import PortalNotices, { flag, type PortalSearchParams } from "@/components/portal/PortalNotices";
+import PortalNotices, { flag, text, type PortalSearchParams } from "@/components/portal/PortalNotices";
 import { allowedKinds, listMedia } from "@/lib/media";
 import { getSiteOrigin } from "@/lib/site";
 import { getStats } from "@/lib/store";
@@ -30,6 +30,9 @@ export default async function PortalAmbassadorPage(props: PageProps<"/portal/amb
         linkAdded={flag(params, "linkAdded")}
         linkDeleted={flag(params, "linkDeleted")}
         payoutSaved={flag(params, "saved")}
+        codeAdded={flag(params, "codeAdded")}
+        codeDeleted={flag(params, "codeDeleted")}
+        codeError={text(params, "codeError")}
       />
       {allowedKinds(account.permissions).includes("ambassador") && (
         <MediaLibrary code={account.code} kind="ambassador" items={media} />

@@ -1,4 +1,5 @@
 import { getSupabase } from "./supabase";
+import { checkPromoCode, type PromoCodeRejection } from "./promoCodes";
 import type {
   AccountPermissions,
   Ambassador,
@@ -56,6 +57,7 @@ interface LinkRow {
   slug: string;
   clicks: number;
   created_at: string;
+  is_custom_code?: boolean;
 }
 
 // Explicit column list (no password_hash) — this is the select used
@@ -193,6 +195,10 @@ function mapLink(row: LinkRow): AmbassadorLink {
     slug: row.slug,
     clicks: row.clicks,
     createdAt: row.created_at,
+    // Optional on the row so a read taken before migration 0051 ran
+    // still maps; absent means an ordinary per-channel link, which is
+    // what every row was before the column existed.
+    isCustomCode: row.is_custom_code ?? false,
   };
 }
 
@@ -267,15 +273,31 @@ async function generateAmbassadorCode(name: string): Promise<string> {
   const first = parts[0] ?? "";
   const last = parts.length > 1 ? parts[parts.length - 1] : "";
   const base = slugify(`${first}${last}`, 20) || "AMBASSADOR";
-  if (!(await codeExists(base))) return base;
+  if (!(await accountCodeTaken(base))) return base;
 
   let suffix = 2;
   let candidate = `${base}${suffix}`;
-  while (await codeExists(candidate)) {
+  while (await accountCodeTaken(candidate)) {
     suffix += 1;
     candidate = `${base}${suffix}`;
   }
   return candidate;
+}
+
+/**
+ * Whether a new account can be given this code.
+ *
+ * Link slugs count as taken, not just other accounts' codes. The two
+ * namespaces overlap on purpose: ensureDefaultLink gives an approved
+ * ambassador a link whose slug is their account code, so a code that
+ * matched a slug somebody else already holds would be handed out
+ * cleanly at signup and then fail on approval, when that insert hit the
+ * unique index on links.slug. Since ambassadors can now name a code of
+ * their own (createCustomPromoCode), those slugs are no longer all
+ * derived from account codes and the collision is reachable.
+ */
+async function accountCodeTaken(code: string): Promise<boolean> {
+  return (await codeExists(code)) || (await linkSlugExists(code));
 }
 
 async function generateLinkSlug(ambassadorCode: string, label: string): Promise<string> {
@@ -534,6 +556,100 @@ export async function createLink(ambassadorCode: string, label: string): Promise
   }
 
   return mapLink(data as LinkRow);
+}
+
+export type CustomPromoCodeResult =
+  | { ok: true; link: AmbassadorLink }
+  | { ok: false; reason: PromoCodeRejection | "taken" | "exists" };
+
+/**
+ * The one promo code an ambassador gets to name themselves.
+ *
+ * Nothing about the discount or the commission is set up here, because
+ * there is nothing to set up: the checkout resolves a typed code with
+ * getLinkBySlug and attributes the sale to that row's ambassador_code
+ * (see applyPromoCodeAction), so a second row pointing at the same
+ * ambassador earns exactly what their signup code earns. This only
+ * decides what the code is allowed to say and that they get one.
+ *
+ * Availability is checked against the ambassadors table as well as the
+ * links table. A code that matched some other account's code would look
+ * free today and break later: ensureDefaultLink inserts a link whose
+ * slug is the account code the moment that account is granted
+ * ambassador access, and that insert would then collide and fail the
+ * approval.
+ */
+export async function createCustomPromoCode(
+  ambassadorCode: string,
+  requested: string,
+): Promise<CustomPromoCodeResult> {
+  const check = checkPromoCode(requested);
+  if (!check.ok) return { ok: false, reason: check.reason };
+  const slug = check.code;
+
+  const supabase = getSupabase();
+
+  const { data: existing, error: existingError } = await supabase
+    .from("links")
+    .select("id")
+    .eq("ambassador_code", ambassadorCode)
+    .eq("is_custom_code", true)
+    .limit(1);
+  if (existingError) {
+    throw new Error(`Failed to check for an existing custom code: ${existingError.message}`);
+  }
+  if (existing && existing.length > 0) return { ok: false, reason: "exists" };
+
+  if ((await linkSlugExists(slug)) || (await codeExists(slug))) {
+    return { ok: false, reason: "taken" };
+  }
+
+  const { data, error } = await supabase
+    .from("links")
+    .insert({
+      id: `link_${slug.toLowerCase()}`,
+      ambassador_code: ambassadorCode,
+      label: "Your own code",
+      slug,
+      is_custom_code: true,
+    })
+    .select("*")
+    .single();
+
+  if (error) {
+    // 23505 is a unique violation, and there are two of them to tell
+    // apart: the partial index on (ambassador_code) where is_custom_code
+    // means they already had one, anything else means the slug went to
+    // somebody else between the check above and this write.
+    if (error.code === "23505") {
+      return {
+        ok: false,
+        reason: error.message.includes("links_one_custom_code_per_ambassador") ? "exists" : "taken",
+      };
+    }
+    throw new Error(`Failed to create custom promo code: ${error.message}`);
+  }
+  if (!data) throw new Error("Failed to create custom promo code: no row returned");
+
+  return { ok: true, link: mapLink(data as LinkRow) };
+}
+
+/**
+ * Give up the self-chosen code so a different one can be taken.
+ *
+ * Scoped to is_custom_code as well as the ambassador, so this can never
+ * reach a per-channel link; those go through deleteLink. The slug is not
+ * held in reserve afterwards, which is the honest trade: whatever the
+ * old code was printed on stops working the moment this runs, and the
+ * portal says so before asking.
+ */
+export async function deleteCustomPromoCode(ambassadorCode: string): Promise<void> {
+  const { error } = await getSupabase()
+    .from("links")
+    .delete()
+    .eq("ambassador_code", ambassadorCode)
+    .eq("is_custom_code", true);
+  if (error) throw new Error(`Failed to delete custom promo code: ${error.message}`);
 }
 
 // Scoped by ambassador_code as well as id — defense in depth so a bug in

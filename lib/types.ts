@@ -22,6 +22,11 @@ export interface AmbassadorLink {
   slug: string;
   clicks: number;
   createdAt: string;
+  // True for the one promo code the ambassador chose for themselves
+  // rather than a per-channel tracking link. Both are the same kind of
+  // row and both work as a promo code at checkout; this only decides
+  // which part of the portal shows it, and holds them to one.
+  isCustomCode: boolean;
 }
 
 // Which extra dashboard tabs an account has unlocked. Every account gets
