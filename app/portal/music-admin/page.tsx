@@ -12,6 +12,7 @@ export default async function PortalMusicAdminPage(props: PageProps<"/portal/mus
     <MusicAdminTab
       artists={artists}
       reviewed={text(params, "musicReviewed")}
+      visibility={text(params, "musicVisibility")}
       saved={flag(params, "musicAdminSaved")}
       error={text(params, "musicAdminError")}
     />

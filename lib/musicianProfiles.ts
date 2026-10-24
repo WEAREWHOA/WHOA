@@ -32,6 +32,12 @@ export interface MusicianProfile {
    * that migration ran, until ensureMusicianSlug gives them one.
    */
   slug: string | null;
+  /**
+   * Taken off the public roster by hand, without un-approving them.
+   * Approval is about access; this is about what the page looks like
+   * today. False until somebody decides otherwise.
+   */
+  siteHidden: boolean;
   status: MusicianStatus;
   reviewedAt: string | null;
   reviewedBy: string | null;
@@ -48,6 +54,7 @@ interface MusicianProfileRow {
   bio: string | null;
   links: MusicProfileLink[];
   slug?: string | null;
+  site_hidden?: boolean | null;
   // Optional in the type because they are optional in the database until
   // 0048 has been run. A select of * returns whatever columns exist, so
   // reads keep working through that gap; see reviewMusician for the
@@ -73,6 +80,7 @@ function mapProfile(row: MusicianProfileRow, hasAccess?: boolean): MusicianProfi
     bio: row.bio,
     links: Array.isArray(row.links) ? row.links : [],
     slug: row.slug ?? null,
+    siteHidden: row.site_hidden === true,
     // Before 0048 runs there is no status column, so it is derived the
     // way the app used to derive it: holding the permission means
     // approved, anything else is still waiting.
@@ -333,6 +341,45 @@ export async function reviewMusician(
     } catch (err) {
       console.error("sendMusicDecisionEmail failed:", err);
     }
+  }
+}
+
+/**
+ * Shows or hides one approved artist on the public roster.
+ *
+ * Deliberately separate from reviewMusician. Un-approving somebody to
+ * take them off the page would lock their MUSIC tab, stop their
+ * submissions and send them a decline email, none of which is what
+ * "hide them for now" means.
+ *
+ * The missing-column case is reported rather than swallowed: if 0050
+ * has not been run, staff click hide, nothing happens, and the artist
+ * stays on the site. That silence is the dangerous outcome, so it gets
+ * its own message naming the migration.
+ */
+export async function setMusicianSiteHidden(
+  code: string,
+  hidden: boolean,
+  changedBy?: string | null,
+): Promise<void> {
+  const normalized = code.trim().toUpperCase();
+
+  const { error } = await getSupabase()
+    .from("musician_profiles")
+    .update({
+      site_hidden: hidden,
+      site_hidden_at: hidden ? new Date().toISOString() : null,
+      site_hidden_by: hidden ? (changedBy ?? null) : null,
+    })
+    .eq("ambassador_code", normalized);
+
+  if (error) {
+    if (isMissingColumn(error)) {
+      throw new Error(
+        "Showing and hiding artists needs migration 0050_music_site_visibility.sql to be run first.",
+      );
+    }
+    throw new Error(`Failed to change site visibility: ${error.message}`);
   }
 }
 

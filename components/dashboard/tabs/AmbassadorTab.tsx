@@ -5,6 +5,7 @@ import OrdersTable from "@/components/portal/OrdersTable";
 import ResourcePack from "@/components/portal/ResourcePack";
 import PayoutSettings from "@/components/portal/PayoutSettings";
 import LinksManager from "@/components/portal/LinksManager";
+import CustomPromoCode from "@/components/portal/CustomPromoCode";
 import type { Ambassador, AmbassadorStats } from "@/lib/types";
 import type { TierDef } from "@/lib/tiers";
 
@@ -16,6 +17,9 @@ export default function AmbassadorTab({
   linkAdded,
   linkDeleted,
   payoutSaved,
+  codeAdded,
+  codeDeleted,
+  codeError,
 }: {
   ambassador: Ambassador;
   stats: AmbassadorStats;
@@ -24,7 +28,17 @@ export default function AmbassadorTab({
   linkAdded: boolean;
   linkDeleted: boolean;
   payoutSaved: boolean;
+  codeAdded: boolean;
+  codeDeleted: boolean;
+  codeError?: string;
 }) {
+  // The self-chosen code is a links row like any other, so it has to be
+  // held out of the links list or it would show up twice — once as a
+  // promo code and once as a channel link with a Delete that skips the
+  // warning about the old code going dead.
+  const custom = ambassador.links.find((link) => link.isCustomCode);
+  const channelLinks = ambassador.links.filter((link) => !link.isCustomCode);
+
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -50,11 +64,22 @@ export default function AmbassadorTab({
         <LinksManager
           code={ambassador.code}
           origin={origin}
-          links={ambassador.links}
+          links={channelLinks}
           added={linkAdded}
           deleted={linkDeleted}
         />
         <ResourcePack code={ambassador.code} />
+      </div>
+
+      <div className="mt-8">
+        <CustomPromoCode
+          signupCode={ambassador.code}
+          origin={origin}
+          custom={custom}
+          added={codeAdded}
+          deleted={codeDeleted}
+          error={codeError}
+        />
       </div>
 
       <div className="mt-8">
