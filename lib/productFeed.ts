@@ -1,4 +1,5 @@
 import { listProducts, productPath } from "@/lib/catalog";
+import { variationInStock } from "./stock";
 import { SHIPPING_ZONES, shippingRateCents } from "@/lib/shipping";
 import { SITE_URL } from "@/lib/siteUrl";
 import type { Product, ProductVariation } from "@/lib/types";
@@ -113,7 +114,7 @@ function itemXml(
   const link = `${SITE_URL}${productPath(product)}`;
   const price = (variation.priceCents / 100).toFixed(2);
   // A variation Square doesn't track is unlimited, not sold out.
-  const inStock = variation.inStock == null || variation.inStock > 0;
+  const inStock = variationInStock(variation);
 
   const description = clamp(
     product.description ||
@@ -127,9 +128,16 @@ function itemXml(
     `<title>${xml(variationTitle(product, variation))}</title>`,
     `<description>${xml(description)}</description>`,
     `<link>${xml(link)}</link>`,
+    // Not "out of stock" any more. The shop takes pre-orders on a piece
+    // that has run out, so declaring it unavailable would pull a listing
+    // that can still be bought. Backorder is the value for exactly that
+    // on Google, and Meta's equivalent is "available for order".
+    // Google's "preorder" is a different thing -- an unreleased item
+    // with a date -- and requires an availability_date we have no honest
+    // value for, since these are made by hand.
     dialect === "meta"
-      ? `<g:availability>${inStock ? "in stock" : "out of stock"}</g:availability>`
-      : `<g:availability>${inStock ? "in_stock" : "out_of_stock"}</g:availability>`,
+      ? `<g:availability>${inStock ? "in stock" : "available for order"}</g:availability>`
+      : `<g:availability>${inStock ? "in_stock" : "backorder"}</g:availability>`,
     `<g:price>${price} USD</g:price>`,
     `<g:condition>new</g:condition>`,
     `<g:brand>${xml(BRAND)}</g:brand>`,
@@ -147,9 +155,13 @@ function itemXml(
   // difference between a catalogue and an inventory. Null means Square
   // does not track that variation, which is unlimited rather than zero,
   // so the field is left off entirely rather than guessed at.
-  if (dialect === "meta" && variation.inStock != null) {
+  // Only sent while there is stock to sell. Sending 0 alongside
+  // "available for order" tells Instagram two different things and the
+  // quantity wins, which would refuse the pre-order the availability
+  // just offered.
+  if (dialect === "meta" && variation.inStock != null && variation.inStock > 0) {
     parts.push(
-      `<g:quantity_to_sell_on_facebook>${Math.max(0, variation.inStock)}</g:quantity_to_sell_on_facebook>`,
+      `<g:quantity_to_sell_on_facebook>${variation.inStock}</g:quantity_to_sell_on_facebook>`,
     );
   }
 

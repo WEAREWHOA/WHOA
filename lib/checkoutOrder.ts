@@ -1,4 +1,5 @@
 import type { CartLine } from "@/lib/types";
+import { PREORDER_NOTE } from "@/lib/stock";
 
 // The parts of a Square order that decide what it costs — line items and
 // the ambassador discount.
@@ -53,6 +54,7 @@ export function buildOrderPricing({
   ambassadorCode,
   excludedProductIds,
   shippingCents,
+  preorderVariationIds,
 }: {
   lines: CartLine[];
   ambassadorCode?: string;
@@ -68,6 +70,13 @@ export function buildOrderPricing({
    * whatever the browser's cart happens to claim.
    */
   excludedProductIds: ReadonlySet<string>;
+  /**
+   * Lines being made rather than picked off the shelf. Carried onto the
+   * Square line item as a note, because the order in Square is what the
+   * shop packs from and an item that has to be made first is the one
+   * thing about it they cannot work out from the count.
+   */
+  preorderVariationIds?: ReadonlySet<string>;
 }): OrderPricing {
   const shipping = Math.max(0, Math.round(shippingCents ?? 0));
 
@@ -90,6 +99,7 @@ export function buildOrderPricing({
     lineItems: lines.map((line) => ({
       catalogObjectId: line.variationId,
       quantity: String(line.quantity),
+      note: preorderVariationIds?.has(line.variationId) ? PREORDER_NOTE : undefined,
       appliedDiscounts:
         ambassadorCode && !excludedProductIds.has(line.productId)
           ? [{ discountUid: AMBASSADOR_DISCOUNT_UID }]

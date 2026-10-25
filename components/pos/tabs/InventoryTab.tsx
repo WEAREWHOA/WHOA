@@ -1,4 +1,5 @@
 import type { Product } from "@/lib/types";
+import { availableStock, isOutOfStock } from "@/lib/stock";
 
 export default function InventoryTab({ products }: { products: Product[] }) {
   const sorted = [...products].sort((a, b) => a.name.localeCompare(b.name));
@@ -13,9 +14,14 @@ export default function InventoryTab({ products }: { products: Product[] }) {
       ) : (
         <div className="mt-6 flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border">
           {sorted.map((product) => {
-            const totalStock = product.variations.reduce((sum, v) => sum + (v.inStock ?? 1), 0);
-            const soldOut = product.variations.length > 0 && totalStock <= 0;
-            const low = !soldOut && totalStock > 0 && totalStock <= 3;
+            // A stock report, so this still says "none left" rather than
+            // "pre-order" -- staff are asking what is on the shelf, not
+            // what can be sold. It just works it out the same way every
+            // other surface now does, instead of summing the counts and
+            // letting one oversold variation hide a sibling that has some.
+            const totalStock = availableStock(product);
+            const soldOut = isOutOfStock(product);
+            const low = !soldOut && totalStock !== null && totalStock > 0 && totalStock <= 3;
 
             return (
               <div key={product.id} className="flex items-center gap-3 bg-surface p-3">
@@ -50,7 +56,11 @@ export default function InventoryTab({ products }: { products: Product[] }) {
                         : "bg-white/5 text-muted"
                   }`}
                 >
-                  {soldOut ? "Sold out" : `${totalStock} in stock`}
+                  {soldOut
+                    ? "None left"
+                    : totalStock === null
+                      ? "Not tracked"
+                      : `${totalStock} in stock`}
                 </span>
               </div>
             );

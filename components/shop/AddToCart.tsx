@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCart } from "@/components/cart/CartProvider";
 import type { Product, ProductVariation } from "@/lib/types";
 import { formatCents } from "@/lib/money";
+import { PREORDER_LABEL, PREORDER_LEAD_TIME, variationInStock } from "@/lib/stock";
 
 function findVariation(
   variations: ProductVariation[],
@@ -59,10 +60,16 @@ export default function AddToCart({ product }: { product: Product }) {
   const variation = hasOptions
     ? findVariation(product.variations, selectedValues, optionIds)
     : product.variations.find((v) => v.id === variationId);
-  const soldOut = !variation || (variation.inStock !== null && variation.inStock <= 0);
+  // A combination that resolves to no variation at all is genuinely
+  // unbuyable and stays disabled. Out of stock is different now: these
+  // are made by hand, so it is offered as a pre-order rather than
+  // refused, with the wait stated before the button rather than
+  // discovered afterwards.
+  const unavailable = !variation;
+  const preorder = Boolean(variation) && !variationInStock(variation!);
 
   function handleAdd() {
-    if (!variation || soldOut) return;
+    if (!variation) return;
     addLine({
       variationId: variation.id,
       productId: product.id,
@@ -148,10 +155,14 @@ export default function AddToCart({ product }: { product: Product }) {
                 onChange={(e) => setVariationId(e.target.value)}
                 className="mt-2 w-full rounded-lg border border-border-strong bg-surface-raised px-4 py-3 text-sm outline-none focus:border-flame-2"
               >
+                {/* Out-of-stock options stay selectable: they are
+                    pre-orders now, not dead ends. Disabling them was the
+                    other place a shopper could be shown a size and then
+                    refused it. */}
                 {product.variations.map((v) => (
-                  <option key={v.id} value={v.id} disabled={v.inStock !== null && v.inStock <= 0}>
+                  <option key={v.id} value={v.id}>
                     {v.name} — {formatCents(v.priceCents)}
-                    {v.inStock !== null && v.inStock <= 0 ? " (sold out)" : ""}
+                    {variationInStock(v) ? "" : ` (${PREORDER_LABEL.toLowerCase()})`}
                   </option>
                 ))}
               </select>
@@ -164,13 +175,20 @@ export default function AddToCart({ product }: { product: Product }) {
         </p>
       )}
 
+      {preorder && (
+        <p className="border-flame-2/40 bg-flame-2/10 text-flame-3 rounded-lg border px-4 py-3 text-sm">
+          <strong className="font-semibold uppercase">{PREORDER_LABEL}</strong> — this one
+          is not on the shelf. {PREORDER_LEAD_TIME}
+        </p>
+      )}
+
       <button
         type="button"
         onClick={handleAdd}
-        disabled={soldOut}
+        disabled={unavailable}
         className="btn-flame rounded-full px-8 py-4 text-base disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {soldOut ? "Sold out" : added ? "Added" : "Add to cart"}
+        {added ? "Added" : preorder ? `${PREORDER_LABEL} this` : "Add to cart"}
       </button>
 
       {added && (

@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { getSquare, getSquareLocationId } from "@/lib/square";
 import { getDiscountIneligibleProductIds, getInventoryCounts } from "@/lib/catalog";
+import { isPreorderQuantity, PREORDER_LEAD_TIME } from "@/lib/stock";
 import { getByCode, getLinkBySlug, recordLinkClick, setSquareCustomerId } from "@/lib/store";
 import { captureCheckout, markRecovered } from "@/lib/abandonedCheckouts";
 import { recordContactInBackground, TAG } from "@/lib/newsletter";
@@ -360,33 +361,35 @@ export async function checkoutAction(input: {
     });
   }
 
-  // Re-check live stock right before charging anything — a cart can go
-  // stale between "add to cart" and "hit pay" (someone else buys the last
-  // one, or the customer just typed a number bigger than what's left,
-  // since the cart page's quantity input has no cap of its own). A
-  // variation missing from the counts map isn't tracked in Square at all,
-  // which means unlimited — only a variation Square actually tracks, at a
-  // count lower than what's in the cart, blocks the order.
+  // Live stock, read right before charging, to work out which lines are
+  // being made rather than picked.
+  //
+  // This used to refuse the order outright when a line ran past its
+  // count. It no longer does: running out is a pre-order now, not a
+  // closed door, and the shop would rather make another than turn the
+  // sale away. Square does not block it either -- selling past zero
+  // takes the count negative rather than failing -- so the only thing
+  // that was stopping the sale was this check.
+  //
+  // What matters instead is that whoever packs the order finds out. A
+  // variation missing from the counts map is untracked, which is
+  // unlimited, so nothing about it is ever a pre-order.
+  let preorderVariationIds: ReadonlySet<string> = new Set();
   try {
     const counts = await getInventoryCounts(
       input.lines.map((l) => l.variationId),
       locationId,
     );
-    for (const line of input.lines) {
-      const available = counts.get(line.variationId);
-      if (available !== undefined && line.quantity > available) {
-        return {
-          ok: false,
-          error:
-            available === 0
-              ? `${line.productName} (${line.variationName}) just sold out.`
-              : `Only ${available} of ${line.productName} (${line.variationName}) left — update your cart.`,
-        };
-      }
-    }
+    preorderVariationIds = new Set(
+      input.lines
+        .filter((line) => isPreorderQuantity(counts.get(line.variationId), line.quantity))
+        .map((line) => line.variationId),
+    );
   } catch (err) {
-    // A stock-check hiccup shouldn't block a sale outright — Square's own
-    // order creation still enforces its own inventory rules server-side.
+    // Fail towards the shelf. Marking everything a pre-order because
+    // Square could not be reached would put a two-to-three-week note on
+    // orders that ship today; the shop sees the real counts in Square
+    // anyway when it comes to pack them.
     console.error("Stock check failed during checkout:", err);
   }
 
@@ -439,6 +442,7 @@ export async function checkoutAction(input: {
           // same function the quote used. Nothing about the postage
           // comes from the browser.
           shippingCents,
+          preorderVariationIds,
         }),
         // Three shapes, one field. A posted order gets a SHIPMENT, a
         // collected one gets a PICKUP, and a sale rung up at the till
@@ -455,7 +459,13 @@ export async function checkoutAction(input: {
                 type: "PICKUP" as const,
                 pickupDetails: {
                   scheduleType: "ASAP" as const,
-                  note: PICKUP_LEAD_TIME,
+                  // The pre-order wait comes first when there is one: it
+                  // is the longer of the two promises and the one that
+                  // decides when this can actually be collected.
+                  note:
+                    preorderVariationIds.size > 0
+                      ? `${PREORDER_LEAD_TIME} ${PICKUP_LEAD_TIME}`
+                      : PICKUP_LEAD_TIME,
                   recipient: {
                     displayName: input.customerName.trim(),
                     emailAddress: input.customerEmail || undefined,
@@ -469,6 +479,14 @@ export async function checkoutAction(input: {
               {
                 type: "SHIPMENT",
                 shipmentDetails: {
+                  // shippingNote is the only note a SHIPMENT carries, and
+                  // only set for a pre-order, so its presence on an order
+                  // in Square means something rather than being
+                  // boilerplate nobody reads. The per-line notes are what
+                  // say which items need making; this says how long the
+                  // order as a whole was promised.
+                  shippingNote:
+                    preorderVariationIds.size > 0 ? PREORDER_LEAD_TIME : undefined,
                   recipient: {
                     displayName: input.customerName.trim(),
                     emailAddress: input.customerEmail || undefined,
