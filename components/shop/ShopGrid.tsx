@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { Product } from "@/lib/types";
 import ProductCard from "./ProductCard";
-import { compareFeatured, shopBandOf, totalStock } from "@/lib/shopOrder";
+import { compareFeatured, shopBandOf } from "@/lib/shopOrder";
+import { isOutOfStock } from "@/lib/stock";
 
 type SortOption = "featured" | "price-asc" | "price-desc" | "name";
 
@@ -101,7 +102,7 @@ export default function ShopGrid({ products, artistNames }: { products: Product[
 
     let list = products.filter((product) => {
       if (categoryId && !product.categories.some((c) => c.id === categoryId)) return false;
-      if (hideSoldOut && product.variations.length > 0 && totalStock(product) <= 0) return false;
+      if (hideSoldOut && isOutOfStock(product)) return false;
       if (query) {
         const haystack = `${product.name} ${product.description}`.toLowerCase();
         if (!haystack.includes(query)) return false;
@@ -169,7 +170,7 @@ export default function ShopGrid({ products, artistNames }: { products: Product[
                 : "border-white/20 text-white/70 hover:border-flame-2/50 hover:text-white"
             }`}
           >
-            Hide sold out
+            Hide pre-order
           </button>
         </div>
 

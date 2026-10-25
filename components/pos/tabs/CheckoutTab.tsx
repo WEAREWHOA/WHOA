@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import Script from "next/script";
 import { checkoutAction, lookupPromoCodeAction, quoteCheckoutAction } from "@/app/checkout/actions";
 import { formatCents } from "@/lib/money";
+import { isOutOfStock, PREORDER_LABEL, variationInStock } from "@/lib/stock";
 import type { CartLine, Product } from "@/lib/types";
 import {
   SQUARE_APPLICATION_ID as APPLICATION_ID,
@@ -163,19 +164,21 @@ export default function CheckoutTab({ products }: { products: Product[] }) {
             {filtered.map((product) => {
               const prices = product.variations.map((v) => v.priceCents);
               const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
-              const totalStock = product.variations.reduce((sum, v) => sum + (v.inStock ?? 1), 0);
-              const soldOut = product.variations.length > 0 && totalStock <= 0;
+              // Not on the shelf is a pre-order at the till too: the
+              // customer is standing there and can order one. Staff need
+              // to know before they take the money, which is what the
+              // label is for.
+              const preorder = isOutOfStock(product);
               const expanded = expandedId === product.id;
 
               return (
                 <div key={product.id} className="flex flex-col gap-2">
                   <button
                     type="button"
-                    disabled={soldOut}
                     onClick={() => handleProductTap(product)}
                     className={`card-surface flex flex-col overflow-hidden rounded-xl border text-left transition-colors ${
                       expanded ? "border-flame-2" : "border-border"
-                    } ${soldOut ? "cursor-not-allowed opacity-40" : "hover:border-flame-2/60"}`}
+                    } ${preorder ? "opacity-60 hover:border-flame-2/60" : "hover:border-flame-2/60"}`}
                   >
                     <div className="bg-surface-raised aspect-square w-full overflow-hidden">
                       {product.imageUrl ? (
@@ -194,7 +197,7 @@ export default function CheckoutTab({ products }: { products: Product[] }) {
                     <div className="p-2.5">
                       <p className="truncate text-xs font-semibold">{product.name}</p>
                       <p className="text-flame text-xs">
-                        {soldOut ? "Sold out" : formatCents(minPrice)}
+                        {preorder ? PREORDER_LABEL : formatCents(minPrice)}
                       </p>
                     </div>
                   </button>
@@ -202,18 +205,19 @@ export default function CheckoutTab({ products }: { products: Product[] }) {
                   {expanded && (
                     <div className="flex flex-col gap-1.5 rounded-xl border border-border-strong p-2">
                       {product.variations.map((v) => {
-                        const varSoldOut = v.inStock !== null && v.inStock <= 0;
+                        const varPreorder = !variationInStock(v);
                         return (
                           <button
                             key={v.id}
                             type="button"
-                            disabled={varSoldOut}
                             onClick={() => addLine(product, v)}
                             className="flex items-center justify-between rounded-lg px-2 py-1.5 text-xs font-medium hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
                           >
                             <span>{v.name}</span>
                             <span className="text-muted">
-                              {varSoldOut ? "Sold out" : formatCents(v.priceCents)}
+                              {varPreorder
+                                ? `${PREORDER_LABEL} · ${formatCents(v.priceCents)}`
+                                : formatCents(v.priceCents)}
                             </span>
                           </button>
                         );

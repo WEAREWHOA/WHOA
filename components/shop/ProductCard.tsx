@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
 import type { Product } from "@/lib/types";
 import { formatCents } from "@/lib/money";
+import { availableStock, isOutOfStock, PREORDER_LABEL } from "@/lib/stock";
 import { useCart } from "@/components/cart/CartProvider";
 
 // Same idea as lib/artists.ts's PALETTE — Square products don't carry a
@@ -37,8 +38,11 @@ export default function ProductCard({ product, delay = 0 }: { product: Product; 
 
   const prices = product.variations.map((v) => v.priceCents);
   const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
-  const totalStock = product.variations.reduce((sum, v) => sum + (v.inStock ?? 1), 0);
-  const soldOut = product.variations.length > 0 && totalStock <= 0;
+  // Out of stock no longer means unbuyable: these are made by hand, so
+  // the card offers it as a pre-order instead of refusing the sale. What
+  // changes is the label and the promise, not whether the button works.
+  const preorder = isOutOfStock(product);
+  const inStock = availableStock(product);
   const singleVariation = product.variations.length === 1;
 
   function handlePointerMove(e: PointerEvent<HTMLAnchorElement>) {
@@ -75,14 +79,14 @@ export default function ProductCard({ product, delay = 0 }: { product: Product; 
   // both this control and the outer link's own click handling. A span with
   // a button role sidesteps that while staying keyboard-accessible.
   function handleQuickAdd(e: MouseEvent<HTMLSpanElement>) {
-    if (!singleVariation || soldOut) return;
+    if (!singleVariation) return;
     e.preventDefault();
     e.stopPropagation();
     addSingleVariation();
   }
 
   function handleQuickAddKeyDown(e: KeyboardEvent<HTMLSpanElement>) {
-    if (!singleVariation || soldOut) return;
+    if (!singleVariation) return;
     if (e.key !== "Enter" && e.key !== " ") return;
     e.preventDefault();
     e.stopPropagation();
@@ -132,9 +136,9 @@ export default function ProductCard({ product, delay = 0 }: { product: Product; 
             <span className="text-psychedelic font-display relative text-2xl tracking-wide">WHOA</span>
           </div>
         )}
-        {soldOut && (
+        {preorder && (
           <span className="absolute top-3 right-3 rounded-full bg-black/70 px-3 py-1 text-[0.65rem] font-semibold tracking-wide text-white uppercase">
-            Sold out
+            {PREORDER_LABEL}
           </span>
         )}
       </div>
@@ -145,20 +149,27 @@ export default function ProductCard({ product, delay = 0 }: { product: Product; 
           <span className="font-display text-lg" style={{ color: accent }}>
             {formatCents(minPrice)}
           </span>
-          {!soldOut && <span className="text-[0.65rem] text-white/60">{totalStock} in stock</span>}
+          {/* Null is an untracked variation, which is unlimited rather
+              than a number worth printing. */}
+          {!preorder && inStock !== null && (
+            <span className="text-[0.65rem] text-white/60">{inStock} in stock</span>
+          )}
         </div>
 
         <span
           role="button"
-          tabIndex={soldOut ? -1 : 0}
-          aria-disabled={soldOut}
+          tabIndex={0}
           onClick={handleQuickAdd}
           onKeyDown={handleQuickAddKeyDown}
-          className={`mt-3 block w-full scale-100 rounded-full px-4 py-2.5 text-center text-xs font-semibold tracking-wide uppercase transition-[scale,background-color,color] duration-300 group-hover:scale-[1.04] ${
-            soldOut ? "cursor-not-allowed border border-white/20 text-white/40" : "btn-flame"
-          }`}
+          className="btn-flame mt-3 block w-full scale-100 rounded-full px-4 py-2.5 text-center text-xs font-semibold tracking-wide uppercase transition-[scale,background-color,color] duration-300 group-hover:scale-[1.04]"
         >
-          {soldOut ? "Sold out" : added ? "Added ✓" : singleVariation ? "Add to cart" : "Choose options"}
+          {added
+            ? "Added ✓"
+            : preorder
+              ? PREORDER_LABEL
+              : singleVariation
+                ? "Add to cart"
+                : "Choose options"}
         </span>
       </div>
     </Link>

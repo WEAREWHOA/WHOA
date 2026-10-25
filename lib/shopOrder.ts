@@ -1,4 +1,5 @@
 import type { Product } from "./types";
+import { isOutOfStock } from "./stock";
 
 /**
  * The order /shop opens in.
@@ -13,12 +14,6 @@ import type { Product } from "./types";
  * range scattered through the collective's consignment pieces, and
  * sold-out one-of-ones as likely to lead as anything buyable.
  */
-
-export function totalStock(product: Product): number {
-  // A missing count reads as 1, so an item Square has no inventory
-  // tracking for is treated as available rather than silently buried.
-  return product.variations.reduce((sum, v) => sum + (v.inStock ?? 1), 0);
-}
 
 /**
  * Which half of the shop a product belongs to: 0 for WHOA's own goods, 1
@@ -35,7 +30,7 @@ export function shopBandOf(product: Product, artistCategoryIds: ReadonlySet<stri
 }
 
 function soldOutRank(product: Product): number {
-  return product.variations.length > 0 && totalStock(product) <= 0 ? 1 : 0;
+  return isOutOfStock(product) ? 1 : 0;
 }
 
 function updatedRank(product: Product): number {

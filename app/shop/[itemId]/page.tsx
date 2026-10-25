@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { variationInStock } from "@/lib/stock";
 import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import { listProducts, productPath, resolveProduct } from "@/lib/catalog";
@@ -113,12 +114,14 @@ function buildProductJsonLd(
     price: (variation.priceCents / 100).toFixed(2),
     priceValidUntil,
     itemCondition: "https://schema.org/NewCondition",
-    // Null means Square doesn't track this variation, which is
-    // unlimited rather than sold out.
-    availability:
-      variation.inStock == null || variation.inStock > 0
-        ? "https://schema.org/InStock"
-        : "https://schema.org/OutOfStock",
+    // BackOrder rather than OutOfStock for a piece that has run out: it
+    // can still be bought, it just has to be made first, and telling
+    // Google it is unavailable would drop a listing that still takes
+    // orders. Null means Square doesn't track this variation, which is
+    // unlimited.
+    availability: variationInStock(variation)
+      ? "https://schema.org/InStock"
+      : "https://schema.org/BackOrder",
     seller: { "@type": "Organization", name: BRAND },
     hasMerchantReturnPolicy: returnPolicy,
     shippingDetails: shippingDetails(variation.priceCents),
