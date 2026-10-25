@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { Product } from "@/lib/types";
 import ProductCard from "./ProductCard";
+import { compareFeatured, shopBandOf, totalStock } from "@/lib/shopOrder";
 
 type SortOption = "featured" | "price-asc" | "price-desc" | "name";
 
@@ -30,10 +31,6 @@ const SORT_LABELS: Record<SortOption, string> = {
 function minPrice(product: Product): number {
   const prices = product.variations.map((v) => v.priceCents);
   return prices.length > 0 ? Math.min(...prices) : 0;
-}
-
-function totalStock(product: Product): number {
-  return product.variations.reduce((sum, v) => sum + (v.inStock ?? 1), 0);
 }
 
 export default function ShopGrid({ products, artistNames }: { products: Product[]; artistNames: string[] }) {
@@ -64,7 +61,7 @@ export default function ShopGrid({ products, artistNames }: { products: Product[
   // Square from the curated list, or added there by hand, and let them
   // through as if they were a kind of product. Names are still checked as
   // a fallback for a category that hasn't been re-parented yet.
-  const { productCategories, artistCategories } = useMemo(() => {
+  const { productCategories, artistCategories, artistCategoryIds } = useMemo(() => {
     const byId = new Map<string, CategoryPill>();
     for (const product of products) {
       for (const category of product.categories) {
@@ -92,7 +89,11 @@ export default function ShopGrid({ products, artistNames }: { products: Product[
         productCategories.push(category);
       }
     }
-    return { productCategories, artistCategories };
+    return {
+      productCategories,
+      artistCategories,
+      artistCategoryIds: new Set(artistCategories.map((c) => c.id)),
+    };
   }, [products, artistNameSet]);
 
   const filtered = useMemo(() => {
@@ -112,9 +113,23 @@ export default function ShopGrid({ products, artistNames }: { products: Product[
     if (sort === "price-asc") list.sort((a, b) => minPrice(a) - minPrice(b));
     else if (sort === "price-desc") list.sort((a, b) => minPrice(b) - minPrice(a));
     else if (sort === "name") list.sort((a, b) => a.name.localeCompare(b.name));
+    // Featured is the default, and it leads with WHOA's own range before
+    // the Art Collective's. See lib/shopOrder.ts for the full rule.
+    else list.sort((a, b) => compareFeatured(a, b, artistCategoryIds));
 
     return list;
-  }, [products, categoryId, hideSoldOut, search, sort]);
+  }, [products, categoryId, hideSoldOut, search, sort, artistCategoryIds]);
+
+  // Where WHOA's own range ends and the collective's begins, so the grid
+  // can say so instead of just quietly changing character halfway down.
+  // Only under Featured, since that is the only order banded this way,
+  // and only with nothing filtered to a single category, where a split
+  // would be noise. Index 0 means every match is the collective's, so
+  // there is nothing above the line to separate it from.
+  const collectiveStartsAt =
+    sort === "featured" && !categoryId
+      ? filtered.findIndex((product) => shopBandOf(product, artistCategoryIds) === 1)
+      : -1;
 
   return (
     <div className="relative z-10 mt-10 w-full max-w-6xl">
@@ -209,7 +224,21 @@ export default function ShopGrid({ products, artistNames }: { products: Product[
       ) : (
         <div className="mt-14 flex w-full flex-wrap items-start justify-center gap-x-8 gap-y-14">
           {filtered.map((product, i) => (
-            <ProductCard key={product.id} product={product} delay={i * 0.1} />
+            <Fragment key={product.id}>
+              {i === collectiveStartsAt && i > 0 && (
+                // w-full breaks the flex-wrap row, so this sits on its own
+                // line however many cards happen to precede it.
+                <div className="w-full pt-4 text-center">
+                  <span className="text-xs font-semibold tracking-[0.3em] text-white/70 uppercase">
+                    From the Art Collective
+                  </span>
+                  <p className="mt-2 text-sm text-white/50">
+                    Work by the artists who sell with us.
+                  </p>
+                </div>
+              )}
+              <ProductCard product={product} delay={i * 0.1} />
+            </Fragment>
           ))}
         </div>
       )}

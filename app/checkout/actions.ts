@@ -68,6 +68,85 @@ export async function applyPromoCodeAction(formData: FormData) {
 }
 
 /**
+ * Whose code is on this sale, if anyone's.
+ *
+ * Two ways in. Online, the code rides in a cookie, set either by
+ * clicking /r/<code> or by typing it at checkout. At the till there is
+ * no such thing: the register is one shared browser serving a queue of
+ * customers, so a cookie there would attribute every sale of the day to
+ * whoever's link the last staff member happened to open. The register
+ * passes the code explicitly instead.
+ *
+ * Undefined means "look in the cookie"; a string or null means "this is
+ * the code, and there is no cookie worth reading". The register always
+ * passes one or the other, so a walk-in sale can never inherit a
+ * referral from the till's own browsing. Without that distinction, one
+ * staff member opening an ambassador's /r/ link on the register would
+ * quietly take 15% off every sale for the next thirty days and pay the
+ * commission to whoever's link it was.
+ *
+ * An explicitly passed code also does not fall back to the cookie when
+ * it resolves to nothing. Staff who typed a code that turns out to be
+ * wrong should see no discount, not someone else's.
+ *
+ * Either way the string is only ever a lookup key: it is resolved to an
+ * account through getLinkBySlug here on the server, so nothing the
+ * client sends can invent an ambassador or a rate.
+ */
+async function resolveReferral(promoCode?: string | null) {
+  if (promoCode !== undefined) {
+    const typed = promoCode?.trim();
+    if (!typed) return undefined;
+    const link = await getLinkBySlug(typed).catch((err) => {
+      console.error("Promo code lookup failed during checkout:", err);
+      return undefined;
+    });
+    if (!link) return undefined;
+    return getByCode(link.ambassadorCode).catch((err) => {
+      console.error("Referral lookup failed during checkout:", err);
+      return undefined;
+    });
+  }
+
+  const store = await cookies();
+  const refCode = store.get(REF_COOKIE)?.value;
+  if (!refCode) return undefined;
+  // A referral-lookup hiccup should never block a real payment — worst
+  // case, this one order just doesn't get the ambassador discount or
+  // commission.
+  return getByCode(refCode).catch((err) => {
+    console.error("Referral lookup failed during checkout:", err);
+    return undefined;
+  });
+}
+
+/**
+ * Does this code belong to anyone, and to whom?
+ *
+ * For the register, so staff get told a code is wrong while the customer
+ * is still standing there rather than after the card is charged. Returns
+ * the ambassador's name for confirmation out loud ("that's Jane's code")
+ * and nothing else about the account.
+ */
+export async function lookupPromoCodeAction(
+  code: string,
+): Promise<{ ok: true; code: string; name: string } | { ok: false }> {
+  const typed = code.trim();
+  if (!typed) return { ok: false };
+
+  try {
+    const link = await getLinkBySlug(typed);
+    if (!link) return { ok: false };
+    const account = await getByCode(link.ambassadorCode);
+    if (!account) return { ok: false };
+    return { ok: true, code: link.slug, name: account.name };
+  } catch (err) {
+    console.error("lookupPromoCodeAction failed:", err);
+    return { ok: false };
+  }
+}
+
+/**
  * What this cart really costs, priced by Square rather than guessed in the
  * browser.
  *
@@ -99,18 +178,14 @@ export async function quoteCheckoutAction(
    *  to say so before the card is charged -- otherwise the summary adds
    *  shipping to an order that is never being shipped. */
   method: "ship" | "pickup" = "ship",
+  /** The register passes this explicitly, null included; online it is
+   *  left off and the cookie is read instead. See resolveReferral. */
+  promoCode?: string | null,
 ): Promise<CheckoutQuote | null> {
   if (lines.length === 0) return null;
 
   try {
-    const store = await cookies();
-    const refCode = store.get(REF_COOKIE)?.value;
-    const ambassador = refCode
-      ? await getByCode(refCode).catch((err) => {
-          console.error("Referral lookup failed while quoting checkout:", err);
-          return undefined;
-        })
-      : undefined;
+    const ambassador = await resolveReferral(promoCode);
 
     // Same fail-closed rule as checkoutAction: if eligibility can't be
     // read at all, exclude everything, so the quote never promises a
@@ -199,6 +274,13 @@ export async function checkoutAction(input: {
    * rather than being inferred from what it lacks.
    */
   pickup?: { phone: string };
+  /**
+   * The ambassador code on this sale. The register always passes this,
+   * null when there is no code, so a till sale never inherits a referral
+   * cookie. Online orders leave it off and the cookie is read instead;
+   * see resolveReferral.
+   */
+  promoCode?: string | null;
 }): Promise<CheckoutResult> {
   if (input.lines.length === 0) {
     return { ok: false, error: "Your cart is empty." };
@@ -252,16 +334,7 @@ export async function checkoutAction(input: {
   }
   const accountCode = account.code;
 
-  const store = await cookies();
-  const refCode = store.get(REF_COOKIE)?.value;
-  // A referral-lookup hiccup should never block a real payment — worst
-  // case, this one order just doesn't get the ambassador discount/commission.
-  const ambassador = refCode
-    ? await getByCode(refCode).catch((err) => {
-        console.error("Referral lookup failed during checkout:", err);
-        return undefined;
-      })
-    : undefined;
+  const ambassador = await resolveReferral(input.promoCode);
 
   const locationId = getSquareLocationId();
   const square = getSquare();

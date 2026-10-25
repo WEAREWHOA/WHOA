@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import Script from "next/script";
-import { checkoutAction } from "@/app/checkout/actions";
+import { checkoutAction, lookupPromoCodeAction, quoteCheckoutAction } from "@/app/checkout/actions";
 import { formatCents } from "@/lib/money";
 import type { CartLine, Product } from "@/lib/types";
 import {
@@ -20,6 +20,29 @@ export default function CheckoutTab({ products }: { products: Product[] }) {
   const [query, setQuery] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [step, setStep] = useState<Step>("shop");
+  // The ambassador code on this sale, once staff have entered one and the
+  // server has confirmed it belongs to somebody. Null until then, so an
+  // unrecognised code can never quietly reach the charge.
+  const [promo, setPromo] = useState<{ code: string; name: string } | null>(null);
+  // What Square says this ticket costs with the code on it.
+  //
+  // The till's own running total is a plain sum of the lines, which is
+  // right until a discount exists and then stops being right, so once a
+  // code is applied the figures come from Square's pricing engine
+  // instead of arithmetic here -- the same reason /checkout quotes
+  // rather than guessing.
+  //
+  // Stamped with the basket and code it was priced for. A quote that
+  // arrives after the ticket has moved on no longer matches and is
+  // ignored during render, so no staff member can ever be looking at a
+  // total for a basket that is not the one in front of them.
+  const [quote, setQuote] = useState<{
+    key: string;
+    failed?: boolean;
+    subtotalCents: number;
+    discountCents: number;
+    totalCents: number;
+  } | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -27,8 +50,52 @@ export default function CheckoutTab({ products }: { products: Product[] }) {
     return products.filter((p) => p.name.toLowerCase().includes(q));
   }, [products, query]);
 
-  const totalCents = ticket.reduce((sum, line) => sum + line.priceCents * line.quantity, 0);
+  const lineTotalCents = ticket.reduce((sum, line) => sum + line.priceCents * line.quantity, 0);
   const itemCount = ticket.reduce((sum, line) => sum + line.quantity, 0);
+
+  const quoteKey = promo
+    ? `${promo.code}|${ticket.map((l) => `${l.variationId}x${l.quantity}`).join(",")}`
+    : "";
+  const current = quote && quote.key === quoteKey ? quote : null;
+  const discounted = current && !current.failed ? current : null;
+  // Told apart so the panel can say "still working it out" and "could not
+  // reach Square" differently, without either being written into state
+  // synchronously from the effect below.
+  const pricing = Boolean(quoteKey) && !current;
+
+  useEffect(() => {
+    if (!quoteKey) return;
+    let live = true;
+    void quoteCheckoutAction(ticket, undefined, "pickup", promo?.code ?? null)
+      .then((q) => {
+        if (!live) return;
+        setQuote(
+          q
+            ? {
+                key: quoteKey,
+                subtotalCents: q.subtotalCents,
+                discountCents: q.discountCents,
+                totalCents: q.totalCents,
+              }
+            // Null means Square could not be reached. Recorded as a
+            // failure against this exact basket rather than left to look
+            // like a basket with no discount on it.
+            : { key: quoteKey, failed: true, subtotalCents: 0, discountCents: 0, totalCents: 0 },
+        );
+      })
+      .catch(() => {
+        if (live) {
+          setQuote({ key: quoteKey, failed: true, subtotalCents: 0, discountCents: 0, totalCents: 0 });
+        }
+      });
+    return () => {
+      live = false;
+    };
+  }, [quoteKey, ticket, promo]);
+
+  // What the buttons say and what gets charged: Square's figure whenever
+  // there is one, the line sum otherwise.
+  const totalCents = discounted?.totalCents ?? lineTotalCents;
 
   function addLine(product: Product, variation: Product["variations"][number]) {
     setExpandedId(null);
@@ -74,6 +141,9 @@ export default function CheckoutTab({ products }: { products: Product[] }) {
   function resetTicket() {
     setTicket([]);
     setStep("shop");
+    // The next customer in the queue is not on the last one's code.
+    setPromo(null);
+    setQuote(null);
   }
 
   return (
@@ -161,8 +231,13 @@ export default function CheckoutTab({ products }: { products: Product[] }) {
         {step === "shop" && (
           <TicketPanel
             ticket={ticket}
+            lineTotalCents={lineTotalCents}
             totalCents={totalCents}
+            discounted={discounted}
+            pricing={pricing}
             itemCount={itemCount}
+            promo={promo}
+            onApplyPromo={setPromo}
             setQuantity={setQuantity}
             onCharge={() => setStep("pay")}
           />
@@ -172,6 +247,7 @@ export default function CheckoutTab({ products }: { products: Product[] }) {
           <PaymentPanel
             ticket={ticket}
             totalCents={totalCents}
+            promoCode={promo?.code ?? null}
             onBack={() => setStep("shop")}
             onComplete={() => setStep("done")}
           />
@@ -185,17 +261,49 @@ export default function CheckoutTab({ products }: { products: Product[] }) {
 
 function TicketPanel({
   ticket,
+  lineTotalCents,
   totalCents,
+  discounted,
+  pricing,
   itemCount,
+  promo,
+  onApplyPromo,
   setQuantity,
   onCharge,
 }: {
   ticket: CartLine[];
+  lineTotalCents: number;
   totalCents: number;
+  discounted: { subtotalCents: number; discountCents: number; totalCents: number } | null;
+  pricing: boolean;
   itemCount: number;
+  promo: { code: string; name: string } | null;
+  onApplyPromo: (promo: { code: string; name: string } | null) => void;
   setQuantity: (variationId: string, quantity: number) => void;
   onCharge: () => void;
 }) {
+  const [entry, setEntry] = useState("");
+  const [checking, setChecking] = useState(false);
+  const [rejected, setRejected] = useState<string | null>(null);
+
+  async function applyCode() {
+    const typed = entry.trim();
+    if (!typed || checking) return;
+    setChecking(true);
+    setRejected(null);
+    const result = await lookupPromoCodeAction(typed).catch(() => ({ ok: false }) as const);
+    setChecking(false);
+    if (!result.ok) {
+      // Named in the message, because at a busy till the field may
+      // already have been cleared and retyped by the time anyone reads
+      // it, and "that code" is no help in telling staff which one.
+      setRejected(typed.toUpperCase());
+      return;
+    }
+    onApplyPromo({ code: result.code, name: result.name });
+    setEntry("");
+  }
+
   return (
     <>
       <h2 className="font-display text-2xl">Current sale</h2>
@@ -237,10 +345,83 @@ function TicketPanel({
       )}
 
       <div className="mt-6 border-t border-border pt-4">
+        {promo ? (
+          <div className="mb-4 rounded-lg border border-flame-2/40 bg-flame-2/10 px-3 py-2">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-mono-code truncate text-sm text-flame">{promo.code}</p>
+                <p className="truncate text-xs text-muted">{promo.name}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onApplyPromo(null)}
+                className="shrink-0 text-xs font-medium text-muted underline underline-offset-2 hover:text-flame-1"
+              >
+                Remove
+              </button>
+            </div>
+            {/* A code is on the sale but Square would not price it, so the
+                till has no discounted figure to show. Say so rather than
+                print the full total under an applied code, which reads as
+                the discount having been refused. */}
+            {pricing && <p className="mt-1 text-xs text-muted">Working out the total…</p>}
+            {!pricing && !discounted && (
+              <p className="mt-1 text-xs text-flame-3">
+                Couldn&apos;t reach Square to price this. The discount still
+                applies when you charge.
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="mb-4">
+            <label htmlFor="pos-promo" className="text-xs text-muted">
+              Ambassador code
+            </label>
+            <div className="mt-1.5 flex gap-2">
+              <input
+                id="pos-promo"
+                value={entry}
+                onChange={(e) => {
+                  setEntry(e.target.value);
+                  setRejected(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void applyCode();
+                  }
+                }}
+                autoCapitalize="characters"
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="If they have one"
+                className="font-mono-code border-border-strong bg-surface-raised min-w-0 flex-1 rounded-lg border px-3 py-2 text-sm uppercase outline-none focus:border-flame-2"
+              />
+              <button
+                type="button"
+                onClick={() => void applyCode()}
+                disabled={!entry.trim() || checking}
+                className="border-border-strong shrink-0 rounded-lg border px-3 py-2 text-sm font-medium transition-colors hover:bg-surface disabled:opacity-50"
+              >
+                {checking ? "…" : "Apply"}
+              </button>
+            </div>
+            {rejected && (
+              <p className="mt-1.5 text-xs text-flame-3">{rejected} isn&apos;t a code we know.</p>
+            )}
+          </div>
+        )}
+
         <div className="flex justify-between text-sm text-muted">
           <span>{itemCount} item{itemCount === 1 ? "" : "s"}</span>
-          <span>{formatCents(totalCents)}</span>
+          <span>{formatCents(discounted?.subtotalCents ?? lineTotalCents)}</span>
         </div>
+        {discounted && discounted.discountCents > 0 && (
+          <div className="mt-1 flex justify-between text-sm text-flame-3">
+            <span>Ambassador discount</span>
+            <span>−{formatCents(discounted.discountCents)}</span>
+          </div>
+        )}
         <div className="mt-1 flex justify-between text-lg font-semibold">
           <span>Total</span>
           <span>{formatCents(totalCents)}</span>
@@ -262,11 +443,15 @@ function TicketPanel({
 function PaymentPanel({
   ticket,
   totalCents,
+  promoCode,
   onBack,
   onComplete,
 }: {
   ticket: CartLine[];
   totalCents: number;
+  /** Null, not undefined, when there is no code: see resolveReferral. A
+   *  till sale must never pick up a referral cookie left on the device. */
+  promoCode: string | null;
   onBack: () => void;
   onComplete: () => void;
 }) {
@@ -327,6 +512,9 @@ function PaymentPanel({
       lines: ticket,
       customerName: customerName.trim() || "Walk-in",
       customerEmail: customerEmail.trim(),
+      // Resolved again on the server, so this is a lookup key and not a
+      // claim about what the sale is worth. Always sent, null included.
+      promoCode,
     });
 
     if (!outcome.ok) {
