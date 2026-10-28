@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { getSessionAmbassadorCode } from "@/lib/auth";
 import { getByCode } from "@/lib/store";
@@ -72,7 +72,13 @@ export async function reviewMusicianAction(formData: FormData) {
   // up on the site before then. Second argument is the cache profile this
   // Next version requires -- revalidateTag(tag) alone does not
   // type-check, and "max" is what the Square webhook uses.
+  // The tag clears the cached roster read; the path clears the rendered
+  // page, which is the half that was missing. Without it a decision
+  // updated the data behind a page that had been built once and was
+  // never asked to render again.
   revalidateTag(MUSIC_ROSTER_TAG, "max");
+  revalidatePath("/music-collective");
+  revalidatePath("/music-collective/[slug]", "page");
 
   redirect(`/portal/music-admin?musicReviewed=${decision === "approved" ? "approved" : "declined"}`);
 }
@@ -100,7 +106,13 @@ export async function setMusicianVisibilityAction(formData: FormData) {
     redirect(`/portal/music-admin?musicAdminError=${reason}`);
   }
 
+  // The tag clears the cached roster read; the path clears the rendered
+  // page, which is the half that was missing. Without it a decision
+  // updated the data behind a page that had been built once and was
+  // never asked to render again.
   revalidateTag(MUSIC_ROSTER_TAG, "max");
+  revalidatePath("/music-collective");
+  revalidatePath("/music-collective/[slug]", "page");
   redirect(`/portal/music-admin?musicVisibility=${hidden ? "hidden" : "shown"}`);
 }
 
@@ -145,6 +157,8 @@ export async function saveMusicianProfileAsAdminAction(formData: FormData) {
   // Next version requires -- revalidateTag(tag) alone does not
   // type-check, and "max" is what the Square webhook uses.
   revalidateTag(MUSIC_ROSTER_TAG, "max");
+  revalidatePath("/music-collective");
+  revalidatePath("/music-collective/[slug]", "page");
 
   redirect("/portal/music-admin?musicAdminSaved=1");
 }

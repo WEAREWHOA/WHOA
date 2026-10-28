@@ -6,6 +6,13 @@ import { MUSICIANS } from "@/lib/musicians";
 import { getRosterMusician } from "@/lib/musicRoster";
 
 /**
+ * Same reason as the roster page: an artist's details come from the
+ * database, so a page rendered once and kept forever would never show
+ * an edit they made after it was first visited.
+ */
+export const revalidate = 300;
+
+/**
  * Only the hand-written roster is prerendered. An artist approved after
  * the last deploy has no build-time entry to prerender from, so their
  * page is rendered on demand instead -- which is Next's default for an
