@@ -1,11 +1,13 @@
 "use server";
 
 import { revalidatePath, revalidateTag } from "next/cache";
+import { MediaError, uploadMedia } from "@/lib/media";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { getSessionAmbassadorCode } from "@/lib/auth";
 import { getByCode } from "@/lib/store";
 import { MUSIC_ROSTER_TAG } from "@/lib/musicRoster";
 import {
+  listMusicianApplications,
   reviewMusician,
   setMusicianSiteHidden,
   saveMusicianProfile,
@@ -114,6 +116,63 @@ export async function setMusicianVisibilityAction(formData: FormData) {
   revalidatePath("/music-collective");
   revalidatePath("/music-collective/[slug]", "page");
   redirect(`/portal/music-admin?musicVisibility=${hidden ? "hidden" : "shown"}`);
+}
+
+/**
+ * Adds a photo to an artist's own library, on their behalf.
+ *
+ * The roster builds an artist's photos from their account_media rows,
+ * and the application form never asks for one, so the only way a photo
+ * ever reached the page was the artist signing in and uploading it
+ * themselves. An admin could already rewrite their name, bio and links
+ * from this tab and still had no way to give them the one thing that
+ * was missing.
+ *
+ * uploadMediaAction cannot do this: it requires the session to be the
+ * account being uploaded for, which is right for the portal and wrong
+ * here. This is the music-admin equivalent, and it files the photo
+ * under the artist's code so the roster finds it exactly as it finds
+ * one they uploaded themselves.
+ */
+export async function uploadMusicianPhotoAction(formData: FormData) {
+  await requireMusicAdmin();
+
+  const code = String(formData.get("code") || "").trim();
+  if (!code) redirect("/portal/music-admin?musicAdminError=invalid");
+
+  // Only ever an artist who has applied, so this cannot be used to file
+  // media under an arbitrary account.
+  const artists = await listMusicianApplications();
+  const artist = artists.find((a) => a.ambassadorCode.toUpperCase() === code.toUpperCase());
+  if (!artist) redirect("/portal/music-admin?musicAdminError=invalid");
+
+  const files = formData
+    .getAll("media")
+    .filter((f): f is File => f instanceof File && f.size > 0);
+  if (files.length === 0) redirect("/portal/music-admin?musicAdminError=empty");
+
+  let problem: string | null = null;
+  for (const file of files) {
+    try {
+      // "music" rather than "profile": this is a press shot somebody
+      // added for them, not a face they chose for their own account.
+      await uploadMedia(artist.ambassadorCode, "music", file);
+    } catch (err) {
+      unstable_rethrow(err);
+      console.error("uploadMusicianPhotoAction failed:", err);
+      problem = err instanceof MediaError ? err.message : "server";
+      break;
+    }
+  }
+
+  if (problem) {
+    redirect(`/portal/music-admin?musicAdminError=${encodeURIComponent(problem)}`);
+  }
+
+  revalidateTag(MUSIC_ROSTER_TAG, "max");
+  revalidatePath("/music-collective");
+  revalidatePath("/music-collective/[slug]", "page");
+  redirect("/portal/music-admin?musicPhoto=1");
 }
 
 /**

@@ -2,8 +2,10 @@ import Link from "next/link";
 import { MUSICIANS } from "@/lib/musicians";
 import { handWrittenSlug } from "@/lib/musicRoster";
 import type { MusicianApplication } from "@/lib/musicianProfiles";
+import { UPLOAD_ACCEPT } from "@/lib/media";
 import {
   reviewMusicianAction,
+  uploadMusicianPhotoAction,
   saveMusicianProfileAsAdminAction,
   setMusicianVisibilityAction,
 } from "@/app/music-admin/actions";
@@ -23,6 +25,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   migration:
     "Showing and hiding artists needs migration 0050_music_site_visibility.sql to be run first. Nothing has changed on the site.",
   missing: "An artist name is required.",
+  empty: "Choose a photo to upload first.",
   server: "Something went wrong — try again.",
 };
 
@@ -151,9 +154,12 @@ function PendingCard({ artist }: { artist: MusicianApplication }) {
  * to, which is the point: staff fixing a dead link should not create a
  * second version of the profile that the artist can't see.
  */
-function RosterCard({ artist }: { artist: MusicianApplication }) {
+function RosterCard({ artist, photos }: { artist: MusicianApplication; photos: number }) {
   const linkByLabel = new Map(artist.links.map((link) => [link.label, link.url]));
   const handWritten = handWrittenSlug(artist.artistName);
+  // A hand-written artist's page carries its own photos from the repo,
+  // so an empty media library says nothing about them.
+  const needsPhoto = photos === 0 && !handWritten;
 
   return (
     <div className="card-surface rounded-xl border border-border p-4">
@@ -166,6 +172,12 @@ function RosterCard({ artist }: { artist: MusicianApplication }) {
           {!artist.hasAccess && (
             <span className="text-flame-3 text-xs font-semibold tracking-wide uppercase">
               Tab locked
+            </span>
+          )}
+
+          {needsPhoto && (
+            <span className="text-flame-3 text-xs font-semibold tracking-wide uppercase">
+              No photo
             </span>
           )}
 
@@ -191,6 +203,33 @@ function RosterCard({ artist }: { artist: MusicianApplication }) {
           />
         </div>
       </div>
+
+      {needsPhoto && (
+        <form
+          action={uploadMusicianPhotoAction}
+          className="border-border bg-surface-raised mt-3 flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2.5"
+        >
+          <input type="hidden" name="code" value={artist.ambassadorCode} />
+          <p className="text-xs text-muted">
+            Their card has no picture. They can upload one in their own MUSIC tab, or add it for
+            them here.
+          </p>
+          <input
+            type="file"
+            name="media"
+            multiple
+            required
+            accept={UPLOAD_ACCEPT}
+            className="max-w-full text-xs text-muted file:mr-2 file:cursor-pointer file:rounded-full file:border-0 file:bg-surface file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-foreground"
+          />
+          <button
+            type="submit"
+            className="border-border-strong shrink-0 rounded-full border px-4 py-2 text-xs font-semibold tracking-wide uppercase transition-colors hover:border-flame-2 hover:text-foreground"
+          >
+            Add photo
+          </button>
+        </form>
+      )}
 
       {artist.tagline && <p className="mt-3 text-sm">{artist.tagline}</p>}
       <ProfileLinks artist={artist} />
@@ -354,23 +393,31 @@ function DeclinedRow({ artist }: { artist: MusicianApplication }) {
 
 export default function MusicAdminTab({
   artists,
+  photoCounts,
   reviewed,
   visibility,
   saved,
+  photoAdded,
   error,
 }: {
   artists: MusicianApplication[];
+  /** Photos each artist has, keyed by code, for the "no photo" flag. */
+  photoCounts: Record<string, number>;
   /** "approved" or "declined" — which banner to show after a decision. */
   reviewed?: string;
   /** "hidden" or "shown", after the visibility toggle. */
   visibility?: string;
   saved?: boolean;
+  photoAdded?: boolean;
   error?: string;
 }) {
   const pending = artists.filter((a) => a.status === "pending");
   const roster = artists.filter((a) => a.status === "approved");
   const declined = artists.filter((a) => a.status === "declined");
-  const errorMessage = error ? (ERROR_MESSAGES[error] ?? ERROR_MESSAGES.server) : null;
+  // An upload failure arrives as its own sentence from MediaError, so
+  // anything not in the table is already readable and is shown as-is
+  // rather than flattened into "something went wrong".
+  const errorMessage = error ? (ERROR_MESSAGES[error] ?? error) : null;
 
   return (
     <div>
@@ -415,6 +462,11 @@ export default function MusicAdminTab({
         </p>
       )}
 
+      {photoAdded && (
+        <p className="border-flame-2/40 bg-flame-2/10 text-flame-3 mt-4 rounded-lg border px-4 py-2 text-sm">
+          Photo added — it is on their card now.
+        </p>
+      )}
       {saved && (
         <p className="border-flame-2/40 bg-flame-2/10 text-flame-3 mt-4 rounded-lg border px-4 py-2 text-sm">
           Profile saved.
@@ -463,7 +515,11 @@ export default function MusicAdminTab({
         ) : (
           <div className="flex flex-col gap-4">
             {roster.map((artist) => (
-              <RosterCard key={artist.ambassadorCode} artist={artist} />
+              <RosterCard
+                key={artist.ambassadorCode}
+                artist={artist}
+                photos={photoCounts[artist.ambassadorCode] ?? 0}
+              />
             ))}
           </div>
         )}
