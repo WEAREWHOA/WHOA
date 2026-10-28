@@ -81,13 +81,21 @@ export default async function PortalEventsAdminPage(props: PageProps<"/portal/ev
           single falsy check would conflate the two and open the editor on
           every page load. */}
       {edit !== undefined ? (
-        <EventEditor event={editing ?? null} />
+        <>
+          <EventEditor event={editing ?? null} />
+          {/* Right under the editor while one is open, because the flyer
+              field says to upload here and the panel used to sit below
+              the entire guest-list overview, far enough down to look
+              like it did not exist. */}
+          <MediaLibrary code={account.code} kind="event" items={media} />
+        </>
       ) : (
-        <EventManager events={custom} bookedByEvent={bookedByEvent} />
+        <>
+          <EventManager events={custom} bookedByEvent={bookedByEvent} />
+          <EventsAdminTab data={data} />
+          <MediaLibrary code={account.code} kind="event" items={media} />
+        </>
       )}
-
-      <EventsAdminTab data={data} />
-      <MediaLibrary code={account.code} kind="event" items={media} />
     </div>
   );
 }

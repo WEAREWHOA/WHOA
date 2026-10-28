@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import heicConvert from "heic-convert";
 import { getSupabase } from "./supabase";
 import type { AccountPermissions } from "./types";
 
@@ -21,6 +22,21 @@ export const MAX_MEDIA_BYTES = 4 * 1024 * 1024;
 export const MAX_MEDIA_BATCH_BYTES = MAX_MEDIA_BYTES;
 
 export const ALLOWED_MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
+/**
+ * What a HEIC arrives declared as. Separate from ALLOWED_MEDIA_TYPES
+ * because these are accepted at the door and converted, never stored:
+ * the bucket, and anything that draws one of these files, still only
+ * deals in the four web formats above.
+ */
+export const HEIC_MEDIA_TYPES = ["image/heic", "image/heif", "image/heic-sequence"];
+
+/**
+ * What the file picker offers. The extensions are listed as well as the
+ * types because iOS hands HEIC over with an empty type often enough
+ * that a types-only accept list greys out the camera roll.
+ */
+export const UPLOAD_ACCEPT = [...ALLOWED_MEDIA_TYPES, ...HEIC_MEDIA_TYPES, ".heic", ".heif"].join(",");
 
 /**
  * What a piece of media is for. The key is both the folder inside the
@@ -175,6 +191,52 @@ export async function ensureMediaBucket(): Promise<void> {
   bucketReady = true;
 }
 
+/**
+ * Whether these bytes are a HEIC/HEIF photo, read from the file itself
+ * rather than from what the browser called it.
+ *
+ * iPhones shoot HEIC by default, so this is what most flyer photos
+ * arrive as. The declared type cannot be trusted for them: Safari
+ * sometimes sends an empty string, and the filename is no better, so a
+ * photo could pass the type check and then be stored as a .jpg that is
+ * not one, which renders as a broken flyer on the public page.
+ *
+ * The shape is an ISO base media box: a four byte length, then "ftyp",
+ * then the brand. The brands below are the ones Apple writes.
+ */
+const HEIF_BRANDS = new Set([
+  "heic", "heix", "heim", "heis",
+  "hevc", "hevx", "hevm", "hevs",
+  "mif1", "msf1",
+]);
+
+function looksLikeHeif(buffer: Buffer): boolean {
+  if (buffer.length < 12) return false;
+  if (buffer.toString("ascii", 4, 8) !== "ftyp") return false;
+  return HEIF_BRANDS.has(buffer.toString("ascii", 8, 12).toLowerCase());
+}
+
+/**
+ * A HEIC photo as a JPEG the browser can draw.
+ *
+ * Quality 0.75 because an iPhone photo lands around 3MB there, inside
+ * the limit, and 0.85 barely shrinks it at all. The second pass exists
+ * for the occasional photo that is still too big after the first, which
+ * is better than telling somebody their own camera's output is not
+ * allowed.
+ */
+async function heifToJpeg(buffer: Buffer): Promise<Buffer> {
+  for (const quality of [0.75, 0.5]) {
+    const out = Buffer.from(
+      await heicConvert({ buffer: buffer as never, format: "JPEG", quality }),
+    );
+    if (out.length <= MAX_MEDIA_BYTES) return out;
+  }
+  throw new MediaError(
+    "That photo is too big to convert. Send it smaller, or screenshot it and upload that.",
+  );
+}
+
 function extensionFor(file: File): string {
   const fromName = file.name.split(".").pop()?.toLowerCase();
   if (fromName && /^[a-z0-9]{1,5}$/.test(fromName)) return fromName;
@@ -203,21 +265,35 @@ export async function uploadMedia(
       `That file is ${(file.size / 1024 / 1024).toFixed(1)}MB — the limit is ${MAX_MEDIA_BYTES / 1024 / 1024}MB.`,
     );
   }
-  if (file.type && !ALLOWED_MEDIA_TYPES.includes(file.type)) {
-    throw new MediaError("Only JPG, PNG, WebP and GIF images can be uploaded.");
+  // Read first, then decide what it is. A HEIC arrives with its type
+  // declared three different ways depending on the browser, so the
+  // bytes get the final say -- see looksLikeHeif.
+  const original = Buffer.from(await file.arrayBuffer());
+  const heif = looksLikeHeif(original);
+
+  if (!heif && file.type && !ALLOWED_MEDIA_TYPES.includes(file.type)) {
+    throw new MediaError("Only JPG, PNG, WebP, GIF and HEIC images can be uploaded.");
   }
+
+  // Converted here rather than refused, because HEIC is what an iPhone
+  // takes photographs in and telling somebody to go and convert their
+  // own flyer by hand is not a limit worth having. Storage keeps the
+  // JPEG: the bucket allows the four web formats and nothing drawing
+  // one of these can render HEIC anyway.
+  const buffer = heif ? await heifToJpeg(original) : original;
+  const contentType = heif ? "image/jpeg" : file.type || "image/jpeg";
+  const extension = heif ? "jpg" : extensionFor(file);
 
   await ensureMediaBucket();
 
   const normalizedCode = code.trim().toUpperCase();
   const id = randomUUID();
-  const storagePath = `${normalizedCode}/${kind}/${id}.${extensionFor(file)}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const storagePath = `${normalizedCode}/${kind}/${id}.${extension}`;
   const supabase = getSupabase();
 
   const { error: uploadError } = await supabase.storage
     .from(MEDIA_BUCKET)
-    .upload(storagePath, buffer, { contentType: file.type || "image/jpeg", upsert: false });
+    .upload(storagePath, buffer, { contentType, upsert: false });
   if (uploadError) throw new MediaError(`Upload failed: ${uploadError.message}`);
 
   const { data: urlData } = supabase.storage.from(MEDIA_BUCKET).getPublicUrl(storagePath);
@@ -229,8 +305,10 @@ export async function uploadMedia(
     storage_path: storagePath,
     public_url: urlData.publicUrl,
     file_name: file.name || null,
-    content_type: file.type || null,
-    size_bytes: file.size,
+    content_type: contentType,
+    // The size of what was actually stored, not of what was sent, so
+    // the library's figures match the files behind them.
+    size_bytes: buffer.length,
   };
 
   const { error: insertError } = await supabase.from("account_media").insert(row);
