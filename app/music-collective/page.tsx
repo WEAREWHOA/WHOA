@@ -4,6 +4,22 @@ import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 import MusicianCard from "@/components/musiccollective/MusicianCard";
 import { getMusicRoster } from "@/lib/musicRoster";
 
+/**
+ * Re-rendered, not baked once.
+ *
+ * This roster is read from the database, so a page prerendered at build
+ * time is a photograph of who was approved on the day of the last
+ * deploy. It was exactly that: approving an artist, and then showing
+ * them with the MUSIC ADMIN switch, changed the data and never the
+ * page, so the only artists anybody saw were the three hand-written
+ * ones that were in the build.
+ *
+ * The admin actions revalidate this path on every decision, so a change
+ * is live immediately; this is the floor under that, for anything that
+ * alters the roster without going through them.
+ */
+export const revalidate = 300;
+
 export const metadata: Metadata = {
   // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
   // Square Online sprayed around consolidate here instead of
