@@ -262,6 +262,24 @@ export interface SaveEventResult {
   id?: string;
 }
 
+/**
+ * Whether this failure is "the table isn't there", which in practice
+ * means migration 0047 has not been run against this database.
+ *
+ * PostgREST reports it two ways depending on where it notices: its own
+ * schema cache miss (PGRST205) before the query, or Postgres's
+ * undefined_table (42P01) after. Matching the text as well, because a
+ * cache that is merely stale words it differently again.
+ */
+function isMissingTable(error: { code?: string; message?: string }): boolean {
+  if (error.code === "PGRST205" || error.code === "42P01") return true;
+  const message = error.message ?? "";
+  return /custom_events/.test(message) && /does not exist|schema cache|could not find the table/i.test(message);
+}
+
+export const MISSING_TABLE_MESSAGE =
+  "The custom_events table isn't in the database yet. Run supabase/migrations/0047_custom_events.sql, then try again.";
+
 export async function saveCustomEvent(input: SaveEventInput): Promise<SaveEventResult> {
   const title = input.title.trim().slice(0, 200);
   if (!title) return { ok: false, error: "A title is required." };
@@ -327,11 +345,28 @@ export async function saveCustomEvent(input: SaveEventInput): Promise<SaveEventR
 
   const { error } = await getSupabase().from("custom_events").upsert(row, { onConflict: "id" });
   if (error) {
-    console.error("Couldn't save the event:", error.message);
+    console.error("Couldn't save the event:", error.code, error.message);
+
     if (/custom_events_href_xor_price/.test(error.message)) {
       return { ok: false, error: "An event is either ticketed here or linked out, not both." };
     }
-    return { ok: false, error: "Couldn't save that right now. Please try again." };
+    if (/custom_events_capacity_positive/.test(error.message)) {
+      return { ok: false, error: "Capacity has to be a positive number, or empty for unlimited." };
+    }
+    if (/custom_events_category_check/.test(error.message)) {
+      return { ok: false, error: "That category isn't one of whoadega, shows or festivals." };
+    }
+    if (isMissingTable(error)) {
+      return { ok: false, error: MISSING_TABLE_MESSAGE };
+    }
+
+    // Everything else says what actually went wrong. This screen is
+    // behind the events-admin permission, so there is nobody here to
+    // keep a Postgres message from, and the generic "please try again"
+    // this used to return was worse than useless: it turned a migration
+    // that had never been run into a mystery that looked like a glitch,
+    // and invited retrying something that could never work.
+    return { ok: false, error: `Couldn't save that: ${error.message}` };
   }
   return { ok: true, id };
 }
