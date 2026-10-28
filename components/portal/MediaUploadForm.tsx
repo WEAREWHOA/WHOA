@@ -4,8 +4,10 @@ import { useState, type ChangeEvent } from "react";
 import { uploadMediaAction } from "@/lib/actions";
 import {
   ALLOWED_MEDIA_TYPES,
+  HEIC_MEDIA_TYPES,
   MAX_MEDIA_BATCH_BYTES,
   MAX_MEDIA_BYTES,
+  UPLOAD_ACCEPT,
   type MediaKind,
 } from "@/lib/media";
 
@@ -49,9 +51,14 @@ export default function MediaUploadForm({ code, kind }: { code: string; kind: Me
       return;
     }
 
-    const wrongType = files.find((file) => file.type && !ALLOWED_MEDIA_TYPES.includes(file.type));
+    // An empty type passes: iOS often declines to name a HEIC, and the
+    // server reads the bytes to settle it either way.
+    const takeable = [...ALLOWED_MEDIA_TYPES, ...HEIC_MEDIA_TYPES];
+    const wrongType = files.find((file) => file.type && !takeable.includes(file.type));
     if (wrongType) {
-      setProblem(`"${wrongType.name}" isn't an image we can take — use JPG, PNG, WebP or GIF.`);
+      setProblem(
+        `"${wrongType.name}" isn't an image we can take — use JPG, PNG, WebP, GIF or an iPhone HEIC photo.`,
+      );
       return;
     }
 
@@ -68,7 +75,7 @@ export default function MediaUploadForm({ code, kind }: { code: string; kind: Me
           name="media"
           multiple
           required
-          accept={ALLOWED_MEDIA_TYPES.join(",")}
+          accept={UPLOAD_ACCEPT}
           onChange={check}
           className="max-w-full text-sm text-muted file:mr-3 file:cursor-pointer file:rounded-full file:border-0 file:bg-surface-raised file:px-4 file:py-2 file:text-sm file:font-semibold file:text-foreground"
         />
@@ -87,7 +94,8 @@ export default function MediaUploadForm({ code, kind }: { code: string; kind: Me
         </p>
       ) : (
         <p className="mt-2 text-xs text-muted">
-          JPG, PNG, WebP or GIF. Up to {mb(MAX_MEDIA_BYTES)} per image, and {mb(MAX_MEDIA_BATCH_BYTES)}{" "}
+          JPG, PNG, WebP, GIF, or an iPhone HEIC photo, which is converted for you. Up to{" "}
+          {mb(MAX_MEDIA_BYTES)} per image, and {mb(MAX_MEDIA_BATCH_BYTES)}{" "}
           for everything you upload at once.
         </p>
       )}
