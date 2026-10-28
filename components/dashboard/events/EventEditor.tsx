@@ -2,6 +2,8 @@ import Link from "next/link";
 import { saveEventAction } from "@/app/events-admin/actions";
 import { EVENT_CATEGORIES } from "@/lib/events";
 import type { CustomEventRecord } from "@/lib/eventsStore";
+import type { MediaItem } from "@/lib/media";
+import FlyerPicker from "./FlyerPicker";
 import { portalPath } from "@/lib/portalNav";
 
 /**
@@ -20,7 +22,13 @@ function money(cents: number | undefined): string {
   return cents == null ? "" : (cents / 100).toFixed(2);
 }
 
-export default function EventEditor({ event }: { event: CustomEventRecord | null }) {
+export default function EventEditor({
+  event,
+  media,
+}: {
+  event: CustomEventRecord | null;
+  media: MediaItem[];
+}) {
   return (
     <div className="card-surface rounded-xl p-6">
       <h3 className="font-semibold">{event ? "Edit event" : "New event"}</h3>
@@ -98,19 +106,7 @@ export default function EventEditor({ event }: { event: CustomEventRecord | null
           </div>
         </div>
 
-        <div>
-          <label htmlFor="ev-image" className={LABEL}>Flyer image URL</label>
-          <input id="ev-image" name="imageUrl" defaultValue={event?.imageUrl ?? ""} className={FIELD} placeholder="https://..." />
-          <p className="mt-2 text-xs text-muted">
-            Upload it in the Images panel at the bottom of this tab, then paste the URL here. Left
-            blank, the card uses the gradient below instead.
-          </p>
-          <p className="mt-1 text-xs text-muted">
-            A Google Drive or OneDrive share link won&apos;t work: those are web pages, not image
-            files. A Dropbox link is fixed up for you, but it is rate limited for public traffic,
-            so the Images panel is the one to trust for a flyer.
-          </p>
-        </div>
+        <FlyerPicker defaultValue={event?.imageUrl ?? ""} media={media} />
 
         <div>
           <label htmlFor="ev-lineup" className={LABEL}>
