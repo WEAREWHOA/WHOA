@@ -3,7 +3,7 @@ import EventEditor from "@/components/dashboard/events/EventEditor";
 import EventManager from "@/components/dashboard/events/EventManager";
 import MediaLibrary from "@/components/portal/MediaLibrary";
 import { getEventsAdminOverview } from "@/lib/eventsAdmin";
-import { getCustomEvent, listCustomEvents } from "@/lib/eventsStore";
+import { getCustomEvent, listCustomEvents, MISSING_TABLE_MESSAGE } from "@/lib/eventsStore";
 import { listMedia } from "@/lib/media";
 import { requirePortalTab } from "@/lib/portalAccess";
 
@@ -26,10 +26,24 @@ export default async function PortalEventsAdminPage(props: PageProps<"/portal/ev
   // Created events fail soft here, unlike the overview above. The guest
   // lists are the thing staff came for; losing the editor because 0047
   // has not been run yet should not take the whole tab down with it.
-  const custom = await listCustomEvents().catch((err) => {
-    console.error("Couldn't list created events:", err);
-    return [];
-  });
+  //
+  // Soft, though, is not silent. Swallowing this was what made the table
+  // being absent look like an empty list, so the only sign of it was a
+  // save that failed for no stated reason. The tab still loads; it just
+  // says which of the two it is.
+  const created = await listCustomEvents()
+    .then((events) => ({ events, error: null as string | null }))
+    .catch((err: unknown) => {
+      console.error("Couldn't list created events:", err);
+      const message = err instanceof Error ? err.message : String(err);
+      return {
+        events: [] as Awaited<ReturnType<typeof listCustomEvents>>,
+        error: /does not exist|schema cache|could not find the table/i.test(message)
+          ? MISSING_TABLE_MESSAGE
+          : `Couldn't load created events: ${message}`,
+      };
+    });
+  const custom = created.events;
 
   // Booked counts come from the overview that is already loaded rather
   // than from a second query per event.
@@ -55,6 +69,11 @@ export default async function PortalEventsAdminPage(props: PageProps<"/portal/ev
       {notice && (
         <p className="rounded-lg border border-flame-2/40 bg-flame-2/10 px-4 py-3 text-sm text-flame-3">
           {NOTICES[notice]}
+        </p>
+      )}
+      {created.error && (
+        <p className="rounded-lg border border-flame-1/40 bg-flame-1/10 px-4 py-3 text-sm text-flame-3">
+          {created.error}
         </p>
       )}
 
