@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache";
+import { normalizeImageUrl } from "./imageUrl";
 
 import { EVENTS, sortEventsByProximity, type EventCategory, type EventInfo } from "./events";
 import { getSupabase } from "./supabase";
@@ -301,6 +302,13 @@ export async function saveCustomEvent(input: SaveEventInput): Promise<SaveEventR
     return { ok: false, error: "The end date is before the start date." };
   }
 
+  // A share link from a file host is a page about the file, not the
+  // file. Fixed where there is a documented direct form, refused with a
+  // reason where there is not, rather than stored as pasted and left to
+  // show a broken card on the public events page.
+  const image = normalizeImageUrl(input.imageUrl);
+  if (!image.ok) return { ok: false, error: image.error };
+
   const price = input.priceCents ?? null;
   const earlyBird = input.earlyBirdPriceCents ?? null;
   const href = input.href?.trim() || null;
@@ -332,7 +340,7 @@ export async function saveCustomEvent(input: SaveEventInput): Promise<SaveEventR
     tags: (input.tags ?? []).map((v) => v.trim()).filter(Boolean).slice(0, 12),
     accent: input.accent?.trim() || "#ff7a00",
     gradient: (input.gradient ?? []).filter(Boolean).slice(0, 3),
-    image_url: input.imageUrl?.trim() || null,
+    image_url: image.url,
     href,
     rotate: Number.isFinite(input.rotate) ? Number(input.rotate) : 0,
     price_cents: price,

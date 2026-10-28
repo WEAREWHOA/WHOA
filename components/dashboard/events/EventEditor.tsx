@@ -105,6 +105,11 @@ export default function EventEditor({ event }: { event: CustomEventRecord | null
             Upload it in the Images panel at the bottom of this tab, then paste the URL here. Left
             blank, the card uses the gradient below instead.
           </p>
+          <p className="mt-1 text-xs text-muted">
+            A Google Drive or OneDrive share link won&apos;t work: those are web pages, not image
+            files. A Dropbox link is fixed up for you, but it is rate limited for public traffic,
+            so the Images panel is the one to trust for a flyer.
+          </p>
         </div>
 
         <div>
