@@ -172,6 +172,23 @@ export async function ensureMediaBucket(): Promise<void> {
   const supabase = getSupabase();
   const { data, error } = await supabase.storage.getBucket(MEDIA_BUCKET);
   if (data && !error) {
+    // Existing, but not necessarily public. A bucket made by hand in the
+    // dashboard defaults to private, and a private one fails in the
+    // worst way available: the upload succeeds, a public URL is handed
+    // back and indexed, and every request for it is refused. The flyer
+    // is simply missing, with the library showing it as safely stored.
+    if (!data.public) {
+      const { error: publicError } = await supabase.storage.updateBucket(MEDIA_BUCKET, {
+        public: true,
+        fileSizeLimit: MAX_MEDIA_BYTES,
+        allowedMimeTypes: ALLOWED_MEDIA_TYPES,
+      });
+      if (publicError) {
+        throw new Error(
+          `The ${MEDIA_BUCKET} storage bucket is private, so uploaded images cannot be served, and it could not be made public: ${publicError.message}`,
+        );
+      }
+    }
     bucketReady = true;
     return;
   }

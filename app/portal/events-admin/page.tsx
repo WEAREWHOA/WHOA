@@ -82,7 +82,7 @@ export default async function PortalEventsAdminPage(props: PageProps<"/portal/ev
           every page load. */}
       {edit !== undefined ? (
         <>
-          <EventEditor event={editing ?? null} />
+          <EventEditor event={editing ?? null} media={media} />
           {/* Right under the editor while one is open, because the flyer
               field says to upload here and the panel used to sit below
               the entire guest-list overview, far enough down to look
