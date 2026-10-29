@@ -53,6 +53,16 @@ export interface TagSyncResult {
   segmentName: string;
   /** Mailable contacts carrying the tag at the moment of the sync. */
   contacts: number;
+  /**
+   * How many of them Resend did not already hold, and so had to create.
+   *
+   * Resend's marketing plan is priced by contacts and refuses a
+   * broadcast outright once the count is over the cap, so this is what
+   * the sync actually costs. Reported rather than buried: a sync that
+   * quietly adds four hundred people is how an account ends up over a
+   * limit nobody knew they were near.
+   */
+  newContacts: number;
   /** Null when the upload could not be started. */
   importId: string | null;
   /** False when the segment was already there and was topped up. */
@@ -137,6 +147,7 @@ export async function syncTagSegment(tag: string): Promise<TagSyncResult> {
     segmentId,
     segmentName: name,
     contacts: members.length,
+    newContacts: members.filter((contact) => !contact.inResend).length,
     importId: upload.data?.id ?? null,
     created: !existing,
   };

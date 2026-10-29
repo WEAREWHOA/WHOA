@@ -73,6 +73,15 @@ export default function AudienceView({
   const mailableForTag = tag
     ? (audience.tags.find((entry) => entry.tag === tag)?.mailable ?? 0)
     : 0;
+  // Resend's marketing plan is priced by contacts and refuses a
+  // broadcast once the count is over the cap, so a sync that uploads
+  // people Resend has never seen is spending that budget. Said before
+  // the button rather than discovered as a refused send.
+  const newForTag = tag
+    ? audience.contacts.filter(
+        (c) => c.tags.includes(tag) && c.status === "subscribed" && !c.unsubscribed && !c.inResend,
+      ).length
+    : 0;
 
   async function syncTag(name: string) {
     setSyncing(name);
@@ -93,7 +102,9 @@ export default function AudienceView({
       ok: true,
       // Resend processes the upload after accepting it, so this says
       // "on its way" rather than claiming the segment is already full.
-      message: `Sent ${result.contacts?.toLocaleString() ?? ""} contacts to "Tag: ${name}". Resend takes a moment to process them, then it is in the Send to list on the Campaigns tab.`,
+      message: `Sent ${result.contacts?.toLocaleString() ?? ""} contacts to "Tag: ${name}"${
+        result.newContacts ? `, ${result.newContacts.toLocaleString()} of them new to Resend` : ""
+      }. Resend takes a moment to process them, then it is in the Send to list on the Campaigns tab.`,
     });
   }
 
@@ -163,6 +174,8 @@ export default function AudienceView({
                 {segmentForTag
                   ? `"${tag}" already has a segment. Syncing again adds anyone new.`
                   : `Make "${tag}" a segment and you can send a campaign to just these ${mailableForTag.toLocaleString()}.`}
+                {newForTag > 0 &&
+                  ` ${newForTag.toLocaleString()} of them aren't in Resend yet, so this adds that many to your contact count.`}
               </p>
               <button
                 type="button"

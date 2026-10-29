@@ -37,6 +37,16 @@ export interface AudienceContact {
   createdAt: string | null;
   /** From Resend where it holds this contact, else from our status. */
   unsubscribed: boolean;
+  /**
+   * Whether Resend already holds this address.
+   *
+   * Resend's marketing plan is priced by contacts, and a broadcast is
+   * refused outright once the count is over the cap, so anything that
+   * uploads contacts is spending a budget. False here means adding this
+   * person costs one of those, which is worth saying out loud before
+   * somebody syncs a tag of two thousand.
+   */
+  inResend: boolean;
 }
 
 export interface AudienceTag {
@@ -217,6 +227,7 @@ export async function getAudience(): Promise<Audience> {
       // Resend's answer wins where it has one, because its unsubscribe
       // link is the one people actually click.
       unsubscribed: remote ? Boolean(remote.unsubscribed) : status !== "subscribed",
+      inResend: Boolean(remote),
     });
   }
 
@@ -241,6 +252,7 @@ export async function getAudience(): Promise<Audience> {
       smsConsent: false,
       createdAt: remote.created_at ?? null,
       unsubscribed: Boolean(remote.unsubscribed),
+      inResend: true,
     });
   }
 
