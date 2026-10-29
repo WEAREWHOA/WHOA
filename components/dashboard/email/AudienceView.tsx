@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+import { loadTagSegmentsAction, syncTagSegmentAction } from "@/app/email/actions";
 
 import { CONTACT_STATUS_LABELS, type ContactStatus } from "@/lib/mailchimpImport";
 import type { Audience, AudienceContact } from "@/lib/audience";
@@ -50,6 +52,50 @@ export default function AudienceView({
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<ContactStatus | "all">("subscribed");
   const [tag, setTag] = useState<string | null>(null);
+
+  // Which tags already have a segment, so the row can say so and the
+  // button can offer a top-up rather than looking like it does nothing.
+  const [tagSegments, setTagSegments] = useState<Record<string, string>>({});
+  const [syncing, setSyncing] = useState<string | null>(null);
+  const [syncNote, setSyncNote] = useState<{ ok: boolean; message: string } | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    void loadTagSegmentsAction().then((map) => {
+      if (live && map) setTagSegments(map);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  const segmentForTag = tag ? tagSegments[tag] : undefined;
+  const mailableForTag = tag
+    ? (audience.tags.find((entry) => entry.tag === tag)?.mailable ?? 0)
+    : 0;
+
+  async function syncTag(name: string) {
+    setSyncing(name);
+    setSyncNote(null);
+    const result = await syncTagSegmentAction(name).catch(() => ({
+      ok: false as const,
+      error: "That didn't go through.",
+    }));
+    setSyncing(null);
+
+    if (!result.ok) {
+      setSyncNote({ ok: false, message: result.error ?? "That didn't go through." });
+      return;
+    }
+
+    if (result.id) setTagSegments((current) => ({ ...current, [name]: result.id as string }));
+    setSyncNote({
+      ok: true,
+      // Resend processes the upload after accepting it, so this says
+      // "on its way" rather than claiming the segment is already full.
+      message: `Sent ${result.contacts?.toLocaleString() ?? ""} contacts to "Tag: ${name}". Resend takes a moment to process them, then it is in the Send to list on the Campaigns tab.`,
+    });
+  }
 
   const searchable = useMemo(
     () => audience.contacts.map((c) => ({ c, text: haystack(c) })),
@@ -106,6 +152,40 @@ export default function AudienceView({
             <h3 className="an-panel-title">Tags</h3>
             <span className="an-panel-group">click to filter</span>
           </header>
+
+          {/* A tag is not something Resend can mail. A broadcast goes to
+              a segment and has no tag filter, so the tag has to become
+              one first; after that it is an ordinary segment and shows
+              up in the campaign screen's own Send to list. */}
+          {tag && (
+            <div className="border-border bg-surface-raised mt-4 flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2.5">
+              <p className="text-xs text-muted">
+                {segmentForTag
+                  ? `"${tag}" already has a segment. Syncing again adds anyone new.`
+                  : `Make "${tag}" a segment and you can send a campaign to just these ${mailableForTag.toLocaleString()}.`}
+              </p>
+              <button
+                type="button"
+                className="ba-btn"
+                disabled={syncing !== null}
+                onClick={() => void syncTag(tag)}
+              >
+                {syncing === tag ? "WORKING…" : segmentForTag ? "SYNC AGAIN" : "MAKE A SEGMENT"}
+              </button>
+            </div>
+          )}
+          {syncNote && (
+            <p
+              className={`mt-2 rounded-lg border px-3 py-2 text-xs ${
+                syncNote.ok
+                  ? "border-flame-2/40 bg-flame-2/10 text-flame-3"
+                  : "border-flame-1/40 bg-flame-1/10 text-flame-3"
+              }`}
+            >
+              {syncNote.message}
+            </p>
+          )}
+
           <div className="mt-4 flex flex-wrap gap-2">
             {tag && (
               <button type="button" onClick={() => setTag(null)} className="ba-btn">
@@ -123,8 +203,11 @@ export default function AudienceView({
                     ? "border-flame-2 bg-flame-2/15 text-flame-3"
                     : "border-border-strong text-muted hover:border-flame-2/50 hover:text-foreground"
                 }`}
-                title={`${mailable} of ${count} can be mailed`}
+                title={`${mailable} of ${count} can be mailed${
+                  tagSegments[name] ? " · has a segment" : ""
+                }`}
               >
+                {tagSegments[name] ? "◆ " : ""}
                 {name} · {count}
               </button>
             ))}

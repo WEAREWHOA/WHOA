@@ -1,6 +1,7 @@
 "use server";
 
 import { getSessionAmbassadorCode } from "@/lib/auth";
+import { listTagSegments, syncTagSegment } from "@/lib/tagSegments";
 import { isCampaignListId, type CampaignListId } from "@/lib/campaignLists";
 import { getByCode } from "@/lib/store";
 import {
@@ -53,6 +54,41 @@ async function requireEmailAdmin() {
 export async function loadAudienceAction(): Promise<Audience | null> {
   if (!(await requireEmailAdmin())) return null;
   return getAudience();
+}
+
+/**
+ * Build a Resend segment from one of our tags, so a campaign can be
+ * aimed at it.
+ *
+ * Resend broadcasts go to a segment and nothing else -- there is no tag
+ * filter on one -- so a tag has to become a segment before it can be
+ * mailed. Once it is, it appears in the campaign screen's own Send to
+ * list like any other and needs no special case in the sending path.
+ */
+export async function syncTagSegmentAction(tag: string): Promise<Simple & { contacts?: number }> {
+  if (!(await requireEmailAdmin())) return { ok: false, error: "Not allowed." };
+  try {
+    const result = await syncTagSegment(tag);
+    return { ok: true, id: result.segmentId, contacts: result.contacts };
+  } catch (err) {
+    console.error("syncTagSegmentAction failed:", err);
+    // The reasons here are worth reading -- an empty tag, a Resend key
+    // that is not set, a rejected upload -- and this screen is behind
+    // the newsletter permission, so they are shown rather than hidden
+    // behind "something went wrong".
+    return { ok: false, error: err instanceof Error ? err.message : "Couldn't build that segment." };
+  }
+}
+
+/** Which tags already have a segment, so the tab can say so. */
+export async function loadTagSegmentsAction(): Promise<Record<string, string> | null> {
+  if (!(await requireEmailAdmin())) return null;
+  try {
+    return Object.fromEntries(await listTagSegments());
+  } catch (err) {
+    console.error("loadTagSegmentsAction failed:", err);
+    return {};
+  }
 }
 
 export async function exportAudienceAction(): Promise<string | null> {
