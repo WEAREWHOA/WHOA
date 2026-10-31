@@ -134,9 +134,10 @@ export default async function ArtistPage(props: PageProps<"/art-collective/[slug
                       {formatCents(product.minPriceCents)}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs text-muted">
-                    {soldOut ? "Sold out" : `${product.totalStock} in stock`}
-                  </p>
+                  {/* Sold out is worth saying; a count is not. Same rule
+                      as the shop grid: whether they can have it, not how
+                      many are left. */}
+                  {soldOut && <p className="mt-1 text-xs text-muted">Sold out</p>}
                   {product.description && (
                     <p className="mt-2 line-clamp-2 text-sm text-foreground/85">{product.description}</p>
                   )}

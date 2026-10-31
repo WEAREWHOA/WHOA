@@ -65,11 +65,18 @@ export async function loadAudienceAction(): Promise<Audience | null> {
  * mailed. Once it is, it appears in the campaign screen's own Send to
  * list like any other and needs no special case in the sending path.
  */
-export async function syncTagSegmentAction(tag: string): Promise<Simple & { contacts?: number }> {
+export async function syncTagSegmentAction(
+  tag: string,
+): Promise<Simple & { contacts?: number; newContacts?: number }> {
   if (!(await requireEmailAdmin())) return { ok: false, error: "Not allowed." };
   try {
     const result = await syncTagSegment(tag);
-    return { ok: true, id: result.segmentId, contacts: result.contacts };
+    return {
+      ok: true,
+      id: result.segmentId,
+      contacts: result.contacts,
+      newContacts: result.newContacts,
+    };
   } catch (err) {
     console.error("syncTagSegmentAction failed:", err);
     // The reasons here are worth reading -- an empty tag, a Resend key
