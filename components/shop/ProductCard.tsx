@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
 import type { Product } from "@/lib/types";
 import { formatCents } from "@/lib/money";
-import { availableStock, isOutOfStock, PREORDER_LABEL } from "@/lib/stock";
+import { isOutOfStock, PREORDER_LABEL } from "@/lib/stock";
 import { useCart } from "@/components/cart/CartProvider";
 
 // Same idea as lib/artists.ts's PALETTE — Square products don't carry a
@@ -42,7 +42,6 @@ export default function ProductCard({ product, delay = 0 }: { product: Product; 
   // the card offers it as a pre-order instead of refusing the sale. What
   // changes is the label and the promise, not whether the button works.
   const preorder = isOutOfStock(product);
-  const inStock = availableStock(product);
   const singleVariation = product.variations.length === 1;
 
   function handlePointerMove(e: PointerEvent<HTMLAnchorElement>) {
@@ -149,11 +148,9 @@ export default function ProductCard({ product, delay = 0 }: { product: Product; 
           <span className="font-display text-lg" style={{ color: accent }}>
             {formatCents(minPrice)}
           </span>
-          {/* Null is an untracked variation, which is unlimited rather
-              than a number worth printing. */}
-          {!preorder && inStock !== null && (
-            <span className="text-[0.65rem] text-white/60">{inStock} in stock</span>
-          )}
+          {/* No count. What a shopper needs to know is whether they can
+              have it, which the badge and the button already say; how
+              many are left is the shop's business, not theirs. */}
         </div>
 
         <span
