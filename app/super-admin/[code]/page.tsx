@@ -132,6 +132,26 @@ export default async function SuperAdminAccountPage(props: PageProps<"/super-adm
         {account.email} · <span className="font-mono-code">{account.code}</span>
       </p>
 
+      {/* Where their money goes, on the page you land on when looking
+          somebody up. It was only ever visible in the BA ADMIN pay run,
+          and only for ambassadors who had already sold something, so
+          the one question with an obvious answer -- what did this
+          person give us to pay them with -- had nowhere to be asked. */}
+      <div className="border-border bg-surface-raised mt-5 rounded-xl border px-5 py-4">
+        <p className="text-xs font-semibold tracking-[0.2em] text-muted uppercase">Pays out to</p>
+        {account.payout ? (
+          <p className="mt-1 text-sm">
+            <span className="uppercase">{account.payout.method}</span>{" "}
+            <span className="font-mono-code">{account.payout.destination}</span>
+          </p>
+        ) : (
+          <p className="mt-1 text-sm text-muted">
+            Nothing set. They add it themselves in their AMBASSADOR tab; it cannot be set from
+            here, so that the number money goes to is only ever one they typed.
+          </p>
+        )}
+      </div>
+
       {saved && (
         <div className="mt-6 rounded-xl border border-flame-2/40 bg-flame-2/10 px-5 py-4 text-sm">
           Saved — permissions updated.
