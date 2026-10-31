@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import {
   applyCommissionBackfillAction,
   loadBaAdminAction,
@@ -38,6 +38,16 @@ const shortDate = (iso: string | null) =>
 
 type SortKey = "sales" | "period" | "owed" | "name" | "orders";
 
+/** One labelled value in an expanded roster row. */
+function Detail({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-xs font-semibold tracking-wide text-muted uppercase">{label}</p>
+      <p className="mt-0.5">{children}</p>
+    </div>
+  );
+}
+
 export default function BaAdmin({ initial }: { initial: BaAdminData }) {
   const [data, setData] = useState(initial);
   const [period, setPeriod] = useState(initial.period);
@@ -45,6 +55,9 @@ export default function BaAdmin({ initial }: { initial: BaAdminData }) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortKey>("sales");
   const [view, setView] = useState<"run" | "roster" | "history" | "recalc">("run");
+  // Which roster row is open. One at a time: this is for looking
+  // somebody up, not for reading everybody's details at once.
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [report, setReport] = useState<BackfillReport | null>(null);
   const [recalcBusy, setRecalcBusy] = useState(false);
   // An apply is only offered against a report already on screen, so
@@ -344,23 +357,70 @@ export default function BaAdmin({ initial }: { initial: BaAdminData }) {
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((r, i) => (
-                  <tr key={r.code}>
-                    <td className="an-journey-meta">{i + 1}</td>
-                    <td>
-                      <span className="ba-name">{r.name}</span>
-                      <span className="an-journey-meta">{r.instagram ?? r.email}</span>
-                    </td>
-                    <td><span className="ba-tier">{r.tierLabel}</span></td>
-                    <td>{r.clicks.toLocaleString()}</td>
-                    <td>{r.orderCount}</td>
-                    <td>{money(r.salesCents)}</td>
-                    <td>{money(r.earnedCents)}</td>
-                    <td>{money(r.paidCents)}</td>
-                    <td className={r.owedCents > 0 ? "ba-strong" : ""}>{money(r.owedCents)}</td>
-                    <td className="an-journey-meta">{shortDate(r.lastOrderAt)}</td>
-                  </tr>
-                ))}
+                {sorted.map((r, i) => {
+                  const open = expanded === r.code;
+                  return (
+                    <Fragment key={r.code}>
+                      {/* The whole row opens, rather than an eleventh
+                          column on a table that already has ten. Payout
+                          details are only needed one person at a time,
+                          which is what being asked for them looks like. */}
+                      <tr
+                        onClick={() => setExpanded(open ? null : r.code)}
+                        aria-expanded={open}
+                        className="cursor-pointer"
+                      >
+                        <td className="an-journey-meta">{i + 1}</td>
+                        <td>
+                          <span className="ba-name">
+                            {open ? "▾ " : "▸ "}
+                            {r.name}
+                          </span>
+                          <span className="an-journey-meta">{r.instagram ?? r.email}</span>
+                        </td>
+                        <td><span className="ba-tier">{r.tierLabel}</span></td>
+                        <td>{r.clicks.toLocaleString()}</td>
+                        <td>{r.orderCount}</td>
+                        <td>{money(r.salesCents)}</td>
+                        <td>{money(r.earnedCents)}</td>
+                        <td>{money(r.paidCents)}</td>
+                        <td className={r.owedCents > 0 ? "ba-strong" : ""}>{money(r.owedCents)}</td>
+                        <td className="an-journey-meta">{shortDate(r.lastOrderAt)}</td>
+                      </tr>
+                      {open && (
+                        <tr>
+                          <td colSpan={10}>
+                            <div className="flex flex-wrap gap-x-10 gap-y-3 px-2 py-3 text-sm">
+                              <Detail label="Pays out to">
+                                {r.payoutMethod && r.payoutDestination ? (
+                                  <>
+                                    <span className="uppercase">{r.payoutMethod}</span>{" "}
+                                    <span className="font-mono-code">{r.payoutDestination}</span>
+                                  </>
+                                ) : (
+                                  // Worth saying plainly: this is the
+                                  // reason a pay run skips somebody, and
+                                  // the fix is theirs to make in their
+                                  // own portal.
+                                  <span className="text-muted">
+                                    Not set. They add it in their AMBASSADOR tab.
+                                  </span>
+                                )}
+                              </Detail>
+                              <Detail label="Code">
+                                <span className="font-mono-code">{r.code}</span>
+                              </Detail>
+                              <Detail label="Email">{r.email}</Detail>
+                              {r.instagram && <Detail label="Instagram">{r.instagram}</Detail>}
+                              <Detail label="Joined">{shortDate(r.joinedAt)}</Detail>
+                              {r.lastPaidAt && <Detail label="Last paid">{shortDate(r.lastPaidAt)}</Detail>}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           )}

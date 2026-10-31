@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import EventCard from "@/components/events/EventCard";
 import EventModal from "@/components/events/EventModal";
@@ -71,20 +71,89 @@ export default function EventsGrid({ events }: { events: EventInfo[] }) {
     setWaiverEvent(null);
   }
 
-  function handleOpen(event: EventInfo, rect: DOMRect) {
-    setOpenEvent(event);
-    setOriginRect(rect);
-    setClosing(false);
-  }
+  // Whether this component put the current entry in the history stack,
+  // so closing knows whether to step back or just shut the card.
+  const pushedUrl = useRef(false);
+  // Set once a deep-linked card has been closed, so it does not reopen
+  // on the next render while ?event= is still in the URL.
+  const [dismissedRequest, setDismissedRequest] = useState(false);
 
-  function handleClose() {
+  // The visual close on its own, with no history in it. Both the close
+  // button and the browser's own Back arrive here eventually, and only
+  // one of them should be moving through history.
+  const closeCard = useCallback(() => {
+    setDismissedRequest(true);
     setClosing(true);
     setTimeout(() => {
       setOpenEvent(null);
       setOriginRect(null);
       setClosing(false);
     }, CLOSE_DURATION);
+  }, []);
+
+  /**
+   * Opening a flyer now changes the address bar to that event's own
+   * page, which exists and is server-rendered -- see app/events/[slug].
+   *
+   * pushState rather than a router navigation, because navigating would
+   * replace the calendar with that page and lose the card animation
+   * that makes this worth having. The URL is the honest one either way:
+   * copy it, share it, reload it, and the event is there.
+   */
+  function handleOpen(event: EventInfo, rect: DOMRect) {
+    setOpenEvent(event);
+    setOriginRect(rect);
+    setClosing(false);
+    try {
+      window.history.pushState({ whoaEvent: event.id }, "", `/events/${encodeURIComponent(event.id)}`);
+      pushedUrl.current = true;
+    } catch {
+      // A blocked history write costs the shareable URL and nothing
+      // else; the card still opens.
+    }
   }
+
+  function handleClose() {
+    if (pushedUrl.current) {
+      pushedUrl.current = false;
+      // Back undoes the entry this added, and the popstate below does
+      // the closing. Going forward instead would leave the event's URL
+      // in history behind a card that is no longer open.
+      window.history.back();
+      return;
+    }
+    closeCard();
+  }
+
+  // Back out of an open card rather than off the page entirely, which is
+  // what a URL in the address bar leads somebody to expect.
+  useEffect(() => {
+    function onPopState() {
+      pushedUrl.current = false;
+      setOpenEvent((current) => {
+        if (current) closeCard();
+        return current;
+      });
+    }
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [closeCard]);
+
+  // /events?event=<id> opens that flyer on arrival. It is how an event's
+  // own page sends somebody back here to RSVP, rather than that page
+  // carrying a second copy of the checkout.
+  //
+  // Derived rather than set in an effect, the same way the restored
+  // Cash App draft above is: the card is open on the first render the
+  // parameter is readable, with no flash of the bare calendar first.
+  const requestedId = searchParams.get("event");
+  const requested = requestedId
+    ? (events.find((event) => event.id === requestedId) ?? null)
+    : null;
+  const activeEvent = openEvent ?? (dismissedRequest ? null : requested);
+  // A deep link has no card on screen, so there is no rectangle to grow
+  // out of and the modal opens from the middle instead.
+  const activeRect = openEvent ? originRect : null;
 
   return (
     <>
@@ -133,10 +202,10 @@ export default function EventsGrid({ events }: { events: EventInfo[] }) {
         ))}
       </div>
 
-      {openEvent && originRect && (
+      {activeEvent && (
         <EventModal
-          event={openEvent}
-          originRect={originRect}
+          event={activeEvent}
+          originRect={activeRect}
           closing={closing}
           onClose={handleClose}
           onCheckout={handleCheckoutRequest}

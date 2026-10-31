@@ -7,7 +7,18 @@ import { formatCents } from "@/lib/money";
 
 type Rect = { left: number; top: number; width: number; height: number };
 
-function rectFromDomRect(r: DOMRect): Rect {
+/**
+ * Where the card animates from and back to.
+ *
+ * Null when there is no card on screen to grow out of, which is what
+ * arriving on /events?event=<id> from an event's own page looks like.
+ * It opens from the middle instead of from nowhere.
+ */
+function rectFromDomRect(r: DOMRect | null): Rect {
+  if (!r) {
+    const target = computeTargetRect();
+    return { ...target, left: target.left + target.width / 2, top: target.top + target.height / 2, width: 0, height: 0 };
+  }
   return { left: r.left, top: r.top, width: r.width, height: r.height };
 }
 
@@ -30,7 +41,7 @@ export default function EventModal({
   onCheckout,
 }: {
   event: EventInfo;
-  originRect: DOMRect;
+  originRect: DOMRect | null;
   closing: boolean;
   onClose: () => void;
   onCheckout?: (event: EventInfo) => void;
