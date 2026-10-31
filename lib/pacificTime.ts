@@ -75,3 +75,16 @@ export function utcToPacificWallTime(iso: string | null, timeZone = "America/Los
   if (Number.isNaN(at.getTime())) return "";
   return new Date(wallClockAsUtc(at, timeZone)).toISOString().slice(0, 16);
 }
+
+/**
+ * Today's date in Ocean Beach, as yyyy-mm-dd.
+ *
+ * Events are stored as plain dates, so "is it over" is a question about
+ * days rather than instants: a show on the 28th is still on at 10pm on
+ * the 28th, and still on at 10pm even though it is already the 29th in
+ * UTC. Comparing against a UTC date would retire an event most of a day
+ * early for anybody on this coast.
+ */
+export function pacificToday(now: Date = new Date(), timeZone = "America/Los_Angeles"): string {
+  return now.toLocaleDateString("en-CA", { timeZone });
+}

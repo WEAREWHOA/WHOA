@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import type { Metadata } from "next";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 import EventsGrid from "@/components/events/EventsGrid";
@@ -32,6 +33,19 @@ export default async function EventsPage() {
           Tap a flyer for full details. Hover to RSVP.
         </p>
       </div>
+
+      {/* The weekly night, above everything else, at an address that
+          does not change. Resolved per request by /whoa-wednesday, so
+          this stays right without anybody editing it each week. */}
+      <Link
+        href="/whoa-wednesday"
+        className="btn-flame relative z-10 mt-7 inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-xs font-bold tracking-[0.12em] uppercase"
+      >
+        Next WHOA Wednesday
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 6l6 6-6 6" />
+        </svg>
+      </Link>
 
       <EventsNewsletterBanner />
 
