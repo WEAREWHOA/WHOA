@@ -79,6 +79,15 @@ interface Door {
 
 const DOORS: Door[] = [
   {
+    // Not a date. /whoa-wednesday resolves to whichever one is next on
+    // every request, so this tile keeps working the morning after one
+    // and nobody has to come back here to repoint it.
+    href: "/whoa-wednesday",
+    label: "WHOA Wednesday",
+    blurb: "The weekly night at the WHOADEGA. This link always opens the next one.",
+    cta: "See the next one",
+  },
+  {
     href: "/events",
     label: "RSVP & Events",
     blurb: "Everything we have on: WHOADEGA nights, pop-ups, shows and festivals. RSVP free or grab a ticket.",
