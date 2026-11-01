@@ -103,7 +103,7 @@ export default function ProductCard({ product, delay = 0 }: { product: Product; 
       onPointerLeave={handlePointerLeave}
       style={
         {
-          // Read by .shop-card, which only applies the tilt and the
+          // Read by .tilt-card, which only applies the tilt and the
           // float from the small breakpoint up. On a phone this is a
           // grid of products to scan, and a page of cards each leaning
           // a different way and drifting up and down is a worse one.
@@ -112,7 +112,7 @@ export default function ProductCard({ product, delay = 0 }: { product: Product; 
           "--accent": accent,
         } as React.CSSProperties
       }
-      className="event-card shop-card group relative block w-full shrink-0 overflow-hidden rounded-2xl border border-white/15 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.8)] transition-shadow duration-300 sm:max-w-xs hover:shadow-[0_25px_65px_-15px_var(--accent)]"
+      className="event-card tilt-card group relative block w-full shrink-0 overflow-hidden rounded-2xl border border-white/15 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.8)] transition-shadow duration-300 sm:max-w-xs hover:shadow-[0_25px_65px_-15px_var(--accent)]"
     >
       <div className="bg-surface-raised relative aspect-square w-full overflow-hidden">
         {product.imageUrl ? (

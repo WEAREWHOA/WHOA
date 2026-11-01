@@ -190,7 +190,7 @@ export default function EventsGrid({ events }: { events: EventInfo[] }) {
       <h2 className="font-display relative z-10 mt-14 text-2xl tracking-wide text-foreground">
         All flyers
       </h2>
-      <div className="relative z-10 mt-8 flex w-full max-w-6xl flex-wrap items-start justify-center gap-x-8 gap-y-14">
+      <div className="relative z-10 mt-8 grid w-full max-w-6xl grid-cols-2 gap-x-3 gap-y-6 sm:flex sm:flex-wrap sm:items-start sm:justify-center sm:gap-x-8 sm:gap-y-14">
         {filtered.map((event, i) => (
           <EventCard
             key={event.id}

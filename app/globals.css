@@ -2508,22 +2508,22 @@ body {
   color: var(--box-text);
 }
 
-/* THE SHOP ON A PHONE.
+/* PRODUCT AND EVENT CARDS ON A PHONE.
  *
- * The grid is two columns on a phone and the cards sit square to each
- * other, because at that size this is a catalogue to scan rather than a
- * wall of flyers to admire: a column of tilted, drifting cards is a
- * lovely thing that makes finding a hoodie take a hundred swipes.
+ * Two to a row, sitting square, because at that size these are things
+ * to scan rather than a wall of flyers to admire: a column of tilted,
+ * drifting cards is a lovely thing that makes finding a hoodie, or next
+ * Wednesday, take a hundred swipes.
  *
  * The tilt and the float come back at the small breakpoint, where there
  * is room for the cards to lean without colliding, and the inline
  * --tilt each card carries is what they lean by. */
-.shop-card {
+.tilt-card {
   transform: none;
 }
 
 @media (min-width: 640px) {
-  .shop-card {
+  .tilt-card {
     transform: rotate(var(--tilt, 0deg));
     animation: event-float 6s ease-in-out infinite;
   }
@@ -2565,4 +2565,39 @@ body {
 .shop-chiprow > * {
   flex: 0 0 auto;
   scroll-snap-align: start;
+}
+
+/* THE COLLECTIONS RAIL ON THE FRONT PAGE.
+ *
+ * One row, swiped sideways, with the next panel deliberately half in
+ * shot: that peek is the only thing telling anybody there is more and
+ * which way it lives. A row that fits neatly inside the screen says
+ * nothing. */
+.home-rail {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding: 0 1.5rem 0.5rem;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.home-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.home-rail-panel {
+  flex: 0 0 82%;
+  scroll-snap-align: start;
+}
+
+@media (min-width: 640px) {
+  .home-rail {
+    gap: 1rem;
+  }
+
+  .home-rail-panel {
+    flex-basis: 20rem;
+  }
 }
