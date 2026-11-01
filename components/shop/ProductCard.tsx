@@ -56,7 +56,10 @@ export default function ProductCard({ product, delay = 0 }: { product: Product; 
   function handlePointerLeave() {
     const el = ref.current;
     if (!el) return;
-    el.style.transform = `rotate(${rotate}deg)`;
+    // Cleared rather than set back to the tilt, so the stylesheet takes
+    // over again. The tilt is a desktop flourish now and the rule that
+    // decides it lives in CSS, where it can be a media query.
+    el.style.transform = "";
   }
 
   function addSingleVariation() {
@@ -100,12 +103,16 @@ export default function ProductCard({ product, delay = 0 }: { product: Product; 
       onPointerLeave={handlePointerLeave}
       style={
         {
-          transform: `rotate(${rotate}deg)`,
+          // Read by .shop-card, which only applies the tilt and the
+          // float from the small breakpoint up. On a phone this is a
+          // grid of products to scan, and a page of cards each leaning
+          // a different way and drifting up and down is a worse one.
+          "--tilt": `${rotate}deg`,
           animationDelay: `${delay}s`,
           "--accent": accent,
         } as React.CSSProperties
       }
-      className="event-card event-float group relative block w-full max-w-xs shrink-0 overflow-hidden rounded-2xl border border-white/15 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.8)] transition-shadow duration-300 hover:shadow-[0_25px_65px_-15px_var(--accent)]"
+      className="event-card shop-card group relative block w-full shrink-0 overflow-hidden rounded-2xl border border-white/15 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.8)] transition-shadow duration-300 sm:max-w-xs hover:shadow-[0_25px_65px_-15px_var(--accent)]"
     >
       <div className="bg-surface-raised relative aspect-square w-full overflow-hidden">
         {product.imageUrl ? (

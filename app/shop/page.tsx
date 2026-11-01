@@ -44,27 +44,27 @@ export default async function ShopPage() {
   }
 
   return (
-    <section className="relative flex flex-1 flex-col items-center overflow-hidden px-6 py-20">
+    <section className="relative flex flex-1 flex-col items-center overflow-hidden px-6 py-10 sm:py-20">
       <PsychedelicBackground />
 
       <div className="relative z-10 text-center">
         <span className="text-xs font-semibold tracking-[0.3em] text-white/70 uppercase">
           WHOADEGA & online store
         </span>
-        <h1 className="text-psychedelic font-display mt-3 text-5xl tracking-wide sm:text-6xl">
+        <h1 className="text-psychedelic font-display mt-2 text-4xl tracking-wide sm:mt-3 sm:text-6xl">
           Shop WHOA
         </h1>
-        <p className="mt-3 max-w-md text-sm text-white/60">
+        <p className="mt-2 max-w-md text-sm text-white/60 sm:mt-3">
           Same stock, same prices, whether you&apos;re here or at the booth.
         </p>
         {/* Custom pieces have always been arranged by talking to someone,
             and they still are while the editor is shut. The live way sits
             above the locked one, so a shopper who wants a custom piece
             finds the route that works before the one that doesn't. */}
-        <div className="relative z-10 mt-5 flex flex-col items-center gap-2">
+        <div className="relative z-10 mt-4 flex flex-col items-center gap-2 sm:mt-5">
           <Link
             href="/contact"
-            className="btn-flame inline-flex items-center gap-2 rounded-full px-6 py-3 text-xs font-bold tracking-[0.12em] uppercase"
+            className="btn-flame inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-[0.7rem] font-bold tracking-[0.12em] uppercase sm:px-6 sm:py-3 sm:text-xs"
           >
             Order Custom Design
           </Link>
@@ -75,7 +75,7 @@ export default async function ShopPage() {
               <Link href="/custom-design"> with the same styling. */}
           <span
             aria-disabled="true"
-            className="inline-flex cursor-default items-center gap-2 rounded-full border border-white/10 px-5 py-2.5 text-xs font-semibold tracking-wide text-white/40 uppercase select-none"
+            className="hidden cursor-default items-center gap-2 rounded-full border border-white/10 px-5 py-2.5 text-xs font-semibold tracking-wide text-white/40 uppercase select-none sm:inline-flex"
           >
             <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
               <rect x="4" y="10" width="16" height="10" rx="2" />
