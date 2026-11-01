@@ -56,7 +56,10 @@ export default function ProductCard({ product, delay = 0 }: { product: Product; 
   function handlePointerLeave() {
     const el = ref.current;
     if (!el) return;
-    el.style.transform = `rotate(${rotate}deg)`;
+    // Cleared rather than set back to the tilt, so the stylesheet takes
+    // over again. The tilt is a desktop flourish now and the rule that
+    // decides it lives in CSS, where it can be a media query.
+    el.style.transform = "";
   }
 
   function addSingleVariation() {
@@ -100,12 +103,16 @@ export default function ProductCard({ product, delay = 0 }: { product: Product; 
       onPointerLeave={handlePointerLeave}
       style={
         {
-          transform: `rotate(${rotate}deg)`,
+          // Read by .tilt-card, which only applies the tilt and the
+          // float from the small breakpoint up. On a phone this is a
+          // grid of products to scan, and a page of cards each leaning
+          // a different way and drifting up and down is a worse one.
+          "--tilt": `${rotate}deg`,
           animationDelay: `${delay}s`,
           "--accent": accent,
         } as React.CSSProperties
       }
-      className="event-card event-float group relative block w-full max-w-xs shrink-0 overflow-hidden rounded-2xl border border-white/15 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.8)] transition-shadow duration-300 hover:shadow-[0_25px_65px_-15px_var(--accent)]"
+      className="event-card tilt-card group relative block w-full shrink-0 overflow-hidden rounded-2xl border border-white/15 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.8)] transition-shadow duration-300 sm:max-w-xs hover:shadow-[0_25px_65px_-15px_var(--accent)]"
     >
       <div className="bg-surface-raised relative aspect-square w-full overflow-hidden">
         {product.imageUrl ? (
@@ -143,7 +150,15 @@ export default function ProductCard({ product, delay = 0 }: { product: Product; 
       </div>
 
       <div className="relative z-10 bg-black/70 p-4 backdrop-blur-sm">
-        <h3 className="truncate text-sm font-semibold text-white">{product.name}</h3>
+        {/* Two lines, not one with an ellipsis. In a half-width column
+            "1966 Youth Tee (Black Bleach)" truncates to "1966 Youth
+            Tee…", and on one-of-ones the part in brackets is often the
+            only thing telling two of them apart. min-h keeps the prices
+            below on the same line whether a name takes one line or
+            two. */}
+        <h3 className="line-clamp-2 min-h-[2.5rem] text-sm leading-tight font-semibold text-white">
+          {product.name}
+        </h3>
         <div className="mt-1 flex items-center justify-between">
           <span className="font-display text-lg" style={{ color: accent }}>
             {formatCents(minPrice)}

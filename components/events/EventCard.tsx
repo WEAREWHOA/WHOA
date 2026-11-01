@@ -33,7 +33,10 @@ export default function EventCard({
   function handlePointerLeave() {
     const el = ref.current;
     if (!el) return;
-    el.style.transform = `rotate(${event.rotate}deg)`;
+    // Cleared rather than reset to the tilt, so the stylesheet takes
+    // over again -- the tilt is a desktop flourish and CSS is where the
+    // rule that decides it lives.
+    el.style.transform = "";
   }
 
   function handleOpen() {
@@ -62,12 +65,16 @@ export default function EventCard({
       onPointerLeave={handlePointerLeave}
       style={
         {
-          transform: `rotate(${event.rotate}deg)`,
+          // Read by .tilt-card, which applies the tilt and the float
+          // only from the small breakpoint up. Two flyers to a row on a
+          // phone, sitting square, so a month of events is a few swipes
+          // rather than a dozen.
+          "--tilt": `${event.rotate}deg`,
           animationDelay: `${delay}s`,
           "--accent": event.accent,
         } as React.CSSProperties
       }
-      className="event-card event-float group relative w-full max-w-sm shrink-0 cursor-pointer overflow-hidden rounded-2xl border border-white/15 text-left shadow-[0_20px_50px_-20px_rgba(0,0,0,0.8)] transition-shadow duration-300 hover:shadow-[0_25px_65px_-15px_var(--accent)]"
+      className="event-card tilt-card group relative w-full shrink-0 cursor-pointer sm:max-w-sm overflow-hidden rounded-2xl border border-white/15 text-left shadow-[0_20px_50px_-20px_rgba(0,0,0,0.8)] transition-shadow duration-300 hover:shadow-[0_25px_65px_-15px_var(--accent)]"
     >
       {/* Fixed to standard 8.5x11 flyer proportions (not content-driven
           height) so the real flyer photos crop consistently and the whole

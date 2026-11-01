@@ -2507,3 +2507,97 @@ body {
   border-color: var(--box-bright);
   color: var(--box-text);
 }
+
+/* PRODUCT AND EVENT CARDS ON A PHONE.
+ *
+ * Two to a row, sitting square, because at that size these are things
+ * to scan rather than a wall of flyers to admire: a column of tilted,
+ * drifting cards is a lovely thing that makes finding a hoodie, or next
+ * Wednesday, take a hundred swipes.
+ *
+ * The tilt and the float come back at the small breakpoint, where there
+ * is room for the cards to lean without colliding, and the inline
+ * --tilt each card carries is what they lean by. */
+.tilt-card {
+  transform: none;
+}
+
+@media (min-width: 640px) {
+  .tilt-card {
+    transform: rotate(var(--tilt, 0deg));
+    animation: event-float 6s ease-in-out infinite;
+  }
+}
+
+/* The search, the chips and the count stay put while the grid moves
+ * under them. Everything an app like this is judged on is in that bar,
+ * and on a phone it was below a full screen of hero. */
+.shop-controls {
+  position: sticky;
+  /* Under the navbar, which is itself sticky at the top and 73px tall.
+     At top: 0 this slides behind it and the search box -- the whole
+     point of the bar -- is the part that disappears. */
+  top: 73px;
+  z-index: 30;
+  /* Solid, not a tint. Product names and prices scrolling underneath a
+     translucent bar read as a rendering fault, and blur does not stop
+     bright text on a dark background showing through. A frosted bar is
+     not worth a grid that looks broken. */
+  background: var(--background);
+  box-shadow: 0 10px 20px -18px rgba(0, 0, 0, 0.9);
+}
+
+/* One swipeable row rather than four wrapped ones. The scrollbar is
+ * hidden because the chips running off the edge is the affordance. */
+.shop-chiprow {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+
+.shop-chiprow::-webkit-scrollbar {
+  display: none;
+}
+
+.shop-chiprow > * {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+}
+
+/* THE COLLECTIONS RAIL ON THE FRONT PAGE.
+ *
+ * One row, swiped sideways, with the next panel deliberately half in
+ * shot: that peek is the only thing telling anybody there is more and
+ * which way it lives. A row that fits neatly inside the screen says
+ * nothing. */
+.home-rail {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding: 0 1.5rem 0.5rem;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.home-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.home-rail-panel {
+  flex: 0 0 82%;
+  scroll-snap-align: start;
+}
+
+@media (min-width: 640px) {
+  .home-rail {
+    gap: 1rem;
+  }
+
+  .home-rail-panel {
+    flex-basis: 20rem;
+  }
+}
