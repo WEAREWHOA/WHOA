@@ -150,15 +150,10 @@ export default function ProductCard({ product, delay = 0 }: { product: Product; 
       </div>
 
       <div className="relative z-10 bg-black/70 p-4 backdrop-blur-sm">
-        {/* Two lines, not one with an ellipsis. In a half-width column
-            "1966 Youth Tee (Black Bleach)" truncates to "1966 Youth
-            Tee…", and on one-of-ones the part in brackets is often the
-            only thing telling two of them apart. min-h keeps the prices
-            below on the same line whether a name takes one line or
-            two. */}
-        <h3 className="line-clamp-2 min-h-[2.5rem] text-sm leading-tight font-semibold text-white">
-          {product.name}
-        </h3>
+        {/* .product-name, not line-clamp-*: see globals.css for why the
+            utility lost this one and cut a name through the middle of
+            its third line. */}
+        <h3 className="product-name text-sm font-semibold text-white">{product.name}</h3>
         <div className="mt-1 flex items-center justify-between">
           <span className="font-display text-lg" style={{ color: accent }}>
             {formatCents(minPrice)}

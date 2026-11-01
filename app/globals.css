@@ -2601,3 +2601,33 @@ body {
     flex-basis: 20rem;
   }
 }
+
+/* A PRODUCT NAME IN A HALF-WIDTH COLUMN.
+ *
+ * Tailwind's line-clamp sets display:-webkit-box, and on these headings
+ * something later in the cascade was winning and computing it to
+ * flow-root. The clamp then did nothing while overflow:hidden stayed,
+ * so a three-line name was sliced through the middle of its third line
+ * -- "Create The Things You Wish Existed... Shorts" losing "Shorts" to
+ * a horizontal cut. Declared here, where it is not competing.
+ *
+ * Three lines, not two. These names carry the thing itself at the end
+ * ("... Shorts", "... Heavyweight Navy"), so clipping early takes the
+ * one word a shopper is scanning for.
+ *
+ * The cap is exactly three line-heights, so even if the clamp is
+ * defeated again the cut lands on a line boundary and reads as a name
+ * that stops rather than a rendering fault.
+ *
+ * A cap and not a floor: reserving three lines on every card put a
+ * forty pixel hole under "Art Heals" to keep the prices in a row
+ * level with each other, which is a poor trade for a catalogue where
+ * most names are short. */
+.product-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  line-height: 1.25rem;
+  max-height: 3.75rem;
+}
