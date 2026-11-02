@@ -2631,3 +2631,17 @@ body {
   line-height: 1.25rem;
   max-height: 3.75rem;
 }
+
+/* A row of photographs you swipe through. The browser does the
+ * momentum and the snapping; nothing here is hand-rolled. */
+.swipe-track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.swipe-track::-webkit-scrollbar {
+  display: none;
+}
