@@ -6,6 +6,7 @@ import type { Product } from "@/lib/types";
 import { formatCents } from "@/lib/money";
 import { isOutOfStock, PREORDER_LABEL } from "@/lib/stock";
 import { useCart } from "@/components/cart/CartProvider";
+import ImageSwiper from "./ImageSwiper";
 
 // Same idea as lib/artists.ts's PALETTE — Square products don't carry a
 // brand color, so this cycles a deterministic (hash-based, not random) look
@@ -114,28 +115,20 @@ export default function ProductCard({ product, delay = 0 }: { product: Product; 
       }
       className="event-card tilt-card group relative block w-full shrink-0 overflow-hidden rounded-2xl border border-white/15 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.8)] transition-shadow duration-300 sm:max-w-xs hover:shadow-[0_25px_65px_-15px_var(--accent)]"
     >
-      <div className="bg-surface-raised relative aspect-square w-full overflow-hidden">
-        {product.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={product.imageUrl}
+      {/* 4:5 rather than square. A garment photographed on somebody is
+          taller than it is wide, and a square crop was spending a fifth
+          of each card cutting the top off a shirt. */}
+      <div className="relative w-full">
+        {product.imageUrls.length > 0 ? (
+          <ImageSwiper
+            urls={product.imageUrls.slice(0, 5)}
             alt={product.name}
-            // The shop renders one of these per product. Without lazy
-            // loading every photo in the catalogue downloads at once, at
-            // Square's full resolution — which on a phone is most of the
-            // wait before anything is usable.
-            loading="lazy"
-            decoding="async"
-            // The container is already aspect-square, so these only give
-            // the browser the ratio up front; they do not constrain the
-            // rendered size.
-            width={640}
-            height={640}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            aspect="aspect-[4/5]"
+            rounded="rounded-none"
           />
         ) : (
           <div
-            className="relative flex h-full w-full items-center justify-center"
+            className="relative flex aspect-[4/5] w-full items-center justify-center"
             style={{ background: `linear-gradient(160deg, ${c1}, ${c2} 55%, ${c3})` }}
           >
             <div aria-hidden className="event-card-noise absolute inset-0" />
@@ -168,7 +161,11 @@ export default function ProductCard({ product, delay = 0 }: { product: Product; 
           tabIndex={0}
           onClick={handleQuickAdd}
           onKeyDown={handleQuickAddKeyDown}
-          className="btn-flame mt-3 block w-full scale-100 rounded-full px-4 py-2.5 text-center text-xs font-semibold tracking-wide uppercase transition-[scale,background-color,color] duration-300 group-hover:scale-[1.04]"
+          // Smaller than it was, and on one line. At half width the old
+          // size wrapped "CHOOSE OPTIONS" onto two lines and took a
+          // sixth of the card to say something the tap already implies;
+          // every pixel it gives back goes to the photograph.
+          className="btn-flame mt-2.5 block w-full scale-100 rounded-full px-3 py-1.5 text-center text-[0.65rem] font-bold tracking-[0.08em] whitespace-nowrap uppercase transition-[scale,background-color,color] duration-300 group-hover:scale-[1.04]"
         >
           {added
             ? "Added ✓"
@@ -176,7 +173,7 @@ export default function ProductCard({ product, delay = 0 }: { product: Product; 
               ? PREORDER_LABEL
               : singleVariation
                 ? "Add to cart"
-                : "Choose options"}
+                : "See options"}
         </span>
       </div>
     </Link>

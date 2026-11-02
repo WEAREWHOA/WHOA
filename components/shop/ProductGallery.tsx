@@ -1,8 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import ImageSwiper from "./ImageSwiper";
 
+/**
+ * The photographs on a product page.
+ *
+ * Swipe first, thumbnails second. The strip underneath was the only way
+ * through the other shots, which is a desktop habit: on a phone the
+ * gesture for "next photo" is a swipe across the picture itself, and a
+ * row of 64px squares is both unobvious and a small target.
+ *
+ * Both, rather than one. The thumbnails still earn their place on a
+ * wide screen, where there is no swipe to make and seeing all four at
+ * once is faster than paging through them.
+ */
 export default function ProductGallery({ name, imageUrls }: { name: string; imageUrls: string[] }) {
+  const trackRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
 
   if (imageUrls.length === 0) {
@@ -13,31 +27,33 @@ export default function ProductGallery({ name, imageUrls }: { name: string; imag
     );
   }
 
+  function show(i: number) {
+    const el = trackRef.current;
+    if (!el) return;
+    // Scrolling the track rather than setting an index: the swiper reads
+    // its own scroll position, so moving the element is what keeps a
+    // thumbnail press and a swipe telling the same story.
+    el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
+  }
+
   return (
     <div>
-      <div className="card-surface aspect-square overflow-hidden rounded-2xl">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={imageUrls[active]}
-          alt={name}
-          // The one image that should NOT be lazy: it's the thing the
-          // page is about and it's above the fold.
-          loading="eager"
-          fetchPriority="high"
-          decoding="async"
-          width={800}
-          height={800}
-          className="h-full w-full object-cover"
-        />
-      </div>
+      <ImageSwiper
+        urls={imageUrls}
+        alt={name}
+        aspect="aspect-square"
+        eager
+        trackRef={trackRef}
+        onIndexChange={setActive}
+      />
 
       {imageUrls.length > 1 && (
         <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
           {imageUrls.map((url, i) => (
             <button
-              key={i}
+              key={url}
               type="button"
-              onClick={() => setActive(i)}
+              onClick={() => show(i)}
               aria-label={`Show photo ${i + 1} of ${imageUrls.length}`}
               aria-current={active === i}
               className={`h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition-colors ${
