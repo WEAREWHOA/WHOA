@@ -64,9 +64,10 @@ export default function AboutPage() {
           beach pop-ups, artist collabs and Art Basel, to our own shop in Ocean Beach.
         </AboutCard>
 
-        <AboutCard href="/stores" title="Retail Locations" cta="Find us in person">
-          The WHOADEGA, our shop on Newport Ave in Ocean Beach. Our own section inside Pangaea
-          Outpost on Garnet Ave in Pacific Beach. And a stall wherever we&apos;re running an event.
+        <AboutCard href="/whoadega" title="The WHOADEGA" cta="See the shop">
+          Our shop on Newport Ave in Ocean Beach: part shop, part gallery, part event space, with
+          WHOA Wednesday every week. <Link href="/stores" className="text-flame hover:underline">All
+          our locations</Link> are listed separately.
         </AboutCard>
 
         <AboutCard href="/partnerships" title="Partnerships" cta="See who we support">

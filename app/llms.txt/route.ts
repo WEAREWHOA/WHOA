@@ -57,6 +57,11 @@ export async function GET() {
 - [The WHOA Podcast](${SITE_URL}/podcast)
 - [FAQ](${SITE_URL}/faq)
 
+## Visit
+
+- [The WHOADEGA: WHOA's shop, gallery and event space at 4847 Newport Ave, Ocean Beach, San Diego](${SITE_URL}/whoadega)
+- [All retail locations, including pop-ups inside other shops and at events](${SITE_URL}/stores)
+
 ## Take part
 
 - [Events](${SITE_URL}/events)

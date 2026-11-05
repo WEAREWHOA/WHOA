@@ -17,6 +17,13 @@ export default function Footer() {
           <Link href="/about" className="transition-colors hover:text-foreground">
             About
           </Link>
+          {/* The shop before the locator. It is the one people search
+              by name, and a link on every page is what keeps it shallow
+              in the crawl and ahead of the directory listings that
+              currently rank for it. */}
+          <Link href="/whoadega" className="transition-colors hover:text-foreground">
+            WHOADEGA
+          </Link>
           <Link href="/stores" className="transition-colors hover:text-foreground">
             Locations
           </Link>
