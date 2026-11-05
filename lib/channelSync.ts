@@ -1,5 +1,6 @@
 import { getSupabase } from "./supabase";
-import { pushTiktokStock, tiktokConfigured } from "./tiktokShop";
+import { adjustStock } from "./stockStore";
+import { fetchTiktokOrder, pushTiktokStock, tiktokConfigured } from "./tiktokShop";
 
 /**
  * Telling the other shops what we have.
@@ -183,4 +184,84 @@ export async function stuckPushes(): Promise<
     attempts: row.attempts,
     lastError: row.last_error,
   }));
+}
+
+/**
+ * A sale somewhere else, taken off our shelf.
+ *
+ * The other half of the loop. Without it the sync only talks: TikTok
+ * takes an order, our count never moves, and the next push puts
+ * TikTok's number back up to the one we still wrongly hold. Two shops
+ * then sell the same thing and the customer finds out first.
+ *
+ * The claim happens before anything is fetched or moved. Order
+ * webhooks are delivered at least once and the same order arrives
+ * again on a retry, so without it a redelivery takes the stock down a
+ * second time and a popular item walks to zero by itself.
+ *
+ * The push that follows is not a loop. TikTok already took its own
+ * count down when the order was placed, so the number we send back is
+ * the one it already holds, and the two settle rather than chase each
+ * other.
+ */
+export async function recordChannelSale(
+  channel: string,
+  orderId: string,
+  locationId: string,
+): Promise<{ claimed: boolean; lines: number; short: string[] }> {
+  const supabase = getSupabase();
+
+  const { data: claimed, error: claimError } = await supabase.rpc("claim_channel_order", {
+    p_channel: channel,
+    p_external_order_id: orderId,
+  });
+  if (claimError) throw new Error(`Couldn't claim ${channel} order ${orderId}: ${claimError.message}`);
+  if (!claimed) return { claimed: false, lines: 0, short: [] };
+
+  if (channel !== "tiktok") throw new Error(`No order reader for channel ${channel}`);
+  const items = await fetchTiktokOrder(orderId);
+  if (items.length === 0) return { claimed: true, lines: 0, short: [] };
+
+  const { data: listings, error: listingError } = await supabase
+    .from("channel_listings")
+    .select("variation_id, external_id")
+    .eq("channel", channel)
+    .in("external_id", items.map((i) => i.skuId));
+  if (listingError) throw new Error(`Couldn't read ${channel} listings: ${listingError.message}`);
+
+  const toVariation = new Map(
+    ((listings ?? []) as { variation_id: string; external_id: string }[]).map((l) => [
+      l.external_id,
+      l.variation_id,
+    ]),
+  );
+
+  // Taken line by line rather than all or nothing. The sale has already
+  // happened on TikTok; refusing it here would not un-sell it, it would
+  // only leave our count wrong in the direction that oversells. A line
+  // we cannot satisfy is recorded as short so somebody can look.
+  const short: string[] = [];
+  let lines = 0;
+
+  for (const item of items) {
+    const variationId = toVariation.get(item.skuId);
+    if (!variationId) {
+      // A sku nobody mapped. Nothing to take it off, and silently
+      // doing nothing is how this would be discovered much later.
+      short.push(`unmapped sku ${item.skuId}`);
+      continue;
+    }
+
+    const result = await adjustStock({
+      variationId,
+      locationId,
+      delta: -item.quantity,
+      reason: "tiktok",
+      reference: orderId,
+    });
+    lines += 1;
+    if (!result.applied) short.push(`${variationId} oversold on ${channel}`);
+  }
+
+  return { claimed: true, lines, short };
 }
