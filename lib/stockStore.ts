@@ -228,16 +228,35 @@ export async function seedStockFromSquareMirror(
     if (error) throw new Error(`Couldn't read the Square mirror: ${error.message}`);
 
     const rows = (data ?? []) as { variation_id: string; quantity: number }[];
-    for (const row of rows) {
-      await setStock({
-        variationId: row.variation_id,
-        locationId,
-        quantity: row.quantity,
-        tracked: true,
-        reason: "import",
-        actor: actor ?? null,
-      });
-      seeded += 1;
+    if (rows.length === 0) break;
+
+    // Square has no opinion on whether we count a thing, so the flag
+    // somebody set on the INVENTORY screen survives a reseed. Only the
+    // number comes from Square.
+    const held = await getStock(
+      rows.map((row) => row.variation_id),
+      locationId,
+    );
+
+    // Twenty at a time. This is a button a person pressed and is
+    // waiting on, so it cannot be one round trip per variation in
+    // sequence; it also cannot be five hundred at once, or it takes the
+    // connection pool out from under the rest of the site.
+    for (let i = 0; i < rows.length; i += 20) {
+      const batch = rows.slice(i, i + 20);
+      await Promise.all(
+        batch.map((row) =>
+          setStock({
+            variationId: row.variation_id,
+            locationId,
+            quantity: row.quantity,
+            tracked: held.get(row.variation_id)?.tracked ?? true,
+            reason: "import",
+            actor: actor ?? null,
+          }),
+        ),
+      );
+      seeded += batch.length;
     }
 
     if (rows.length < PAGE) break;

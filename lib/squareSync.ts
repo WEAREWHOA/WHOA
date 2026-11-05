@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import { setStock } from "./stockStore";
 import type { Square } from "square";
 import { getSquare } from "./square";
 import { getSupabase } from "./supabase";
@@ -241,7 +242,84 @@ export async function syncInventoryForVariations(variationIds: string[]): Promis
       if (error) {
         throw new Error(`Failed to sync inventory counts: ${error.message}`);
       }
+
+      // And into the book we keep ourselves.
+      //
+      // While Square is still the one selling, it is still the truth,
+      // so this sets rather than adjusts: whatever Square says a count
+      // is, that is what it is here. That keeps the stock table honest
+      // without it having a second writer, which is the thing that
+      // would make the two disagree.
+      //
+      // This is the line to delete at cutover. Once the website and the
+      // POS are selling against stock directly, Square overwriting it
+      // from its own stale view is exactly the bug this arrangement
+      // exists to avoid in the other direction.
+      await mirrorIntoStock(rows);
     }
+  }
+}
+
+/**
+ * Square's counts, copied into the stock table.
+ *
+ * Writes only what moved. A full catalogue sync asks about every
+ * variation, and almost none of them changed, so this reads the rows
+ * once and then touches the handful that differ. The naive version was
+ * one round trip per variation per location, which on a full sync is
+ * hundreds of them in a row inside a webhook.
+ *
+ * The tracked flag is read, never overwritten: Square cannot tell us
+ * whether we count a thing, and somebody has ticked that box on the
+ * INVENTORY screen for a reason. Square decides the number; we decide
+ * whether the number means anything.
+ *
+ * Failures are logged, not thrown. This runs inside the Square webhook,
+ * and a webhook that returns non-2xx is retried: letting this fail
+ * would make Square replay a catalogue sync that had already worked,
+ * for the sake of a table nothing is reading yet. The next sync, or the
+ * COPY FROM SQUARE button, is what catches a miss.
+ */
+async function mirrorIntoStock(
+  rows: { variation_id: string; location_id: string; quantity: number }[],
+): Promise<void> {
+  try {
+    const { data, error } = await getSupabase()
+      .from("stock")
+      .select("variation_id, location_id, quantity, tracked")
+      .in("variation_id", [...new Set(rows.map((r) => r.variation_id))]);
+
+    if (error) throw new Error(error.message);
+
+    const held = new Map(
+      ((data ?? []) as { variation_id: string; location_id: string; quantity: number; tracked: boolean }[]).map(
+        (row) => [`${row.variation_id}\u0000${row.location_id}`, row],
+      ),
+    );
+
+    const changed = rows.filter((row) => {
+      const current = held.get(`${row.variation_id}\u0000${row.location_id}`);
+      return !current || current.quantity !== row.quantity;
+    });
+
+    // Small batches rather than all at once: a first-ever sync can be
+    // the whole catalogue, and firing every write in parallel is how
+    // you exhaust the connection pool the rest of the site is using.
+    for (const batch of chunk(changed, 20)) {
+      await Promise.all(
+        batch.map((row) =>
+          setStock({
+            variationId: row.variation_id,
+            locationId: row.location_id,
+            quantity: row.quantity,
+            tracked: held.get(`${row.variation_id}\u0000${row.location_id}`)?.tracked ?? true,
+            reason: "import",
+          }),
+        ),
+      );
+    }
+  } catch (err) {
+    console.error("Couldn't mirror Square's counts into stock:", err);
   }
 }
 
