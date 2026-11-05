@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { adjustStockAction, seedStockAction, setStockAction } from "@/app/inventory/actions";
 import type { StockLine, StockMovement } from "@/lib/inventoryAdmin";
+import type { stuckPushes } from "@/lib/channelSync";
 
 /**
  * The stock we keep, and every hand that moved it.
@@ -36,6 +37,7 @@ export default function InventoryTab({
   total,
   movements,
   query,
+  stuck,
   saved,
   seeded,
   error,
@@ -44,6 +46,7 @@ export default function InventoryTab({
   total: number;
   movements: StockMovement[];
   query: string;
+  stuck: Awaited<ReturnType<typeof stuckPushes>>;
   saved?: boolean;
   seeded?: string;
   error?: string;
@@ -70,6 +73,22 @@ export default function InventoryTab({
         <p className="border-flame-1/40 bg-flame-1/10 text-flame-3 mt-4 rounded-lg border px-4 py-3 text-sm">
           {ERRORS[error] ?? ERRORS.server}
         </p>
+      )}
+      {stuck.length > 0 && (
+        <div className="border-flame-1/40 bg-flame-1/10 mt-4 rounded-lg border px-4 py-3 text-sm">
+          <p className="text-flame-3 font-semibold">
+            {stuck.length} {stuck.length === 1 ? "listing is" : "listings are"} not reaching the
+            other shops.
+          </p>
+          <ul className="mt-1 text-xs text-muted">
+            {stuck.slice(0, 5).map((s) => (
+              <li key={`${s.channel}-${s.variationId}`}>
+                {s.channel} · {names.get(s.variationId) ?? s.variationId}
+                {s.lastError ? ` · ${s.lastError}` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       {saved && (
         <p className="border-flame-2/40 bg-flame-2/10 text-flame-3 mt-4 rounded-lg border px-4 py-2 text-sm">

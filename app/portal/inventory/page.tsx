@@ -1,6 +1,7 @@
 import InventoryTab from "@/components/dashboard/tabs/InventoryTab";
 import { flag, text, type PortalSearchParams } from "@/components/portal/PortalNotices";
 import { listStockLines, recentMovements } from "@/lib/inventoryAdmin";
+import { stuckPushes } from "@/lib/channelSync";
 import { getSquareLocationId } from "@/lib/square";
 import { requirePortalTab } from "@/lib/portalAccess";
 
@@ -12,13 +13,20 @@ export default async function PortalInventoryPage(props: PageProps<"/portal/inve
   // Both halves fail soft, and separately. A catalogue that will not
   // load should not also take away the ledger, which is the half
   // somebody is most likely here to read when a number looks wrong.
-  const [lines, movements] = await Promise.all([
+  const [lines, movements, stuck] = await Promise.all([
     (async () => listStockLines(getSquareLocationId()))().catch((err) => {
       console.error("Couldn't list stock lines:", err);
       return [];
     }),
     recentMovements(50).catch((err) => {
       console.error("Couldn't list stock movements:", err);
+      return [];
+    }),
+    // A push to TikTok that has given up retrying is invisible
+    // everywhere else, and invisible means it is found by a customer
+    // buying something we do not have.
+    stuckPushes().catch((err) => {
+      console.error("Couldn't check stuck pushes:", err);
       return [];
     }),
   ]);
@@ -38,6 +46,7 @@ export default async function PortalInventoryPage(props: PageProps<"/portal/inve
       total={lines.length}
       movements={movements}
       query={query}
+      stuck={stuck}
       saved={flag(params, "stockSaved")}
       seeded={text(params, "stockSeeded")}
       error={text(params, "stockError")}
