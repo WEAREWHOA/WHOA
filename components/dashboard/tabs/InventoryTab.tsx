@@ -105,7 +105,7 @@ export default function InventoryTab({
         <input
           name="q"
           defaultValue={query}
-          placeholder="Search by product or option"
+          placeholder="Search by product, option or SKU"
           aria-label="Search the catalogue"
           className="border-border-strong bg-surface-raised min-w-0 flex-1 rounded-lg border px-4 py-2 text-sm outline-none focus:border-flame-2"
         />
@@ -131,6 +131,12 @@ export default function InventoryTab({
             COPY FROM SQUARE
           </button>
         </form>
+        {/* A plain link, not a form. It is a download, and a download
+            that works with JavaScript off is one fewer thing to be
+            broken on a phone in a stockroom. */}
+        <a href="/portal/inventory/export" className="ba-btn" download>
+          EXPORT CSV
+        </a>
       </div>
 
       {/* Said plainly rather than left to be discovered. This button is
@@ -139,7 +145,8 @@ export default function InventoryTab({
       <p className="mt-2 text-xs text-muted">
         Copying is safe while Square is still selling: it restates what Square says. Stop using it
         once the shop sells against this table, or it will overwrite real sales with Square&apos;s
-        older view.
+        older view. The export is these counts keyed by SKU, which is the column every other
+        shop&apos;s bulk upload matches on.
       </p>
 
       <h4 className="mt-8 font-semibold">Counts</h4>
@@ -156,6 +163,7 @@ export default function InventoryTab({
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{line.productName}</p>
                 <p className="truncate text-xs text-muted">
+                  {line.sku ? `${line.sku} · ` : ""}
                   {line.variationName}
                   {line.unseen && " · never counted"}
                   {!line.tracked && " · not tracked"}

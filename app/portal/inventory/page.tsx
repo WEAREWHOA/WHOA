@@ -36,7 +36,8 @@ export default async function PortalInventoryPage(props: PageProps<"/portal/inve
     ? lines.filter(
         (line) =>
           line.productName.toLowerCase().includes(needle) ||
-          line.variationName.toLowerCase().includes(needle),
+          line.variationName.toLowerCase().includes(needle) ||
+          (line.sku ?? "").toLowerCase().includes(needle),
       )
     : lines;
 
