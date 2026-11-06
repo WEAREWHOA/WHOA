@@ -19,13 +19,25 @@ import { LockIcon } from "@/components/LockedBadge";
  */
 
 /**
- * The path, in a 100 by 1000 box that stretches to whatever height the
- * section gets. Drawn as one long S so the trail crosses the page
- * rather than running straight down a margin, which on a wide screen
- * reads as a border.
+ * The path, in a 100 by 3000 box that stretches to whatever height the
+ * section gets. It crosses back and forth rather than running straight
+ * down a margin, which on a wide screen reads as a border.
+ *
+ * Nine bends over three thousand units, where it used to be three over
+ * one thousand. The box and the section both grew by the same factor,
+ * so each curve still takes up the same amount of screen as before and
+ * the only thing that changed is how far there is to go. Stretching the
+ * old path instead would have given the same three bends pulled over
+ * three times the height, which is a nearly straight line with a kink
+ * in it.
+ *
+ * The numbers lean different amounts on purpose. Nine identical S-bends
+ * read as a repeated motif; these read as something drifting.
  */
 const TRAIL =
-  "M 50 0 C 20 120, 82 200, 50 320 C 18 440, 85 520, 50 640 C 20 740, 70 820, 50 1000";
+  "M 50 0 C 20 123, 82 213, 50 333 C 18 457, 85 547, 50 667 C 24 790, 78 880, 50 1000 " +
+  "C 16 1123, 88 1213, 50 1333 C 26 1457, 74 1547, 50 1667 C 19 1790, 84 1880, 50 2000 " +
+  "C 22 2123, 80 2213, 50 2333 C 15 2457, 86 2547, 50 2667 C 25 2790, 70 2880, 50 3000";
 
 export default function RocketTrail() {
   const section = useRef<HTMLDivElement>(null);
@@ -36,7 +48,7 @@ export default function RocketTrail() {
   // a ref during render is how a component stops updating when you
   // expect it to. The fallback is close enough to this path's real
   // length that the opening frame is not visibly wrong.
-  const [length, setLength] = useState(2400);
+  const [length, setLength] = useState(7200);
 
   useEffect(() => {
     // In viewBox units, not pixels: preserveAspectRatio="none" stretches
@@ -104,9 +116,9 @@ export default function RocketTrail() {
     >
       {/* The trail. Decorative: everything it means is said in words at
           the bottom of the section. */}
-      <div aria-hidden className="pointer-events-none relative mx-auto h-[70vh] w-full max-w-xl sm:h-[90vh]">
+      <div aria-hidden className="pointer-events-none relative mx-auto h-[210vh] w-full max-w-xl sm:h-[270vh]">
         <svg
-          viewBox="0 0 100 1000"
+          viewBox="0 0 100 3000"
           preserveAspectRatio="none"
           className="h-full w-full overflow-visible"
         >
