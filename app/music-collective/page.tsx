@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
+import OpenCallNotice from "@/components/music/OpenCallNotice";
+import { MUSIC_APPLICATIONS_OPEN } from "@/lib/musicOpenCall";
 import MusicianCard from "@/components/musiccollective/MusicianCard";
 import { getMusicRoster } from "@/lib/musicRoster";
 
@@ -48,12 +50,19 @@ export default async function MusicCollectivePage() {
         <p className="mt-3 max-w-md text-sm text-white/60">
           Click an artist to hear their sound.
         </p>
-        <Link
-          href="/music-collective/apply"
-          className="btn-flame mt-6 inline-flex rounded-full px-6 py-3 text-sm"
-        >
-          Apply to join
-        </Link>
+        {/* The way in used to be a flame button right here, under the
+            title. While the call is shut that is the most prominent
+            thing on the page pointing at a door that does not open, so
+            it moves below the roster: the artists are what this page is
+            for, and the notice is the footnote it has become. */}
+        {MUSIC_APPLICATIONS_OPEN && (
+          <Link
+            href="/music-collective/apply"
+            className="btn-flame mt-6 inline-flex rounded-full px-6 py-3 text-sm"
+          >
+            Apply to join
+          </Link>
+        )}
       </div>
 
       <div className="relative z-10 mt-14 flex w-full max-w-6xl flex-wrap items-start justify-center gap-x-8 gap-y-14">
@@ -61,6 +70,10 @@ export default async function MusicCollectivePage() {
           <MusicianCard key={musician.slug} musician={musician} delay={Math.min(i, 7) * 0.45} />
         ))}
       </div>
+
+      {!MUSIC_APPLICATIONS_OPEN && (
+        <OpenCallNotice className="relative z-10 mt-16 w-full max-w-xl" />
+      )}
     </section>
   );
 }

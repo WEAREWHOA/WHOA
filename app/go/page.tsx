@@ -100,10 +100,15 @@ const DOORS: Door[] = [
     cta: "Shop WHOA",
   },
   {
-    href: "/music-collective/apply",
-    label: "Join the Music Collective",
-    blurb: "Artists and producers in the WHOA world. Sign up to apply and we will come back to you.",
-    cta: "Apply to join",
+    // Points at the roster rather than the shut application. This is
+    // the link in a bio: a tile that says "apply" and lands on
+    // "applications are closed" is a wasted tap from somebody who was
+    // interested enough to take it.
+    href: "/music-collective",
+    label: "WHOA Music Collective",
+    blurb:
+      "The artists and producers in the WHOA world. Hear them, and find out when the next open call is.",
+    cta: "Hear the collective",
   },
   {
     href: "/spin",

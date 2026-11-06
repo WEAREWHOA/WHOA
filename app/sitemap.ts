@@ -36,7 +36,9 @@ const STATIC_ROUTES = [
   "/ambassadors",
   "/apply",
   "/sell-for-us",
-  "/music-collective/apply",
+  // Music Collective applications are closed between open calls, so
+  // that page is noindexed and left out of here until the next one. See
+  // lib/musicOpenCall.ts.
   "/art-collective/apply",
   "/games",
   // The games that are actually on /games. The six delisted ones are
