@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { formatCents } from "./money";
+import { DRINK_PERK_LABEL, DRINK_PERK_REDEEM } from "./eventPerks";
 import { createApprovalLinks, type ApprovalKind } from "./approvalTokens";
 import { SITE_URL } from "./siteUrl";
 import {
@@ -154,6 +155,8 @@ function buildEventHtml(input: {
   priceCents: number;
   quantity?: number;
   ticketUrl?: string;
+  /** Free WHOADEGA Wednesdays: this email is worth money at the bar. */
+  drinkPerk?: boolean;
 }): string {
   const isTicket = input.priceCents > 0;
   const quantity = input.quantity && input.quantity > 1 ? input.quantity : 1;
@@ -200,6 +203,25 @@ function buildEventHtml(input: {
                     </p>
                     <p style="margin:8px 0 0;font-size:12px;">
                       <a href="${input.ticketUrl}" style="color:#ff7a00;">Open your ticket</a>
+                    </p>
+                  </td>
+                </tr>
+              </table>`
+            : ""
+        }
+        ${
+          input.drinkPerk
+            ? `<table style="width:100%;border-collapse:collapse;margin-top:24px;">
+                <tr>
+                  <td style="background:#1f1408;border:1px solid #ff7a00;border-radius:12px;padding:18px;text-align:center;">
+                    <p style="margin:0;color:#ff7a00;font-size:12px;letter-spacing:0.2em;text-transform:uppercase;font-weight:600;">
+                      Because you RSVP&#39;d
+                    </p>
+                    <p style="margin:8px 0 0;color:#f7f0e6;font-size:22px;font-weight:700;">
+                      ${escapeHtml(DRINK_PERK_LABEL)}
+                    </p>
+                    <p style="margin:8px 0 0;color:#b8ada0;font-size:13px;line-height:1.5;">
+                      ${escapeHtml(DRINK_PERK_REDEEM)}
                     </p>
                   </td>
                 </tr>
@@ -262,6 +284,12 @@ export async function sendEventConfirmationEmail(input: {
   ticketUrl?: string;
   /** The QR as a data: URL, converted to a real attachment below. */
   ticketQrDataUrl?: string;
+  /**
+   * Free WHOADEGA Wednesdays: adds the block that makes this email
+   * worth money at the bar. Worked out by the caller from the event
+   * itself, never from anything a form sent.
+   */
+  drinkPerk?: boolean;
 }): Promise<void> {
   const resend = getResend();
   const isTicket = input.priceCents > 0;
