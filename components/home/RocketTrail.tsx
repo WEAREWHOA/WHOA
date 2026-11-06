@@ -33,11 +33,17 @@ import { LockIcon } from "@/components/LockedBadge";
  *
  * The numbers lean different amounts on purpose. Nine identical S-bends
  * read as a repeated motif; these read as something drifting.
+ *
+ * The last bend is the exception: its second control point sits on the
+ * centre line, so the trail arrives straight down rather than sweeping
+ * in from one side. Coming in at an angle, the end of a wide stroke
+ * lands beside the engine instead of on it, and the smoke reads as
+ * something passing the rocket rather than coming out of it.
  */
 const TRAIL =
   "M 50 0 C 20 123, 82 213, 50 333 C 18 457, 85 547, 50 667 C 24 790, 78 880, 50 1000 " +
   "C 16 1123, 88 1213, 50 1333 C 26 1457, 74 1547, 50 1667 C 19 1790, 84 1880, 50 2000 " +
-  "C 22 2123, 80 2213, 50 2333 C 15 2457, 86 2547, 50 2667 C 25 2790, 70 2880, 50 3000";
+  "C 22 2123, 80 2213, 50 2333 C 15 2457, 86 2547, 50 2667 C 25 2790, 50 2900, 50 3000";
 
 export default function RocketTrail() {
   const section = useRef<HTMLDivElement>(null);
@@ -138,10 +144,9 @@ export default function RocketTrail() {
             d={TRAIL}
             fill="none"
             stroke="url(#whoa-smoke)"
-            strokeWidth="26"
+            className="whoa-trail-soft"
             strokeLinecap="round"
             style={{
-              filter: "blur(10px)",
               strokeDasharray: length,
               strokeDashoffset: length * (1 - drawn),
             }}
@@ -151,7 +156,7 @@ export default function RocketTrail() {
             d={TRAIL}
             fill="none"
             stroke="url(#whoa-smoke)"
-            strokeWidth="5"
+            className="whoa-trail-core"
             strokeLinecap="round"
             style={{
               strokeDasharray: length,

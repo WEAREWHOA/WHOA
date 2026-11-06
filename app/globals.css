@@ -2749,3 +2749,32 @@ body {
     animation: whoa-rocket-burn 260ms ease-in-out infinite;
   }
 }
+
+/* ───── The smoke trail's weight ─────
+   Stroke widths here rather than on the element, because they have to
+   differ by screen and an attribute cannot.
+
+   The path is drawn in a 100-unit-wide box stretched to the container,
+   so a stroke width is multiplied by however wide that container is:
+   the same number is a thin line on a desktop and a fat orange ribbon
+   on a phone, where it swamped the rocket it was supposed to be coming
+   out of. These are the widths that come back out at roughly the same
+   thickness on both. */
+.whoa-trail-soft {
+  stroke-width: 26;
+  filter: blur(10px);
+}
+.whoa-trail-core {
+  stroke-width: 5;
+}
+@media (max-width: 639px) {
+  .whoa-trail-soft {
+    stroke-width: 11;
+    /* Less blur too. A 10px bloom on a band half the width is mostly
+       bloom, and the trail stops having an edge at all. */
+    filter: blur(6px);
+  }
+  .whoa-trail-core {
+    stroke-width: 2.2;
+  }
+}
