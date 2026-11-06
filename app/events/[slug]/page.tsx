@@ -5,6 +5,7 @@ import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 import { getAllEvents, getEventById } from "@/lib/eventsStore";
 import { getCurrentPriceCents, isTicketingOpen } from "@/lib/events";
 import { formatCents } from "@/lib/money";
+import { DRINK_PERK_TEASE, hasDrinkPerk } from "@/lib/eventPerks";
 import { SITE_URL } from "@/lib/site";
 
 /**
@@ -183,6 +184,16 @@ export default async function EventPage(props: PageProps<"/events/[slug]">) {
                 </span>
               ))}
             </div>
+          )}
+
+          {/* The reason to press the button, right above it. This page
+              is what a search for the night lands on, so the offer has
+              to be here and not only in the calendar's modal. */}
+          {hasDrinkPerk(event) && !past && (
+            <p className="border-flame-2/50 bg-flame-2/10 text-flame-3 mt-6 flex max-w-md items-start gap-2 rounded-lg border px-4 py-3 text-sm leading-relaxed">
+              <span aria-hidden>🍹</span>
+              <span>{DRINK_PERK_TEASE}</span>
+            </p>
           )}
 
           {/* RSVP and ticketing live in the calendar's own modal, which

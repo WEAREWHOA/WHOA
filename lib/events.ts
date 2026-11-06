@@ -225,7 +225,47 @@ export function sortEventsByProximity(events: EventInfo[], referenceDate: Date =
   return [...upcoming, ...past];
 }
 
+/**
+ * The flyer every plain WHOA Wednesday uses.
+ *
+ * The free WHOADEGA nights are the same night week to week, so they
+ * share one image rather than carrying a near-identical file each. A
+ * themed one with its own artwork sets imageUrl itself and overrides
+ * this. One constant rather than the path repeated down the list: when
+ * the flyer is redrawn it changes here, not in every Wednesday since.
+ *
+ * ───────────────────────────────────────────────────────────────────────
+ * Undefined until the artwork is in the repository, and that is the
+ * point of it being undefined rather than a path waiting for a file.
+ * An EventInfo with no imageUrl renders its gradient, which is a
+ * designed state; an EventInfo pointing at a file that is not there
+ * renders a broken image on the live calendar.
+ *
+ * To turn it on: put the file in public/events/ and set this to its
+ * path. Every standard Wednesday picks it up at once.
+ * ───────────────────────────────────────────────────────────────────────
+ */
+export const WHOA_WEDNESDAY_FLYER: string | undefined = undefined;
+
 export const EVENTS: EventInfo[] = [
+  {
+    id: "whoa-wed-nov11-2026",
+    imageUrl: WHOA_WEDNESDAY_FLYER,
+    title: "WHOA Wednesday",
+    dateLabel: "November 11, 2026",
+    timeLabel: "7PM – 11PM",
+    // The WHOADEGA on its own, not the gallery: this is a free night,
+    // and lib/eventPerks.ts reads this venue to decide whether an RSVP
+    // is worth a drink.
+    venue: "The WHOAdega",
+    location: "4847 Newport Ave, San Diego",
+    category: "whoadega",
+    startDate: "2026-11-11",
+    tags: ["Free Entry", "All Ages"],
+    accent: "#ff7a00",
+    gradient: ["#2a0a3a", "#7b2ff7", "#ff7a00"],
+    rotate: -3,
+  },
   {
     id: "auf-eddym-jan24",
     imageUrl: "/events/auf-eddym-jan24.webp",

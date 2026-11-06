@@ -1,6 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import {
+  DRINK_PERK_LABEL,
+  DRINK_PERK_REDEEM,
+  DRINK_PERK_TEASE,
+  hasDrinkPerk,
+} from "@/lib/eventPerks";
 import { getCurrentPriceCents, isTicketingOpen, type EventInfo } from "@/lib/events";
 import { useRsvpSet } from "@/components/events/useRsvp";
 import { formatCents } from "@/lib/money";
@@ -214,6 +220,25 @@ export default function EventModal({
                   </span>
                 ))}
               </div>
+            )}
+
+            {/* Directly above the button, because it is the reason to
+                press it. Shown only while RSVPs are still open: after
+                the night, "RSVP ahead" is an offer nobody can take. */}
+            {hasDrinkPerk(event) && isTicketingOpen(event) && (
+              <p className="border-flame-2/50 bg-flame-2/10 text-flame-3 mt-4 flex items-start gap-2 rounded-lg border px-3 py-2 text-xs leading-relaxed">
+                <span aria-hidden>🍹</span>
+                <span>
+                  {isIn ? (
+                    <>
+                      <strong className="font-semibold">{DRINK_PERK_LABEL}</strong>{" "}
+                      <span className="text-muted">{DRINK_PERK_REDEEM}</span>
+                    </>
+                  ) : (
+                    DRINK_PERK_TEASE
+                  )}
+                </span>
+              </p>
             )}
 
             {/* An event with its own external ticketing gets exactly one

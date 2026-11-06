@@ -8,6 +8,7 @@ import { resolveAccount } from "@/lib/accountAuth";
 import { setSquareCustomerId } from "@/lib/store";
 import { findOrCreateSquareCustomerId } from "@/lib/squareCustomers";
 import { countGuestsForEvent, createRsvpRecord } from "@/lib/eventRsvps";
+import { hasDrinkPerk } from "@/lib/eventPerks";
 import { sendEventConfirmationEmail, sendTicketRecordFailureAlert } from "@/lib/email";
 import {
   clampTicketQuantity,
@@ -301,6 +302,9 @@ export async function eventRsvpAction(input: HumanCheckInput & {
     quantity,
     ticketUrl,
     ticketQrDataUrl: qrDataUrl,
+    // Worked out from the event rather than passed in from the form,
+    // so the perk cannot be claimed by anything posting at this action.
+    drinkPerk: hasDrinkPerk(event),
   }).catch((err) => {
     console.error("Failed to send event confirmation email:", err);
   });

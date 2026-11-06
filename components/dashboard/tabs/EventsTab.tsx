@@ -3,8 +3,17 @@ import QRCode from "qrcode";
 import { formatCents } from "@/lib/money";
 import { SITE_URL } from "@/lib/site";
 import type { EventHistoryEntry } from "@/lib/eventRsvps";
+import { DRINK_PERK_LABEL, DRINK_PERK_REDEEM, hasDrinkPerk } from "@/lib/eventPerks";
 
-function EventEntryCard({ entry, qrDataUrl }: { entry: EventHistoryEntry; qrDataUrl?: string }) {
+function EventEntryCard({
+  entry,
+  qrDataUrl,
+  isPast = false,
+}: {
+  entry: EventHistoryEntry;
+  qrDataUrl?: string;
+  isPast?: boolean;
+}) {
   const { event, rsvp } = entry;
   const isTicket = rsvp.priceCents > 0;
 
@@ -25,6 +34,26 @@ function EventEntryCard({ entry, qrDataUrl }: { entry: EventHistoryEntry; qrData
             ? `${rsvp.quantity > 1 ? `${rsvp.quantity} tickets` : "Ticket"} · ${formatCents(rsvp.priceCents * rsvp.quantity)}`
             : "RSVP"}
         </span>
+
+        {/* The thing to hold up at the bar. Shown on past entries too,
+            deliberately greyed rather than hidden: somebody checking
+            whether they still have it the morning after should get an
+            answer, not a blank space. */}
+        {hasDrinkPerk(event) && (
+          <p
+            className={`mt-3 flex items-start gap-2 rounded-lg border px-3 py-2 text-xs leading-relaxed ${
+              isPast
+                ? "border-border text-muted opacity-60"
+                : "border-flame-2/50 bg-flame-2/10 text-flame-3"
+            }`}
+          >
+            <span aria-hidden>🍹</span>
+            <span>
+              <strong className="font-semibold">{DRINK_PERK_LABEL}</strong>{" "}
+              <span className={isPast ? "" : "text-muted"}>{DRINK_PERK_REDEEM}</span>
+            </span>
+          </p>
+        )}
       </div>
 
       {qrDataUrl && (
@@ -99,7 +128,7 @@ export default async function EventsTab({
       ) : (
         <div className="mt-4 flex flex-col gap-4">
           {past.map((entry) => (
-            <EventEntryCard key={entry.rsvp.id} entry={entry} />
+            <EventEntryCard key={entry.rsvp.id} entry={entry} isPast />
           ))}
         </div>
       )}
