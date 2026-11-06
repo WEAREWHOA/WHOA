@@ -235,17 +235,15 @@ export function sortEventsByProximity(events: EventInfo[], referenceDate: Date =
  * the flyer is redrawn it changes here, not in every Wednesday since.
  *
  * ───────────────────────────────────────────────────────────────────────
- * Undefined until the artwork is in the repository, and that is the
- * point of it being undefined rather than a path waiting for a file.
- * An EventInfo with no imageUrl renders its gradient, which is a
- * designed state; an EventInfo pointing at a file that is not there
- * renders a broken image on the live calendar.
- *
- * To turn it on: put the file in public/events/ and set this to its
- * path. Every standard Wednesday picks it up at once.
+ * This file carries a date in its name for historical reasons: it was
+ * drawn for one night and turned out to be the one with nothing
+ * specific on it. No date, no lineup, just the night, the address and
+ * free entry all ages, which is exactly what a standard Wednesday
+ * needs. It is now the generic one, so DO NOT replace or delete it
+ * thinking it belongs to 8 July alone: every plain Wednesday draws it.
  * ───────────────────────────────────────────────────────────────────────
  */
-export const WHOA_WEDNESDAY_FLYER: string | undefined = undefined;
+export const WHOA_WEDNESDAY_FLYER = "/events/whoa-wed-jul8.webp";
 
 export const EVENTS: EventInfo[] = [
   {
@@ -829,7 +827,7 @@ export const EVENTS: EventInfo[] = [
   },
   {
     id: "whoa-wed-jul8",
-    imageUrl: "/events/whoa-wed-jul8.webp",
+    imageUrl: WHOA_WEDNESDAY_FLYER,
     title: "WHOA Wednesday",
     dateLabel: "July 8",
     timeLabel: "7PM – 11PM",
