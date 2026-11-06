@@ -3,12 +3,14 @@ import type { Product } from "@/lib/types";
 import { isOutOfStock } from "@/lib/stock";
 
 /**
- * Collections across the front page, swiped sideways.
+ * Collections, swiped sideways, as the shop's own footer.
  *
- * The home page was the brand and nothing else: a shopper arriving on
- * it had to know to go and look for the shop. This is the row of ways
- * in, built from the catalogue itself so it is never out of date and
- * never needs curating by hand.
+ * It used to sit on the front page. It reads better at the bottom of
+ * the shop: on the home page it was a row of ways in shown to somebody
+ * who had not asked to shop yet, and here it is the next thing to look
+ * at for somebody who has reached the end of a page of products. The
+ * panels are built from the catalogue itself, so this is never out of
+ * date and never needs curating by hand.
  *
  * Panels run off the right edge on purpose. The one half-visible
  * alongside is the whole affordance -- it says there is more here and
@@ -70,10 +72,17 @@ export default function CollectionCarousel({ products }: { products: Product[] }
   if (collections.length === 0) return null;
 
   return (
-    <section className="relative z-10 w-full py-14">
+    // Its own band with a rule above it, so it reads as the end of the
+    // shop rather than as more shop. The site footer follows below.
+    <section className="relative z-10 mt-20 w-full border-t border-white/10 py-14">
       <div className="mx-auto mb-4 flex w-full max-w-6xl items-baseline justify-between px-6">
-        <h2 className="font-display text-2xl tracking-wide text-white sm:text-3xl">Shop the collections</h2>
-        <Link href="/shop" className="text-xs font-semibold tracking-wide text-white/70 uppercase hover:text-white">
+        <h2 className="font-display text-2xl tracking-wide text-white sm:text-3xl">
+          Shop the collections
+        </h2>
+        <Link
+          href="/shop"
+          className="text-xs font-semibold tracking-wide text-white/70 uppercase hover:text-white"
+        >
           See all →
         </Link>
       </div>

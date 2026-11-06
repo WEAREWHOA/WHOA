@@ -6,6 +6,7 @@ import { listProducts } from "@/lib/catalog";
 import { getAllArtProfileNames } from "@/lib/artCollective";
 import { ARTISTS, EXTRA_ARTIST_CATEGORY_NAMES } from "@/lib/artists";
 import ShopGrid from "@/components/shop/ShopGrid";
+import CollectionCarousel from "@/components/shop/CollectionCarousel";
 
 export const revalidate = 60;
 
@@ -102,6 +103,12 @@ export default async function ShopPage() {
           <ShopGrid products={products} artistNames={artistNames} />
         </Suspense>
       )}
+
+      {/* The shop's own footer, under the pager and above the site's.
+          Somebody who has reached the end of a page of products is
+          exactly who a row of collections is for; on the front page it
+          was being shown to people who had not asked to shop yet. */}
+      {!error && products.length > 0 && <CollectionCarousel products={products} />}
     </section>
   );
 }
