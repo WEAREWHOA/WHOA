@@ -481,6 +481,13 @@ export async function sendMusicDecisionEmail(input: {
   approved: boolean;
 }): Promise<void> {
   const portalUrl = `${SITE_URL}/portal/music`;
+  const musicUrl = `${SITE_URL}/music-collective`;
+  const contactUrl = `${SITE_URL}/contact`;
+  // Shown without the protocol or the www, the way somebody would say
+  // it out loud. Derived from SITE_URL rather than written out, so a
+  // preview deployment links to itself instead of sending a tester to
+  // the live site.
+  const musicLabel = musicUrl.replace(/^https?:\/\/(www\.)?/, "");
 
   const html = input.approved
     ? wrapEmail(`
@@ -502,14 +509,42 @@ export async function sendMusicDecisionEmail(input: {
           Sent to ${escapeHtml(input.name)} because you applied to the WHOA Music Collective.
         </p>`)
     : wrapEmail(`
-        <h1 style="margin:0;color:#f7f0e6;font-size:26px;">About your Music Collective application</h1>
-        <p style="margin:12px 0 0;color:#b8ada0;font-size:14px;line-height:1.6;">
-          Hi ${escapeHtml(input.name)} &mdash; thanks for sending ${escapeHtml(input.artistName)} over. We
-          listened, and we are not able to add you to the collective right now.
+        <h1 style="margin:0;color:#f7f0e6;font-size:26px;">Hey ${escapeHtml(input.name)}! &#127744;</h1>
+        <p style="margin:16px 0 0;color:#b8ada0;font-size:14px;line-height:1.6;">
+          Thank you so much for sending your music our way, we gave it a real listen and loved having
+          it in the mix.
         </p>
         <p style="margin:12px 0 0;color:#b8ada0;font-size:14px;line-height:1.6;">
-          This is about what we can book and release this season, not a verdict on the music. Send new
-          work whenever you have it and we will listen again.
+          We launched the WHOA Music Collective small on purpose, bringing in just a few artists at a
+          time so we can actually book, release, and show up for everyone we take on. This round filled
+          up fast, so we can&rsquo;t bring you in right now.
+        </p>
+        <p style="margin:12px 0 0;color:#b8ada0;font-size:14px;line-height:1.6;">
+          The door stays open. Keep creating, and be sure to send us new work the next time we open the
+          submissions at
+          <a href="${musicUrl}" style="color:#ff7a00;text-decoration:underline;">${escapeHtml(musicLabel)}</a>.
+          Come vibe with us at a future event too! That&rsquo;s where a lot of the magic happens, and the
+          best place to get to know our music and arts community.
+        </p>
+        <p style="margin:20px 0 0;color:#b8ada0;font-size:14px;line-height:1.6;">
+          Lastly, we offer a one on one review for artists that want music advice regarding:
+        </p>
+        <ul style="margin:10px 0 0;padding-left:20px;color:#b8ada0;font-size:14px;line-height:1.8;">
+          <li>Branding / Marketing</li>
+          <li>Sound Recording Quality</li>
+          <li>Expanding Artist Merch</li>
+          <li>Shows / Performance</li>
+        </ul>
+        <p style="margin:14px 0 0;color:#b8ada0;font-size:14px;line-height:1.6;">
+          Visit our <a href="${contactUrl}" style="color:#ff7a00;text-decoration:underline;">Contact</a>
+          page or email us directly at
+          <a href="mailto:${REPLY_TO}" style="color:#ff7a00;text-decoration:underline;">${REPLY_TO}</a>.
+        </p>
+        <p style="margin:24px 0 0;color:#f7f0e6;font-size:14px;line-height:1.6;">
+          Stay WHOA &#10024;
+        </p>
+        <p style="margin:4px 0 0;color:#b8ada0;font-size:14px;line-height:1.6;">
+          &mdash; The WHOA Music Collective
         </p>
         <p style="margin:20px 0 0;color:#6b6157;font-size:11px;line-height:1.5;">
           Sent to ${escapeHtml(input.name)} because you applied to the WHOA Music Collective.

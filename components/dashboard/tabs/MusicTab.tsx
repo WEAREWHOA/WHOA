@@ -1,4 +1,11 @@
 import Link from "next/link";
+import { LockIcon } from "@/components/LockedBadge";
+import {
+  MUSIC_APPLICATIONS_OPEN,
+  MUSIC_CLOSED_BLURB,
+  MUSIC_CLOSED_CTA,
+  MUSIC_CLOSED_LABEL,
+} from "@/lib/musicOpenCall";
 import { saveMusicianProfileAction } from "@/lib/actions";
 import ProductPipeline from "@/components/dashboard/ProductPipeline";
 import type { ArtProduct } from "@/lib/artCollective";
@@ -51,6 +58,24 @@ export default function MusicTab({
           </span>{" "}
           is in — we&apos;ll follow up by email once it&apos;s reviewed. This
           tab unlocks the moment it&apos;s approved.
+        </div>
+      );
+    }
+
+    if (!MUSIC_APPLICATIONS_OPEN) {
+      return (
+        <div className="rounded-xl border border-border px-5 py-4 text-sm text-muted">
+          <span className="text-foreground inline-flex items-center gap-2 font-semibold">
+            <LockIcon className="h-3.5 w-3.5 shrink-0" />
+            {MUSIC_CLOSED_LABEL}
+          </span>
+          <p className="mt-2">
+            {MUSIC_CLOSED_BLURB}{" "}
+            <Link href={MUSIC_CLOSED_CTA.href} className="text-flame font-medium hover:underline">
+              {MUSIC_CLOSED_CTA.label}
+            </Link>
+            .
+          </p>
         </div>
       );
     }

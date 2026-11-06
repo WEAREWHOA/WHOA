@@ -1,6 +1,7 @@
 "use server";
 
 import { humanCheckFromForm, verifyHuman } from "@/lib/humanCheck";
+import { MUSIC_APPLICATIONS_OPEN } from "@/lib/musicOpenCall";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { createAmbassador, getByEmail } from "@/lib/store";
 import {
@@ -22,6 +23,13 @@ const LINK_FIELDS: { label: string; field: string }[] = [
 ];
 
 export async function applyMusicAction(formData: FormData) {
+  // The actual lock, and the only one that counts. Hiding the form
+  // stops people finding the door; this is what stops anyone who
+  // already has the handle, whether that is an old bookmark, a cached
+  // page or a script posting at the endpoint directly.
+  if (!MUSIC_APPLICATIONS_OPEN) {
+    redirect("/music-collective/apply");
+  }
 
   // Before anything is read or written. A rejected submission is told
   // one generic thing whichever check it tripped, so a script learns

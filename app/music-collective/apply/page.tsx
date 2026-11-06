@@ -2,14 +2,24 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { applyMusicAction } from "./actions";
 import HumanCheck from "@/components/forms/HumanCheck";
+import OpenCallNotice from "@/components/music/OpenCallNotice";
+import { MUSIC_APPLICATIONS_OPEN, MUSIC_CLOSED_BLURB } from "@/lib/musicOpenCall";
 
 export const metadata: Metadata = {
   // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
   // Square Online sprayed around consolidate here instead of
   // competing as separate pages.
   alternates: { canonical: "/music-collective/apply" },
-  title: "Join the Music Collective",
-  description: "Apply to join the WHOA Music Collective.",
+  title: MUSIC_APPLICATIONS_OPEN
+    ? "Join the Music Collective"
+    : "Music Collective applications",
+  description: MUSIC_APPLICATIONS_OPEN
+    ? "Apply to join the WHOA Music Collective."
+    : MUSIC_CLOSED_BLURB,
+  // Out of the index while the call is shut. A closed form that still
+  // ranks for "join the WHOA music collective" sends people who were
+  // ready to apply to a page that cannot take them.
+  ...(MUSIC_APPLICATIONS_OPEN ? {} : { robots: { index: false, follow: true } }),
 };
 
 const errorMessages: Record<string, string> = {
@@ -25,6 +35,40 @@ export default async function MusicCollectiveApplyPage(props: PageProps<"/music-
   const params = await props.searchParams;
   const error = typeof params?.error === "string" ? params.error : undefined;
   const message = error ? errorMessages[error] : undefined;
+
+  // The form is not rendered at all, rather than rendered disabled. A
+  // disabled form still invites filling in, and anything that can be
+  // re-enabled from the browser is not a lock.
+  if (!MUSIC_APPLICATIONS_OPEN) {
+    return (
+      <section className="bg-flame-radial flex flex-1 items-center justify-center px-6 py-20">
+        <div className="card-surface w-full max-w-md rounded-2xl p-8 sm:p-10">
+          <span className="text-xs font-semibold tracking-[0.2em] text-muted uppercase">
+            Music Collective
+          </span>
+          <h1 className="font-display mt-3 text-4xl tracking-wide">
+            Applications are <span className="text-flame">closed</span>
+          </h1>
+
+          <OpenCallNotice tone="surface" showLabel={false} className="mt-6" />
+
+          <p className="mt-6 text-center text-sm text-muted">
+            In the meantime,{" "}
+            <Link href="/music-collective" className="text-flame font-medium">
+              hear who is already in
+            </Link>
+            .
+          </p>
+          <p className="mt-2 text-center text-sm text-muted">
+            Already approved?{" "}
+            <Link href="/login" className="text-flame font-medium">
+              Log in
+            </Link>
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="bg-flame-radial flex flex-1 items-center justify-center px-6 py-20">

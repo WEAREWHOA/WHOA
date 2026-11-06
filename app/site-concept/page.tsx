@@ -99,7 +99,7 @@ const JOURNEYS: Journey[] = [
     entry: "Plays, produces, or DJs and wants to be part of it",
     accent: "#baff29",
     steps: [
-      { label: "Apply", href: "/music-collective/apply" },
+      { label: "Apply (closed)", href: "/music-collective/apply" },
       { label: "We review" },
       { label: "MUSIC tab unlocked" },
       { label: "Edit their profile", note: "bio, genre, links" },
