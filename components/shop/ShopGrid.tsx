@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { Product } from "@/lib/types";
@@ -9,6 +9,17 @@ import { compareFeatured, shopBandOf } from "@/lib/shopOrder";
 import { isOutOfStock } from "@/lib/stock";
 
 type SortOption = "featured" | "price-asc" | "price-desc" | "name";
+
+/**
+ * How many at a time.
+ *
+ * Twenty-five by default rather than everything, because the grid used
+ * to render the whole catalogue into one page: every card mounts, every
+ * image is requested, and on a phone that is a long scroll and a lot of
+ * data before the first thing you wanted to see.
+ */
+const PER_PAGE_OPTIONS = [25, 50, 100] as const;
+const DEFAULT_PER_PAGE = 25;
 
 // Must match ART_COLLECTIVE_CATEGORY_DISPLAY_NAME in lib/catalog.ts — kept
 // as a plain string here rather than imported, since that module also
@@ -91,6 +102,24 @@ export default function ShopGrid({ products, artistNames }: { products: Product[
   const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
   const [sort, setSort] = useState<SortOption>("featured");
   const [hideSoldOut, setHideSoldOut] = useState(false);
+  const [perPage, setPerPage] = useState<number>(DEFAULT_PER_PAGE);
+  const [page, setPage] = useState(1);
+  const gridTop = useRef<HTMLDivElement>(null);
+
+  /**
+   * Any change to what is being shown starts again at page one.
+   *
+   * Done in the handlers rather than in an effect watching the filters:
+   * an effect that sets state during render is what React now warns
+   * about, and this is a reaction to a click, which is exactly what a
+   * handler is for.
+   */
+  function resetPage<T>(set: (value: T) => void) {
+    return (value: T) => {
+      set(value);
+      setPage(1);
+    };
+  }
 
   const artistNameSet = useMemo(() => new Set(artistNames.map((name) => name.toLowerCase())), [artistNames]);
 
@@ -176,6 +205,39 @@ export default function ShopGrid({ products, artistNames }: { products: Product[
       ? filtered.findIndex((product) => shopBandOf(product, artistCategoryIds) === 1)
       : -1;
 
+  // Clamped on the way out rather than corrected on the way in. A
+  // filter that shrinks the list to one page while somebody is on page
+  // four would otherwise show them an empty grid and no way back.
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+  const currentPage = Math.min(page, totalPages);
+  const firstIndex = (currentPage - 1) * perPage;
+  const pageItems = filtered.slice(firstIndex, firstIndex + perPage);
+
+  // The Art Collective divider is an index into the whole list, so it
+  // only belongs on the page it actually falls in.
+  const dividerAt = collectiveStartsAt > 0 ? collectiveStartsAt - firstIndex : -1;
+
+  function goTo(next: number) {
+    setPage(Math.min(Math.max(next, 1), totalPages));
+    // Back to the top of the grid, not the top of the document: the
+    // controls are sticky and the thing that changed is the products.
+    gridTop.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  /**
+   * Which page numbers to draw.
+   *
+   * First, last, and a window around where you are, with gaps marked.
+   * A catalogue of a few hundred at twenty-five a page is a dozen
+   * buttons; without the window it is a row that wraps onto three lines
+   * and stops being navigation.
+   */
+  const pageNumbers: (number | "gap")[] = [];
+  for (let n = 1; n <= totalPages; n++) {
+    if (n === 1 || n === totalPages || Math.abs(n - currentPage) <= 1) pageNumbers.push(n);
+    else if (pageNumbers[pageNumbers.length - 1] !== "gap") pageNumbers.push("gap");
+  }
+
   return (
     <div className="relative z-10 mt-6 w-full max-w-6xl sm:mt-10">
       {/* Everything you steer the shop with, in one bar that stays put.
@@ -198,7 +260,7 @@ export default function ShopGrid({ products, artistNames }: { products: Product[
             <input
               type="search"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => resetPage(setSearch)(e.target.value)}
               placeholder="Search WHOA"
               aria-label="Search products"
               // enterKeyHint puts "Search" on the phone keyboard's
@@ -213,7 +275,7 @@ export default function ShopGrid({ products, artistNames }: { products: Product[
             {search && (
               <button
                 type="button"
-                onClick={() => setSearch("")}
+                onClick={() => resetPage(setSearch)("")}
                 aria-label="Clear search"
                 className="absolute top-1/2 right-3 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-sm text-white/70"
               >
@@ -229,7 +291,7 @@ export default function ShopGrid({ products, artistNames }: { products: Product[
             <div className="shop-chiprow -mx-6 px-6 sm:mx-0 sm:flex-wrap sm:justify-center sm:px-0">
               <button
                 type="button"
-                onClick={() => setCategoryId(null)}
+                onClick={() => resetPage(setCategoryId)(null)}
                 aria-pressed={categoryId === null}
                 className={`shrink-0 rounded-full px-5 py-2.5 text-xs font-bold tracking-wide uppercase transition-transform ${
                   categoryId === null
@@ -246,7 +308,7 @@ export default function ShopGrid({ products, artistNames }: { products: Product[
                   <button
                     key={category.id}
                     type="button"
-                    onClick={() => setCategoryId(active ? null : category.id)}
+                    onClick={() => resetPage(setCategoryId)(active ? null : category.id)}
                     aria-pressed={active}
                     // Colour carries which category it is; the ring
                     // carries which one is chosen. Dimming the rest
@@ -278,13 +340,31 @@ export default function ShopGrid({ products, artistNames }: { products: Product[
               is the thing a search needs to answer first. */}
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs text-white/60">
-              {filtered.length.toLocaleString()} item{filtered.length === 1 ? "" : "s"}
+              {/* The range, not just the total, because with pages the
+                  honest answer to "how many" is both. */}
+              {filtered.length > perPage
+                ? `${(firstIndex + 1).toLocaleString()}–${Math.min(firstIndex + perPage, filtered.length).toLocaleString()} of ${filtered.length.toLocaleString()}`
+                : `${filtered.length.toLocaleString()} item${filtered.length === 1 ? "" : "s"}`}
               {search ? ` for “${search.trim()}”` : ""}
             </p>
             <div className="flex items-center gap-2">
+              <label>
+                <span className="sr-only">How many to show</span>
+                <select
+                  value={perPage}
+                  onChange={(e) => resetPage(setPerPage)(Number(e.target.value))}
+                  className="rounded-full border border-white/20 bg-black/40 px-3 py-2 text-xs font-semibold tracking-wide text-white uppercase outline-none focus:border-flame-2"
+                >
+                  {PER_PAGE_OPTIONS.map((n) => (
+                    <option key={n} value={n} className="bg-surface text-foreground">
+                      View {n}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <button
                 type="button"
-                onClick={() => setHideSoldOut((v) => !v)}
+                onClick={() => resetPage(setHideSoldOut)(!hideSoldOut)}
                 aria-pressed={hideSoldOut}
                 className={chip(hideSoldOut)}
               >
@@ -294,7 +374,7 @@ export default function ShopGrid({ products, artistNames }: { products: Product[
                 <span className="sr-only">Sort by</span>
                 <select
                   value={sort}
-                  onChange={(e) => setSort(e.target.value as SortOption)}
+                  onChange={(e) => resetPage(setSort)(e.target.value as SortOption)}
                   className="rounded-full border border-white/20 bg-black/40 px-3 py-2 text-xs font-semibold tracking-wide text-white uppercase outline-none focus:border-flame-2"
                 >
                   {(Object.keys(SORT_LABELS) as SortOption[]).map((key) => (
@@ -315,10 +395,13 @@ export default function ShopGrid({ products, artistNames }: { products: Product[
           category.
         </p>
       ) : (
-        <div className="mt-6 grid w-full grid-cols-2 gap-x-3 gap-y-6 sm:mt-14 sm:flex sm:flex-wrap sm:items-start sm:justify-center sm:gap-x-8 sm:gap-y-14">
-          {filtered.map((product, i) => (
+        <div
+          ref={gridTop}
+          className="mt-6 grid w-full scroll-mt-40 grid-cols-2 gap-x-3 gap-y-6 sm:mt-14 sm:flex sm:flex-wrap sm:items-start sm:justify-center sm:gap-x-8 sm:gap-y-14"
+        >
+          {pageItems.map((product, i) => (
             <Fragment key={product.id}>
-              {i === collectiveStartsAt && i > 0 && (
+              {i === dividerAt && (
                 // w-full breaks the flex-wrap row, so this sits on its own
                 // line however many cards happen to precede it.
                 <div className="col-span-2 w-full pt-4 text-center">
@@ -334,6 +417,58 @@ export default function ShopGrid({ products, artistNames }: { products: Product[
             </Fragment>
           ))}
         </div>
+      )}
+
+      {/* ───── Pages ─────
+          Buttons rather than links. The grid's state lives in this
+          component, so a page is not a URL here; a link would promise
+          something shareable that it cannot deliver. */}
+      {totalPages > 1 && (
+        <nav
+          aria-label="Shop pages"
+          className="mt-12 flex flex-wrap items-center justify-center gap-2"
+        >
+          <button
+            type="button"
+            onClick={() => goTo(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold tracking-wide text-white/80 uppercase transition-colors enabled:hover:border-flame-2/60 enabled:hover:text-white disabled:opacity-30"
+          >
+            Prev
+          </button>
+
+          {pageNumbers.map((n, i) =>
+            n === "gap" ? (
+              <span key={`gap-${i}`} aria-hidden className="px-1 text-white/40">
+                …
+              </span>
+            ) : (
+              <button
+                key={n}
+                type="button"
+                onClick={() => goTo(n)}
+                aria-current={n === currentPage ? "page" : undefined}
+                aria-label={`Page ${n}`}
+                className={`min-w-10 rounded-full px-3.5 py-2 text-xs font-bold tracking-wide transition-colors ${
+                  n === currentPage
+                    ? "bg-white text-black"
+                    : "border border-white/20 text-white/80 hover:border-flame-2/60 hover:text-white"
+                }`}
+              >
+                {n}
+              </button>
+            ),
+          )}
+
+          <button
+            type="button"
+            onClick={() => goTo(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="rounded-full border border-white/20 px-4 py-2 text-xs font-semibold tracking-wide text-white/80 uppercase transition-colors enabled:hover:border-flame-2/60 enabled:hover:text-white disabled:opacity-30"
+          >
+            Next
+          </button>
+        </nav>
       )}
     </div>
   );

@@ -2725,3 +2725,27 @@ body {
   font-size: 11px;
   color: var(--muted);
 }
+
+/* ───── The rocket under the solar system ─────
+   A planet that is not open yet: the same sphere treatment as the
+   others, in grey rather than a brand colour, because the colours on
+   this page mean "go here" and this one does not. */
+.whoa-coming-soon {
+  background: radial-gradient(circle at 32% 28%, #6b6b74 0%, #3a3a42 52%, #16161b 100%);
+  box-shadow:
+    inset -8px -10px 22px rgb(0 0 0 / 0.55),
+    0 0 34px rgb(140 140 155 / 0.18);
+}
+
+@keyframes whoa-rocket-burn {
+  0%, 100% { transform: scaleY(1) scaleX(1); opacity: 0.95; }
+  50% { transform: scaleY(0.82) scaleX(1.12); opacity: 0.75; }
+}
+.whoa-rocket-flame {
+  transform-origin: 60px 36px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .whoa-rocket-flame {
+    animation: whoa-rocket-burn 260ms ease-in-out infinite;
+  }
+}

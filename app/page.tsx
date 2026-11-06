@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 import SolarSystem from "@/components/home/SolarSystem";
-import CollectionCarousel from "@/components/home/CollectionCarousel";
-import { listProducts } from "@/lib/catalog";
+import RocketTrail from "@/components/home/RocketTrail";
 
 export const metadata: Metadata = {
   // Self-canonical, so the ?cfa=gpl / ?si=true tracking variants
@@ -14,18 +13,15 @@ export const metadata: Metadata = {
     "The WHOA universe — shop the WHOADEGA, catch an event, join the crew, and meet the artists and musicians behind it all.",
 };
 
-/** The collections below are read from the catalogue, so this cannot be
- *  a page built once and kept. */
+/**
+ * Nothing on this page reads the catalogue any more, so it could be
+ * static. Kept on a revalidate anyway: the rocket below links at a
+ * planet that is not open yet, and when it opens this page should pick
+ * that up without waiting for an unrelated deploy.
+ */
 export const revalidate = 300;
 
-export default async function Home() {
-  // Never fatal. The front page is the brand first; losing Square for a
-  // minute should cost the collections rail, not the whole page.
-  const products = await listProducts({ onlineOnly: true }).catch((err) => {
-    console.error("Couldn't load products for the home collections:", err);
-    return [];
-  });
-
+export default function Home() {
   return (
     <>
       {/* min-h-screen on its own put a whole screen between arriving and
@@ -37,7 +33,9 @@ export default async function Home() {
         <SolarSystem />
       </section>
 
-      <CollectionCarousel products={products} />
+      {/* Follow the smoke. The trail draws itself as the page moves, so
+          there is always a little more of it below where you are. */}
+      <RocketTrail />
     </>
   );
 }
