@@ -149,6 +149,44 @@ export default function InventoryTab({
         shop&apos;s bulk upload matches on.
       </p>
 
+      {/* ───── Filling in somebody else's sheet ─────
+          The job this removes is dull and real: TikTok hands you a
+          sheet of your own listings and you type a number into every
+          row by reading it off another screen. */}
+      <div className="mt-8 rounded-xl border border-border p-4">
+        <h4 className="font-semibold">Fill in a stock sheet</h4>
+        <p className="mt-1 text-sm text-muted">
+          Download the restock sheet from TikTok (or anywhere else that wants your numbers), save
+          it as CSV, and upload it here. You get back a quantity column in the same row order,
+          ready to paste straight into their sheet. We never change their file, so whatever shape
+          they want it in stays intact.
+        </p>
+
+        <form
+          action="/portal/inventory/restock"
+          method="post"
+          encType="multipart/form-data"
+          className="mt-4 flex flex-wrap items-center gap-3"
+        >
+          <input
+            type="file"
+            name="sheet"
+            accept=".csv,text/csv"
+            required
+            aria-label="The stock sheet to fill in"
+            className="text-sm text-muted file:mr-3 file:rounded-full file:border-0 file:bg-surface-raised file:px-4 file:py-2 file:text-xs file:font-semibold file:uppercase file:tracking-wide"
+          />
+          <button type="submit" className="ba-btn">
+            FILL IT IN
+          </button>
+        </form>
+
+        <p className="mt-2 text-xs text-muted">
+          Rows we can&apos;t match come back empty with a reason next to them, never as a zero: a
+          zero in a stock column means sold out, and a typo in a SKU should not delist a product.
+        </p>
+      </div>
+
       <h4 className="mt-8 font-semibold">Counts</h4>
       {lines.length === 0 ? (
         <p className="an-empty">
