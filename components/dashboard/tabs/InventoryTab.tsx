@@ -105,7 +105,7 @@ export default function InventoryTab({
         <input
           name="q"
           defaultValue={query}
-          placeholder="Search by product or option"
+          placeholder="Search by product, option or SKU"
           aria-label="Search the catalogue"
           className="border-border-strong bg-surface-raised min-w-0 flex-1 rounded-lg border px-4 py-2 text-sm outline-none focus:border-flame-2"
         />
@@ -131,6 +131,12 @@ export default function InventoryTab({
             COPY FROM SQUARE
           </button>
         </form>
+        {/* A plain link, not a form. It is a download, and a download
+            that works with JavaScript off is one fewer thing to be
+            broken on a phone in a stockroom. */}
+        <a href="/portal/inventory/export" className="ba-btn" download>
+          EXPORT CSV
+        </a>
       </div>
 
       {/* Said plainly rather than left to be discovered. This button is
@@ -139,8 +145,47 @@ export default function InventoryTab({
       <p className="mt-2 text-xs text-muted">
         Copying is safe while Square is still selling: it restates what Square says. Stop using it
         once the shop sells against this table, or it will overwrite real sales with Square&apos;s
-        older view.
+        older view. The export is these counts keyed by SKU, which is the column every other
+        shop&apos;s bulk upload matches on.
       </p>
+
+      {/* ───── Filling in somebody else's sheet ─────
+          The job this removes is dull and real: TikTok hands you a
+          sheet of your own listings and you type a number into every
+          row by reading it off another screen. */}
+      <div className="mt-8 rounded-xl border border-border p-4">
+        <h4 className="font-semibold">Fill in a stock sheet</h4>
+        <p className="mt-1 text-sm text-muted">
+          Download the restock sheet from TikTok (or anywhere else that wants your numbers), save
+          it as CSV, and upload it here. You get back a quantity column in the same row order,
+          ready to paste straight into their sheet. We never change their file, so whatever shape
+          they want it in stays intact.
+        </p>
+
+        <form
+          action="/portal/inventory/restock"
+          method="post"
+          encType="multipart/form-data"
+          className="mt-4 flex flex-wrap items-center gap-3"
+        >
+          <input
+            type="file"
+            name="sheet"
+            accept=".csv,text/csv"
+            required
+            aria-label="The stock sheet to fill in"
+            className="text-sm text-muted file:mr-3 file:rounded-full file:border-0 file:bg-surface-raised file:px-4 file:py-2 file:text-xs file:font-semibold file:uppercase file:tracking-wide"
+          />
+          <button type="submit" className="ba-btn">
+            FILL IT IN
+          </button>
+        </form>
+
+        <p className="mt-2 text-xs text-muted">
+          Rows we can&apos;t match come back empty with a reason next to them, never as a zero: a
+          zero in a stock column means sold out, and a typo in a SKU should not delist a product.
+        </p>
+      </div>
 
       <h4 className="mt-8 font-semibold">Counts</h4>
       {lines.length === 0 ? (
@@ -156,6 +201,7 @@ export default function InventoryTab({
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{line.productName}</p>
                 <p className="truncate text-xs text-muted">
+                  {line.sku ? `${line.sku} · ` : ""}
                   {line.variationName}
                   {line.unseen && " · never counted"}
                   {!line.tracked && " · not tracked"}

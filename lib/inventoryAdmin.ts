@@ -14,6 +14,8 @@ import { getStock } from "./stockStore";
 
 export interface StockLine {
   variationId: string;
+  /** Square's SKU, the only id we share with anywhere else. Often empty. */
+  sku: string | null;
   productName: string;
   variationName: string;
   quantity: number;
@@ -46,7 +48,7 @@ export async function listStockLines(locationId: string): Promise<StockLine[]> {
 
   const { data, error } = await supabase
     .from("square_product_variations")
-    .select("id, name, square_products(name)")
+    .select("id, name, sku, square_products(name)")
     .order("name", { ascending: true });
 
   if (error) throw new Error(`Couldn't read the catalogue: ${error.message}`);
@@ -54,11 +56,13 @@ export async function listStockLines(locationId: string): Promise<StockLine[]> {
   const rows = (data ?? []) as unknown as {
     id: string;
     name: string;
+    sku: string | null;
     square_products: { name: string } | { name: string }[] | null;
   }[];
 
   const lines = rows.map((row) => ({
     variationId: row.id,
+    sku: row.sku,
     // The join comes back as an object or a single-element array
     // depending on how PostgREST reads the relationship; both mean one
     // product, and an unnamed one is still worth listing.

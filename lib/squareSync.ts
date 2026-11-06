@@ -91,6 +91,12 @@ export async function syncFullCatalog(): Promise<{ productIds: string[]; variati
           id: variation.id,
           product_id: item.id,
           name: varData.name ?? "Default",
+          // Square's own field, mirrored rather than derived. It is the
+          // only identifier we share with anywhere else that sells the
+          // same thing, so it is the join key for a bulk upload or a
+          // channel listing. Empty where Square has none: a blank cell
+          // somebody can see beats a made-up code that matches nothing.
+          sku: varData.sku?.trim() || null,
           price_cents: Number(varData.priceMoney?.amount ?? 0),
           updated_at: new Date().toISOString(),
         });
