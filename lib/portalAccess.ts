@@ -65,6 +65,10 @@ export async function requirePortal(): Promise<PortalAccess> {
       // permission of its own, which would be another box to tick on
       // every account that needs it.
       inventory: admin || p.baAdmin || p.analytics,
+      // Whoever moderates the map decides what a photograph submitted
+      // by a stranger looks like on our front end. Kept with the
+      // people who already answer for what the site publishes.
+      "whoa-map": admin || p.baAdmin || p.blog,
     },
   };
 }

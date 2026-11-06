@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* Leaflet's own stylesheet, without which the tiles stack in a column
+   and the controls are unstyled text.
+
+   Imported HERE rather than in the component that uses it, and that is
+   the whole reason it is in this file: imported from the component it
+   loads after this stylesheet, so its light-theme defaults win and the
+   map shows a grey box with a white popup on a dark site. From the top
+   of this file, the overrides further down are simply later. */
+@import "leaflet/dist/leaflet.css";
+
 :root {
   --background: #0a0806;
   --surface: #14100c;
@@ -2644,4 +2654,74 @@ body {
 
 .swipe-track::-webkit-scrollbar {
   display: none;
+}
+
+/* ───── WHOA map ─────
+   Leaflet ships a light popup and light controls, which on this site
+   is a white card sitting on a dark map. These are the few overrides
+   that cost less than restyling the whole library. */
+.leaflet-container {
+  background: var(--surface-raised);
+  font-family: inherit;
+}
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: var(--background);
+  color: var(--foreground);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.5);
+}
+.leaflet-popup-content {
+  margin: 10px 12px;
+  width: 200px !important;
+}
+.leaflet-popup-close-button {
+  color: var(--muted) !important;
+}
+.leaflet-control-zoom a {
+  background: var(--background);
+  color: var(--foreground);
+  border-color: var(--border-strong);
+}
+.leaflet-control-zoom a:hover {
+  background: var(--surface-raised);
+}
+/* The map opens at its minimum zoom, so zoom-out starts disabled, and
+   Leaflet styles that state light grey. Without this the control is
+   one dark button and one white one. */
+.leaflet-control-zoom a.leaflet-disabled {
+  background: var(--background);
+  color: var(--muted);
+  opacity: 0.45;
+}
+.leaflet-control-attribution {
+  background: rgb(0 0 0 / 0.6) !important;
+  color: var(--muted) !important;
+  font-size: 10px;
+}
+.leaflet-control-attribution a {
+  color: var(--muted) !important;
+}
+
+.wm-popup img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+.wm-popup strong {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.wm-popup p {
+  margin: 2px 0 0;
+  font-size: 13px;
+}
+.wm-popup .wm-by {
+  font-size: 11px;
+  color: var(--muted);
 }

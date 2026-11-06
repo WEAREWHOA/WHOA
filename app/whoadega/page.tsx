@@ -6,7 +6,7 @@ import ProductCard from "@/components/shop/ProductCard";
 import { listProducts } from "@/lib/catalog";
 import { getNextWhoaWednesday } from "@/lib/whoaWednesday";
 import { shopEvents, whoadega } from "@/lib/whoadega";
-import { directionsUrl, formatAddress, mapEmbedUrl } from "@/lib/stores";
+import { directionsUrl, formatAddress, googleMapsUrl, mapEmbedUrl } from "@/lib/stores";
 import { SITE_URL } from "@/lib/site";
 import type { Product } from "@/lib/types";
 
@@ -73,13 +73,17 @@ function buildJsonLd(hasEvents: boolean): string {
       addressCountry: address.country,
     },
     parentOrganization: { "@type": "Organization", name: "WHOA", url: SITE_URL },
+    // The Google listing, named as this place's map. Still no
+    // openingHours: we do not hold them, Google does, and asserting a
+    // guess here is how a search result tells somebody we are open on
+    // a day we are shut. This points at the source instead of
+    // competing with it.
+    hasMap: googleMapsUrl("The WHOADEGA", address),
     // Claimed only when there are events to point at. A venue in the
     // markup with nothing on is a claim a crawler can check and find
     // empty, which is worse than not making it.
     ...(hasEvents ? { subjectOf: { "@type": "WebPage", url: `${SITE_URL}/events` } } : {}),
-    // Deliberately no openingHours. We do not have them written down,
-    // and publishing a guess in structured data is how a shopper drives
-    // to Newport Ave on a day we are shut.
+
   };
 
   return JSON.stringify(jsonLd).replace(/</g, "\\u003c");
@@ -381,15 +385,36 @@ export default async function WhoadegaPage() {
               {address.city}, {address.region} {address.postalCode}
             </address>
 
+            {/* ───── Hours ─────
+                Sent to Google rather than printed here, and that is the
+                right answer rather than a dodge. Hours move for
+                holidays, for an event running late, for a quiet
+                Tuesday, and Google is the one place that gets updated
+                when they do. A second copy on this page would be a
+                second thing to remember, and the one that is wrong is
+                always the copy nobody thought about. Wrong hours are
+                worse than no hours: they send somebody across town to
+                a locked door. */}
+            <p className="mt-5 text-sm leading-relaxed">
+              <strong className="font-semibold">Today&apos;s hours</strong> are on{" "}
+              <a
+                href={googleMapsUrl("The WHOADEGA", address)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-flame hover:underline"
+              >
+                our Google listing
+              </a>
+              , which is always the live one. Holidays and event nights move them, and that is
+              where we keep them current.
+            </p>
+
             {shop.phone && (
-              <p className="mt-4 text-sm">
+              <p className="mt-3 text-sm">
+                <span className="text-muted">Or call: </span>
                 <a href={`tel:${shop.phone}`} className="text-flame hover:underline">
                   {shop.phone.replace("+1-", "")}
                 </a>
-                {/* Hours are not written down anywhere we trust, and a
-                    guessed opening time sends somebody across town to a
-                    locked door. Ask, rather than assert. */}
-                <span className="text-muted"> &middot; call ahead for today&apos;s hours</span>
               </p>
             )}
 
@@ -401,6 +426,14 @@ export default async function WhoadegaPage() {
                 className="btn-flame rounded-full px-6 py-3 text-sm font-semibold tracking-wide uppercase"
               >
                 Directions
+              </a>
+              <a
+                href={googleMapsUrl("The WHOADEGA", address)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="border-border-strong hover:border-flame-2/60 rounded-full border px-6 py-3 text-sm font-semibold tracking-wide uppercase transition-colors"
+              >
+                Hours on Google
               </a>
               <Link
                 href="/stores"

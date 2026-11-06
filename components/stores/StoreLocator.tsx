@@ -6,6 +6,7 @@ import { useState } from "react";
 import StoreKindIcon from "@/components/stores/StoreKindIcon";
 import {
   directionsUrl,
+  googleMapsUrl,
   formatAddress,
   mapEmbedUrl,
   STORE_KIND_LABELS,
@@ -149,7 +150,35 @@ export default function StoreLocator({ locations }: { locations: StoreLocation[]
               </p>
             )}
 
-            {location.hours && <p className="mt-1 text-sm text-muted">{location.hours}</p>}
+            {/* Written hours where we have them. Where we do not, the
+                Google listing rather than silence: it is the copy that
+                gets updated for a holiday or a late event night, and
+                it is one tap from here.
+
+                Only for a shop of ours. A counter inside somebody
+                else's shop keeps their hours, and a stall at an event
+                is open for the event, so sending either to a venue's
+                Google listing answers a question nobody asked with
+                somebody else's opening times. */}
+            {location.hours ? (
+              <p className="mt-1 text-sm text-muted">{location.hours}</p>
+            ) : (
+              location.address &&
+              location.kind === "retail-store" && (
+                <p className="mt-1 text-sm text-muted">
+                  Hours on{" "}
+                  <a
+                    href={googleMapsUrl(location.name, location.address)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-flame font-medium hover:underline"
+                  >
+                    Google
+                  </a>
+                  , where we keep them current.
+                </p>
+              )
+            )}
 
             <div className="mt-5 flex flex-wrap gap-3">
               {location.address && (

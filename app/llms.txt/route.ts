@@ -65,6 +65,7 @@ export async function GET() {
 ## Take part
 
 - [Events](${SITE_URL}/events)
+- [WHOA Map: every sticker and piece spotted around the world, sent in by the people who found them](${SITE_URL}/whoa-map)
 - [Become a brand ambassador](${SITE_URL}/ambassadors)
 - [Apply](${SITE_URL}/join)
 

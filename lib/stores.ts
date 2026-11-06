@@ -100,6 +100,24 @@ export function directionsUrl(address: StoreAddress): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(formatAddress(address))}`;
 }
 
+/**
+ * The place on Google, which is where the hours actually live.
+ *
+ * Searched by business name AND address rather than address alone.
+ * The address by itself resolves to a point on a street, which shows a
+ * pin and no opening times; the name pulls up the business listing,
+ * which is the thing somebody was sent here to read.
+ *
+ * Not stored as a place id, which would be the precise way to do it,
+ * because we do not hold one and a guessed id points at somebody
+ * else's shop. A search that occasionally needs one tap is better than
+ * a link that is confidently wrong.
+ */
+export function googleMapsUrl(name: string, address: StoreAddress): string {
+  const query = `${name} ${formatAddress(address)}`;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
 /** The same address, as an embeddable map. No API key: the plain embed
  *  endpoint takes a query string and geocodes it itself. */
 export function mapEmbedUrl(address: StoreAddress): string {
