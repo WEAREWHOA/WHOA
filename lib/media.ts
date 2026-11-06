@@ -271,11 +271,18 @@ export class MediaError extends Error {}
  * Validation happens here rather than in each caller so a new upload
  * surface can't quietly skip it.
  */
-export async function uploadMedia(
-  code: string,
-  kind: MediaKind,
+/**
+ * An uploaded image, checked and turned into something storable.
+ *
+ * Split out of uploadMedia so that an upload with no account behind it
+ * goes through exactly these checks rather than a second, laxer copy of
+ * them. The HEIC handling in particular is the kind of thing that gets
+ * reimplemented slightly wrong: one caller accepting a format the
+ * bucket refuses is a silent failure at the far end.
+ */
+export async function prepareImage(
   file: File,
-): Promise<MediaItem> {
+): Promise<{ buffer: Buffer; contentType: string; extension: string }> {
   if (file.size === 0) throw new MediaError("That file is empty.");
   if (file.size > MAX_MEDIA_BYTES) {
     throw new MediaError(
@@ -294,12 +301,22 @@ export async function uploadMedia(
 
   // Converted here rather than refused, because HEIC is what an iPhone
   // takes photographs in and telling somebody to go and convert their
-  // own flyer by hand is not a limit worth having. Storage keeps the
+  // own photo by hand is not a limit worth having. Storage keeps the
   // JPEG: the bucket allows the four web formats and nothing drawing
   // one of these can render HEIC anyway.
-  const buffer = heif ? await heifToJpeg(original) : original;
-  const contentType = heif ? "image/jpeg" : file.type || "image/jpeg";
-  const extension = heif ? "jpg" : extensionFor(file);
+  return {
+    buffer: heif ? await heifToJpeg(original) : original,
+    contentType: heif ? "image/jpeg" : file.type || "image/jpeg",
+    extension: heif ? "jpg" : extensionFor(file),
+  };
+}
+
+export async function uploadMedia(
+  code: string,
+  kind: MediaKind,
+  file: File,
+): Promise<MediaItem> {
+  const { buffer, contentType, extension } = await prepareImage(file);
 
   await ensureMediaBucket();
 

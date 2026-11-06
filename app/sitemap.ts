@@ -52,6 +52,9 @@ const STATIC_ROUTES = [
   // places; this is the one that answers "what is the WHOADEGA", which
   // is a different search and needs its own URL to rank for.
   "/whoadega",
+  // Grows a pin at a time from what people send in, so it earns its
+  // own crawl rather than being discovered through the footer alone.
+  "/whoa-map",
   "/partnerships",
   "/custom-design",
   "/same-same-but-whoa",
