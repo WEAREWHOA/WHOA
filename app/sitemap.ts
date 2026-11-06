@@ -48,6 +48,10 @@ const STATIC_ROUTES = [
   "/games/visualizer",
   "/games/whoa-puzzle",
   "/stores",
+  // The shop's own page. /stores is the locator that compares three
+  // places; this is the one that answers "what is the WHOADEGA", which
+  // is a different search and needs its own URL to rank for.
+  "/whoadega",
   "/partnerships",
   "/custom-design",
   "/same-same-but-whoa",

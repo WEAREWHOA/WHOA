@@ -21,8 +21,17 @@ const FAQS: FaqItem[] = [
   },
   {
     question: "What is WHOADEGA?",
-    answer:
-      "WHOADEGA is WHOA's community hub in Ocean Beach, San Diego. Part shop, part gallery, part event space, with weekly gatherings, live DJ sets, and art events from the WHOA collective.",
+    answer: (
+      <>
+        WHOADEGA is WHOA&apos;s community hub in Ocean Beach, San Diego. Part shop, part gallery,
+        part event space, with weekly gatherings, live DJ sets, and art events from the WHOA
+        collective.{" "}
+        <Link href="/whoadega" className="text-flame font-medium hover:underline">
+          See the shop
+        </Link>
+        .
+      </>
+    ),
   },
   {
     question: "Are your pieces really one-of-a-kind?",

@@ -124,7 +124,7 @@ export const PERMANENT_LOCATIONS: StoreLocation[] = [
       country: "US",
     },
     phone: "+1-619-630-9551",
-    href: "/events",
+    href: "/whoadega",
   },
   {
     // Kept as "pangea" so the /stores#pangea link stays good.

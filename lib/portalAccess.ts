@@ -60,6 +60,11 @@ export async function requirePortal(): Promise<PortalAccess> {
       "art-admin": admin || p.artAdmin,
       "music-admin": admin || p.musicAdmin,
       blog: admin || p.blog,
+      // Stock is money, and this tab writes it. Kept with the people
+      // who already hold the widest views rather than given a
+      // permission of its own, which would be another box to tick on
+      // every account that needs it.
+      inventory: admin || p.baAdmin || p.analytics,
     },
   };
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import StoreKindIcon from "@/components/stores/StoreKindIcon";
 import StoreLocator from "@/components/stores/StoreLocator";
@@ -121,7 +122,11 @@ export default async function StoresPage() {
       {/* Written for a person, and it happens to be what a search engine
           reads as the summary: the shop, the city, the street. */}
       <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted">
-        WHOA is made and sold in San Diego. Our shop, the WHOADEGA, is at{" "}
+        WHOA is made and sold in San Diego. Our shop,{" "}
+        <Link href="/whoadega" className="text-flame hover:underline">
+          the WHOADEGA
+        </Link>
+        , is at{" "}
         <strong className="text-foreground">{formatAddress(locations[0].address!)}</strong>, in Ocean
         Beach. You&apos;ll also find our own section inside other shops, and a stall wherever
         we&apos;re running an event.
