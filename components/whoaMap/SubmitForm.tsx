@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import HumanCheck from "@/components/forms/HumanCheck";
+import PinPicker from "./PinPicker";
 import { submitPinAction } from "@/app/whoa-map/actions";
 import { PIN_KINDS, PIN_KIND_LABELS } from "@/lib/whoaMap";
 import { MAX_MEDIA_BYTES, UPLOAD_ACCEPT } from "@/lib/media";
@@ -87,6 +88,8 @@ export default function SubmitForm() {
           />
         </label>
       </div>
+
+      <PinPicker />
 
       <label className="flex flex-col gap-1.5 text-sm">
         <span className="font-semibold">Photo of it</span>

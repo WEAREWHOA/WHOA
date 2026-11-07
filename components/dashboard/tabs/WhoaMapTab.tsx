@@ -89,6 +89,16 @@ export default function WhoaMapTab({
                 <p className="text-xs text-muted">
                   {pin.uploadedBy} · {when(pin.submittedAt)}
                 </p>
+                {/* A dropped pin is a claim somebody made about a
+                    specific corner; a geocoded one is only ever as
+                    good as the city. Worth saying which is which to
+                    whoever is deciding. */}
+                {pin.latitude !== null && pin.longitude !== null && (
+                  <p className="mt-1 text-xs text-muted">
+                    📍 {pin.latitude.toFixed(5)}, {pin.longitude.toFixed(5)}
+                    {pin.locatedBy === "device" ? " · from their phone" : " · dropped by hand"}
+                  </p>
+                )}
 
                 <div className="mt-3 flex gap-2">
                   <form action={approvePinAction}>

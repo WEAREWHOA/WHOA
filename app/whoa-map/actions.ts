@@ -34,6 +34,11 @@ export async function submitPinAction(formData: FormData) {
       country: String(formData.get("country") || ""),
       uploadedBy: String(formData.get("uploadedBy") || ""),
       photo,
+      // Read as strings rather than passed through raw: a multipart
+      // field is a File or a string, and a File here would be parsed
+      // into NaN and silently drop the pin somebody placed.
+      latitude: String(formData.get("latitude") ?? ""),
+      longitude: String(formData.get("longitude") ?? ""),
     });
   } catch (err) {
     unstable_rethrow(err);
@@ -43,7 +48,16 @@ export async function submitPinAction(formData: FormData) {
     if (err instanceof MediaError) {
       redirect(`/whoa-map?error=${encodeURIComponent(err.message)}#send`);
     }
-    console.error("submitPinAction failed:", err);
+    // The real cause, in the server log, with enough of the
+    // submission to find it again. "Something went wrong" is all the
+    // visitor gets, but somebody reading the logs should not have to
+    // guess which submission it was.
+    console.error(
+      "submitPinAction failed for %s in %s:",
+      String(formData.get("uploadedBy") || "(no name)"),
+      String(formData.get("city") || "(no city)"),
+      err,
+    );
     redirect("/whoa-map?error=server#send");
   }
 
