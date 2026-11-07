@@ -2778,3 +2778,20 @@ body {
     stroke-width: 2.2;
   }
 }
+
+/* ───── Making a light map dark ─────
+   OSM's standard tiles are the only ones that need no API key, and
+   they are a light map. Rather than pay a provider for a dark one,
+   the tiles are inverted here.
+
+   The filter is on the TILE pane alone, not the map. Leaflet keeps
+   markers and popups in sibling panes, so inverting the whole thing
+   would turn the orange pins blue and the dark popups white. This way
+   the background flips and everything drawn on top of it does not.
+
+   hue-rotate undoes what invert does to colour: without it, inverting
+   a map turns every green park magenta. The rest takes the glare off
+   so it sits under the pins rather than competing with them. */
+.whoa-map-dark .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.55);
+}

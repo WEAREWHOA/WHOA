@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Map as LeafletMap, CircleMarker } from "leaflet";
+import { TILE_ATTRIBUTION, TILE_MAX_ZOOM, TILE_URL } from "@/lib/mapTiles";
 
 /**
  * Dropping the pin yourself.
@@ -56,10 +57,9 @@ export default function PinPicker() {
         scrollWheelZoom: true,
       });
 
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        maxZoom: 19,
+      L.tileLayer(TILE_URL, {
+        attribution: TILE_ATTRIBUTION,
+        maxZoom: TILE_MAX_ZOOM,
       }).addTo(instance);
 
       instance.on("click", (e: { latlng: { lat: number; lng: number } }) => {
@@ -152,7 +152,7 @@ export default function PinPicker() {
 
       <div
         ref={holder}
-        className="h-64 w-full overflow-hidden rounded-xl border border-border"
+        className="whoa-map-dark h-64 w-full overflow-hidden rounded-xl border border-border"
         role="application"
         aria-label="Tap the map to drop a pin where you saw it"
       />
