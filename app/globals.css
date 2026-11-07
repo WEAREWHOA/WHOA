@@ -3252,3 +3252,26 @@ body {
   white-space: nowrap;
   color: #d8d8d8;
 }
+
+/* The BONUS tag over the Toad House.
+
+   Black on the sand's own orange, which is the pairing the road dots
+   already use, so it reads as part of the map rather than as a label
+   somebody stuck on top of it. It lifts with the house on hover
+   because the two are one object. */
+.whoa-smb-bonus {
+  padding: 2px 6px;
+  background: var(--smb-dot);
+  color: var(--smb-ink);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  line-height: 1.3;
+  box-shadow: 0 0 0 3px var(--smb-ink);
+  transition: transform 90ms steps(2);
+}
+.whoa-smb-stop:hover .whoa-smb-bonus,
+.whoa-smb-stop:focus-visible .whoa-smb-bonus {
+  transform: translateY(-4px);
+}

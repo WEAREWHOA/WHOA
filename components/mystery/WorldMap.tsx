@@ -135,7 +135,19 @@ export default function WorldMap() {
                     <span className="whoa-smb-num">{s.n}</span>
                   </span>
                 )}
-                {s.kind === "house" && <span className="whoa-smb-house" aria-hidden />}
+                {s.kind === "house" && (
+                  <>
+                    {/* Sits above the house rather than replacing the
+                        name under it. "BONUS" says what kind of stop
+                        this is; "WHOA CARD" says where it goes, and
+                        dropping the second to make room for the first
+                        would leave a mushroom nobody can place. */}
+                    <span className="whoa-smb-bonus" aria-hidden>
+                      BONUS
+                    </span>
+                    <span className="whoa-smb-house" aria-hidden />
+                  </>
+                )}
                 {s.kind === "castle" && <span className="whoa-smb-castle" aria-hidden />}
                 {s.kind === "start" && (
                   <span className="whoa-smb-start" aria-hidden>
