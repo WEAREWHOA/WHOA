@@ -604,6 +604,22 @@ export async function createCustomPromoCode(
     return { ok: false, reason: "taken" };
   }
 
+  // Also taken if WHOA is running a sale under that code. The two
+  // kinds share one input box at checkout, so a collision would make
+  // the discount a customer gets depend on which lookup ran first, and
+  // the ambassador would stop being paid for their own code. Checked
+  // in both directions: createStorePromo refuses an ambassador's code
+  // the same way.
+  const { data: promoClash, error: promoClashError } = await supabase
+    .from("store_promos")
+    .select("code")
+    .eq("code", slug)
+    .maybeSingle();
+  if (promoClashError) {
+    throw new Error(`Failed to check the code against store promos: ${promoClashError.message}`);
+  }
+  if (promoClash) return { ok: false, reason: "taken" };
+
   const { data, error } = await supabase
     .from("links")
     .insert({

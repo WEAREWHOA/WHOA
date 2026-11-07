@@ -23,6 +23,15 @@
   --flame-2: #ff7a00;
   --flame-3: #ffb800;
 
+  /* The metal WHOA card, matched to the real thing: rose gold, not
+     flame. Four stops because brushed metal is not a flat colour, it
+     is a light and a shadow edge with the sheen running between
+     them. */
+  --rose-1: #9c6f55;
+  --rose-2: #c89a7e;
+  --rose-3: #e8c7b0;
+  --rose-4: #f6e2d4;
+
   --tier-rookie: #b08968;
   --tier-rising: #ff7a00;
   --tier-icon: #ffd23f;
@@ -44,6 +53,11 @@
   --color-flame-1: var(--flame-1);
   --color-flame-2: var(--flame-2);
   --color-flame-3: var(--flame-3);
+
+  --color-rose-1: var(--rose-1);
+  --color-rose-2: var(--rose-2);
+  --color-rose-3: var(--rose-3);
+  --color-rose-4: var(--rose-4);
 
   --color-tier-rookie: var(--tier-rookie);
   --color-tier-rising: var(--tier-rising);
@@ -2794,4 +2808,71 @@ body {
    so it sits under the pins rather than competing with them. */
 .whoa-map-dark .leaflet-tile-pane {
   filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.88) saturate(0.55);
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   THE METAL CARD
+   ───────────────────────────────────────────────────────────────────── */
+
+/*
+ * The WHOA card as it actually looks: rose gold, brushed.
+ *
+ * Three layers, because one gradient reads as plastic. A fine
+ * repeating gradient gives the brush marks, a wide diagonal sheen
+ * gives the light moving across it, and the base gradient gives the
+ * shadow edge the real card has along its bottom. The brush lines run
+ * horizontally, as they do on the card itself.
+ *
+ * The aspect ratio is the ISO/IEC 7810 ID-1 card, which is what a
+ * metal card is cut to, so this is the real proportion rather than a
+ * guess that looks about right.
+ */
+.whoa-card-metal {
+  aspect-ratio: 1.586;
+  border-radius: 12px;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.055) 0px,
+      rgba(255, 255, 255, 0.055) 1px,
+      rgba(120, 70, 45, 0.045) 1px,
+      rgba(120, 70, 45, 0.045) 2px
+    ),
+    linear-gradient(
+      100deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.34) 42%,
+      rgba(255, 255, 255, 0.06) 56%,
+      transparent 72%
+    ),
+    linear-gradient(
+      170deg,
+      var(--rose-4) 0%,
+      var(--rose-3) 34%,
+      var(--rose-2) 80%,
+      var(--rose-1) 100%
+    );
+  /* A thin lighter rim, the way a milled edge catches the light, and a
+     drop shadow warm enough to belong to a copper object rather than
+     the neutral grey everything else on the page casts. */
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 240, 230, 0.4),
+    inset 0 1px 1px rgba(255, 255, 255, 0.5),
+    0 18px 40px -18px rgba(120, 70, 45, 0.75);
+}
+
+/* Text sitting on the metal. Dark, because rose gold is a light
+   surface and the white used everywhere else on this site would be
+   unreadable on it. */
+.whoa-card-metal-ink {
+  color: #4a2d1e;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .whoa-card-metal {
+    transition: transform 240ms ease;
+  }
+  .whoa-card-metal:hover {
+    transform: translateY(-2px);
+  }
 }

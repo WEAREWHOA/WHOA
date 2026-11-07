@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import CardFace from "@/components/whoaCard/CardFace";
 import { formatCents } from "@/lib/money";
 import { MEMBER_PERKS, CARD_PRICE_CENTS } from "@/lib/whoaPerks";
 import { REASON_LABELS, type Wallet, type WalletMovement } from "@/lib/wallet";
@@ -93,6 +94,11 @@ export default function WalletTab({
           <p className="mt-1 text-sm text-muted">
             Since {joined(wallet!.memberSince!)}. Here is what it gets you.
           </p>
+          <CardFace
+            code={wallet!.creditCode}
+            member
+            className="mt-5 w-full sm:w-72"
+          />
           <ul className="mt-4 flex flex-col gap-3">
             {MEMBER_PERKS.map((perk) => (
               <li key={perk.title} className="flex gap-3">

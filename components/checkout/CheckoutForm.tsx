@@ -36,6 +36,9 @@ import { trackBeginCheckout, trackPurchase } from "@/lib/analytics";
 
 interface CheckoutFormProps {
   ambassadorCode: string | null;
+  /** The store sale code on this cart, if any. Here so the quote
+   *  re-runs when it changes; the server reads the cookie regardless. */
+  storePromoCode?: string | null;
   promoApplied?: boolean;
   promoError?: boolean;
 }
@@ -53,6 +56,7 @@ export default function CheckoutForm(props: CheckoutFormProps) {
 
 function CheckoutFields({
   ambassadorCode,
+  storePromoCode,
   promoApplied,
   promoError,
   draft,
@@ -106,6 +110,20 @@ function CheckoutFields({
     : 0;
 
   const discountCents = quote ? quote.discountCents : estimatedDiscountCents;
+
+  // Which discount Square actually put on the order, and which one it
+  // beat. Both come from the quote, so they are the server's answer
+  // rather than this component's guess. Before the quote lands, fall
+  // back to the ambassador code the page was rendered with, which is
+  // the only one known client-side.
+  const applied = quote?.discount ?? null;
+  const passedOver = quote?.passedOver ?? null;
+  const attributedTo = quote?.attributedTo ?? ambassadorCode;
+  const appliedLabel = applied
+    ? applied.source === "ambassador"
+      ? `Ambassador discount (${applied.percent}%)`
+      : `${applied.label || applied.code} (${applied.percent}%)`
+    : `Ambassador discount (${AMBASSADOR_DISCOUNT_PERCENT}%)`;
   const taxCents = quote?.taxCents ?? 0;
   const shippingCents = quote?.shippingCents ?? 0;
   const domestic = isDomestic(country);
@@ -136,7 +154,11 @@ function CheckoutFields({
     return () => {
       cancelled = true;
     };
-  }, [lines, ambassadorCode, country, method]);
+    // storePromoCode is in here because applying a sale code changes
+    // the price without changing anything else this effect watches:
+    // the code lives in a cookie, so without it the customer is shown
+    // the old total until something unrelated happens to re-render.
+  }, [lines, ambassadorCode, storePromoCode, country, method]);
 
   // Once per visit to checkout. The cart reads as empty on the first
   /**
@@ -474,63 +496,84 @@ function CheckoutFields({
           <span>{formatCents(totalCents)}</span>
         </div>
 
-        {ambassadorCode ? (
-          <>
-            {/* A valid code on a cart of ineligible items used to render
-                as "Ambassador discount (15%)  -$0.00" over "Promo code
-                applied", which reads as a checkout that is broken rather
-                than a rule that is being applied. The code IS on the
-                order; Square priced the discount at zero because nothing
-                in the cart carries the eligible marker in its
-                description. So say that instead of promising a
-                percentage that is not coming off.
+        {/* THE DISCOUNT, AND WHY IT IS THAT ONE.
+            
+            Two codes can be in play: the ambassador's, which arrived
+            with the customer, and a store sale code they typed. Only
+            the better one comes off. The other is named rather than
+            dropped silently, because a code that vanishes without a
+            word reads as a broken checkout.
 
-                Gated on the quote having arrived: until Square answers,
-                discountCents is the cart's own optimistic estimate, and
-                a zero there means "not priced yet", not "not eligible". */}
-            {quote && discountCents === 0 ? (
-              <>
-                <div className="mt-2 flex justify-between text-sm text-muted">
-                  <span>Ambassador discount</span>
-                  <span>Not applied</span>
-                </div>
-                <p className="mt-1 text-xs text-muted">
-                  Your code is valid, but nothing in this cart is eligible for it. One-of-a-kind
-                  artist pieces, consignment and guest brands are always full price.
-                </p>
-              </>
-            ) : (
-              <>
-                <div className="text-flame-3 mt-2 flex justify-between text-sm">
-                  <span>Ambassador discount ({AMBASSADOR_DISCOUNT_PERCENT}%)</span>
-                  <span>-{formatCents(discountCents)}</span>
-                </div>
-                {promoApplied && <p className="text-flame-3 mt-1 text-xs">Promo code applied.</p>}
-              </>
-            )}
+            A valid code on a cart of ineligible items used to render
+            as "Ambassador discount (15%)  -$0.00", which reads as
+            broken rather than as a rule being applied. The code IS on
+            the order; Square priced it at zero because nothing in the
+            cart is eligible. Gated on the quote having arrived: until
+            Square answers, discountCents is the cart's own optimistic
+            estimate, and a zero there means "not priced yet". */}
+        {applied && quote && discountCents === 0 ? (
+          <>
+            <div className="mt-2 flex justify-between text-sm text-muted">
+              <span>{appliedLabel}</span>
+              <span>Not applied</span>
+            </div>
+            <p className="mt-1 text-xs text-muted">
+              Your code is valid, but nothing in this cart is eligible for it. One-of-a-kind
+              artist pieces, consignment and guest brands are always full price.
+            </p>
           </>
-        ) : (
-          <div className="mt-4">
-            <form action={applyPromoCodeAction} className="flex gap-2">
-              <input
-                name="promoCode"
-                type="text"
-                placeholder="Promo code (optional)"
-                aria-label="Promo code"
-                className="flex-1 rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-flame-2"
-              />
-              <button
-                type="submit"
-                className="shrink-0 rounded-lg border border-border-strong px-4 py-2 text-sm font-medium transition-colors hover:bg-surface"
-              >
-                Apply
-              </button>
-            </form>
-            {promoError && (
-              <p className="text-flame-3 mt-2 text-xs">That promo code isn&apos;t valid.</p>
-            )}
+        ) : applied || ambassadorCode ? (
+          <div className="text-flame-3 mt-2 flex justify-between text-sm">
+            <span>{appliedLabel}</span>
+            <span>-{formatCents(discountCents)}</span>
           </div>
+        ) : null}
+
+        {/* The better-code case. Said plainly, because the customer is
+            about to see a discount that is not the one their friend's
+            code promised, and the ambassador is about to be paid for a
+            sale whose discount was not theirs. Both of those are
+            correct and neither is obvious. */}
+        {passedOver?.source === "ambassador" && (
+          <p className="mt-1 text-xs text-muted">
+            This beats the {passedOver.percent}% from {passedOver.code}, so we used it instead.
+            {attributedTo && ` ${attributedTo} still gets credit for your order.`}
+          </p>
         )}
+        {passedOver?.source === "promo" && (
+          <p className="mt-1 text-xs text-muted">
+            Your {AMBASSADOR_DISCOUNT_PERCENT}% is better than {passedOver.code}
+            {passedOver.percent ? ` (${passedOver.percent}%)` : ""}, so we kept it.
+          </p>
+        )}
+
+        {/* Always offered, even to somebody who already has a code on
+            the order. Hiding it from them was the bug: a customer who
+            arrived through an ambassador's link had no way to type a
+            sale code at all, which is precisely the case this is for. */}
+        <div className="mt-4">
+          <form action={applyPromoCodeAction} className="flex gap-2">
+            <input
+              name="promoCode"
+              type="text"
+              placeholder={applied ? "Another code?" : "Promo code (optional)"}
+              aria-label="Promo code"
+              className="flex-1 rounded-lg border border-border-strong bg-surface px-3 py-2 text-sm outline-none focus:border-flame-2"
+            />
+            <button
+              type="submit"
+              className="shrink-0 rounded-lg border border-border-strong px-4 py-2 text-sm font-medium transition-colors hover:bg-surface"
+            >
+              Apply
+            </button>
+          </form>
+          {promoError && (
+            <p className="text-flame-3 mt-2 text-xs">That promo code isn&apos;t valid.</p>
+          )}
+          {promoApplied && !promoError && (
+            <p className="text-flame-3 mt-2 text-xs">Code applied.</p>
+          )}
+        </div>
 
         <div className="mt-2 flex justify-between text-sm">
           <span className="text-muted">{pickup ? "Pickup" : "Shipping"}</span>

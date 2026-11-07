@@ -14,30 +14,49 @@ import { getSessionAmbassadorCode } from "@/lib/auth";
 import { findOrCreateSquareCustomerId } from "@/lib/squareCustomers";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { getSupabase } from "@/lib/supabase";
-import { REF_COOKIE, REF_COOKIE_DAYS } from "@/lib/attribution";
+import { PROMO_COOKIE, PROMO_COOKIE_DAYS, REF_COOKIE, REF_COOKIE_DAYS } from "@/lib/attribution";
+import { recordStorePromoUse, usableStorePromo } from "@/lib/storePromos";
 import { commissionForOrder } from "@/lib/tiers";
 import {
   buildOrderPricing,
+  chooseDiscount,
   discountedMerchandiseCents,
   type CheckoutQuote,
+  type DiscountDecision,
 } from "@/lib/checkoutOrder";
 import { formatShipTo, isDomestic, normalizeCountry, shippingRateCents } from "@/lib/shipping";
 import { PICKUP_LEAD_TIME } from "@/lib/pickup";
 import type { CartLine, ShippingAddress } from "@/lib/types";
 import type { Country, Money } from "square";
 
-// A promo code is nothing new — every ambassador's auto-created "Default"
-// link (see ensureDefaultLink, lib/store.ts) already uses their own code
-// as its slug, so typing that code here is the exact same attribution
-// path as clicking /r/<code>: same cookie, same 15%/10% discount and
-// commission logic in checkoutAction below, and it counts as a real click
-// on their Default link too. No separate code-generation or validation
-// system needed.
+/**
+ * One box, two kinds of code.
+ *
+ * An ambassador's code is nothing new: every ambassador's auto-created
+ * "Default" link (see ensureDefaultLink, lib/store.ts) already uses
+ * their own code as its slug, so typing that code here is the exact
+ * same attribution path as clicking /r/<code>: same cookie, same
+ * 15%/10% discount and commission logic in checkoutAction below, and
+ * it counts as a real click on their Default link too.
+ *
+ * A store promo is the other kind, and it lands in a different cookie.
+ * Both can be set at once, which is the whole point: somebody who came
+ * in through Jane's link and then typed BLACKFRIDAY keeps Jane's
+ * attribution and gets whichever discount is worth more.
+ *
+ * Ambassador codes are checked first. The two namespaces cannot
+ * overlap, because createStorePromo refuses a code an ambassador
+ * already owns, but if one ever did the ambassador must win: their
+ * code failing to attribute costs a real person real money, while a
+ * promo failing to apply costs a discount.
+ */
 export async function applyPromoCodeAction(formData: FormData) {
   const code = String(formData.get("promoCode") || "").trim();
   if (!code) {
     redirect("/checkout?promoError=1");
   }
+
+  const store = await cookies();
 
   let link: Awaited<ReturnType<typeof getLinkBySlug>>;
   try {
@@ -48,24 +67,64 @@ export async function applyPromoCodeAction(formData: FormData) {
     redirect("/checkout?promoError=1");
   }
 
-  if (!link) {
+  if (link) {
+    await recordLinkClick(link.slug).catch((err) => {
+      console.error("Failed to record promo code click during checkout:", err);
+    });
+
+    store.set(REF_COOKIE, link.ambassadorCode, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: REF_COOKIE_DAYS * 24 * 60 * 60,
+      path: "/",
+    });
+
+    redirect("/checkout?promoApplied=1");
+  }
+
+  // Not an ambassador's. A store promo, then, or nothing.
+  const promo = await usableStorePromo(code).catch((err) => {
+    unstable_rethrow(err);
+    console.error("Store promo lookup failed during checkout:", err);
+    return null;
+  });
+
+  if (!promo) {
     redirect("/checkout?promoError=1");
   }
 
-  await recordLinkClick(link.slug).catch((err) => {
-    console.error("Failed to record promo code click during checkout:", err);
-  });
-
-  const store = await cookies();
-  store.set(REF_COOKIE, link.ambassadorCode, {
+  store.set(PROMO_COOKIE, promo.code, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: REF_COOKIE_DAYS * 24 * 60 * 60,
+    maxAge: PROMO_COOKIE_DAYS * 24 * 60 * 60,
     path: "/",
   });
 
   redirect("/checkout?promoApplied=1");
+}
+
+/**
+ * The store promo on this order, if there is one and it is still good.
+ *
+ * Mirrors resolveReferral's contract exactly: undefined means "look in
+ * the cookie", a string or null means "this is the code, ignore any
+ * cookie". The register passes one or the other for the same reason it
+ * does for referrals, which is that a till is one shared browser and a
+ * cookie there would apply one customer's promo to the rest of the
+ * day's sales.
+ *
+ * Re-checked here rather than trusted from the cookie, because the
+ * cookie was set when the code was typed and the sale it belongs to
+ * may have ended since.
+ */
+async function resolvePromo(promoCode?: string | null) {
+  if (promoCode !== undefined) {
+    return usableStorePromo(promoCode);
+  }
+  const store = await cookies();
+  return usableStorePromo(store.get(PROMO_COOKIE)?.value);
 }
 
 /**
@@ -122,29 +181,99 @@ async function resolveReferral(promoCode?: string | null) {
 }
 
 /**
- * Does this code belong to anyone, and to whom?
+ * Does this code belong to anyone, and what kind is it?
  *
  * For the register, so staff get told a code is wrong while the customer
  * is still standing there rather than after the card is charged. Returns
  * the ambassador's name for confirmation out loud ("that's Jane's code")
  * and nothing else about the account.
+ *
+ * Both kinds, because a customer in the shop should be able to use the
+ * same sale code they saw online. `kind` tells the till which argument
+ * to send it as: an ambassador code attributes the sale, a store promo
+ * only discounts it, and a ticket can carry one of each.
  */
 export async function lookupPromoCodeAction(
   code: string,
-): Promise<{ ok: true; code: string; name: string } | { ok: false }> {
+): Promise<
+  | { ok: true; kind: "ambassador"; code: string; name: string }
+  | { ok: true; kind: "promo"; code: string; name: string; percent: number }
+  | { ok: false }
+> {
   const typed = code.trim();
   if (!typed) return { ok: false };
 
   try {
     const link = await getLinkBySlug(typed);
-    if (!link) return { ok: false };
-    const account = await getByCode(link.ambassadorCode);
-    if (!account) return { ok: false };
-    return { ok: true, code: link.slug, name: account.name };
+    if (link) {
+      const account = await getByCode(link.ambassadorCode);
+      if (account) {
+        return { ok: true, kind: "ambassador", code: link.slug, name: account.name };
+      }
+      return { ok: false };
+    }
+
+    const promo = await usableStorePromo(typed);
+    if (promo) {
+      return {
+        ok: true,
+        kind: "promo",
+        code: promo.code,
+        name: promo.label || `${promo.percent}% off`,
+        percent: promo.percent,
+      };
+    }
+
+    return { ok: false };
   } catch (err) {
     console.error("lookupPromoCodeAction failed:", err);
     return { ok: false };
   }
+}
+
+/**
+ * Work out the discount once, for both the quote and the charge.
+ *
+ * Exists for the same reason buildOrderPricing does: the price quoted
+ * and the price charged have to be produced by the same code, or a
+ * customer gets charged something other than the number they agreed
+ * to. Choosing the discount is now part of pricing, so it belongs in
+ * one function that both paths call rather than in two copies that
+ * drift.
+ *
+ * Eligibility is only looked up when some discount could actually
+ * apply, and fails closed: if Square cannot tell us which items are
+ * excluded, everything is treated as excluded, so a lookup failure
+ * costs a discount rather than discounting a consignment piece that
+ * was never ours to mark down.
+ */
+async function resolveDiscount({
+  lines,
+  ambassadorCode,
+  promo,
+  where,
+}: {
+  lines: CartLine[];
+  ambassadorCode?: string | null;
+  promo?: { code: string; percent: number; label: string | null } | null;
+  /** Just for the log line, so a failure says which path hit it. */
+  where: string;
+}): Promise<{ decision: DiscountDecision; excludedProductIds: ReadonlySet<string> }> {
+  if (!ambassadorCode && !promo) {
+    return { decision: { applied: null, passedOver: null }, excludedProductIds: new Set<string>() };
+  }
+
+  const excludedProductIds = await getDiscountIneligibleProductIds(
+    lines.map((l) => l.productId),
+  ).catch((err) => {
+    console.error("Discount eligibility lookup failed while %s:", where, err);
+    return new Set(lines.map((l) => l.productId));
+  });
+
+  return {
+    decision: chooseDiscount({ lines, ambassadorCode, promo, excludedProductIds }),
+    excludedProductIds,
+  };
 }
 
 /**
@@ -182,32 +311,36 @@ export async function quoteCheckoutAction(
   /** The register passes this explicitly, null included; online it is
    *  left off and the cookie is read instead. See resolveReferral. */
   promoCode?: string | null,
+  /** A store promo, kept as its own argument rather than squeezed into
+   *  promoCode, because the register can have both on one ticket: a
+   *  BA's code read off a customer's phone and a sale code the shop is
+   *  running that week. */
+  storePromoCode?: string | null,
 ): Promise<CheckoutQuote | null> {
   if (lines.length === 0) return null;
 
   try {
-    const ambassador = await resolveReferral(promoCode);
+    // Both resolved, independently. The referral decides who gets paid
+    // and the promo decides what the customer pays; only the second of
+    // those is a contest.
+    const [ambassador, promo] = await Promise.all([
+      resolveReferral(promoCode),
+      resolvePromo(promoCode === undefined ? undefined : storePromoCode ?? null),
+    ]);
 
-    // Same fail-closed rule as checkoutAction: if eligibility can't be
-    // read at all, exclude everything, so the quote never promises a
-    // discount the real order won't honour.
-    const excludedProductIds = ambassador
-      ? await getDiscountIneligibleProductIds(lines.map((l) => l.productId)).catch((err) => {
-          console.error("Discount eligibility lookup failed while quoting checkout:", err);
-          return new Set(lines.map((l) => l.productId));
-        })
-      : new Set<string>();
+    const { decision, excludedProductIds } = await resolveDiscount({
+      lines,
+      ambassadorCode: ambassador?.code,
+      promo,
+      where: "quoting checkout",
+    });
 
     const shippingCents =
       method === "pickup"
         ? 0
         : shippingRateCents(
             country,
-            discountedMerchandiseCents({
-              lines,
-              ambassadorCode: ambassador?.code,
-              excludedProductIds,
-            }),
+            discountedMerchandiseCents({ lines, discount: decision.applied }),
           );
 
     const response = await getSquare().orders.calculate({
@@ -215,7 +348,7 @@ export async function quoteCheckoutAction(
         locationId: getSquareLocationId(),
         ...buildOrderPricing({
           lines,
-          ambassadorCode: ambassador?.code,
+          discount: decision.applied,
           excludedProductIds,
           shippingCents,
         }),
@@ -235,6 +368,24 @@ export async function quoteCheckoutAction(
       taxCents: cents(order.totalTaxMoney),
       shippingCents,
       totalCents: Number(order.totalMoney.amount),
+      discount: decision.applied
+        ? {
+            source: decision.applied.source,
+            code: decision.applied.code,
+            percent: decision.applied.percent,
+            label: decision.applied.label ?? null,
+          }
+        : null,
+      passedOver: decision.passedOver
+        ? { source: decision.passedOver.source, code: decision.passedOver.code,
+            percent: decision.passedOver.percent }
+        : null,
+      // Whether a real person is still being credited for this sale,
+      // which is true whether or not their discount is the one that
+      // won. The checkout says so out loud: a customer using a better
+      // code should know their friend still gets credit, and an
+      // ambassador checking their own link should see it working.
+      attributedTo: ambassador?.code ?? null,
     };
   } catch (err) {
     console.error("Failed to quote checkout with Square:", err);
@@ -282,6 +433,12 @@ export async function checkoutAction(input: {
    * see resolveReferral.
    */
   promoCode?: string | null;
+  /**
+   * A store-wide sale code, separate from the ambassador's. Both can
+   * be on one order: the customer gets the better discount and the
+   * ambassador still gets the sale.
+   */
+  storePromoCode?: string | null;
 }): Promise<CheckoutResult> {
   if (input.lines.length === 0) {
     return { ok: false, error: "Your cart is empty." };
@@ -335,7 +492,14 @@ export async function checkoutAction(input: {
   }
   const accountCode = account.code;
 
+  // Two separate questions, resolved separately and kept separate for
+  // the rest of this function: who gets credited for the sale, and
+  // what the customer pays. A store promo can take the discount away
+  // from the ambassador's code; nothing takes the sale away from them.
   const ambassador = await resolveReferral(input.promoCode);
+  const promo = await resolvePromo(
+    input.promoCode === undefined ? undefined : input.storePromoCode ?? null,
+  );
 
   const locationId = getSquareLocationId();
   const square = getSquare();
@@ -393,19 +557,20 @@ export async function checkoutAction(input: {
     console.error("Stock check failed during checkout:", err);
   }
 
-  // Ambassador and promo discounts apply to WHOA's own goods only. Which
-  // those are is read from each item's Square description at charge time
-  // (see lib/discountEligibility.ts), never trusting whatever the client's
-  // cart line objects happen to carry. Only resolved when there's actually
-  // a discount that would otherwise apply.
-  const excludedProductIds = ambassador
-    ? await getDiscountIneligibleProductIds(input.lines.map((l) => l.productId)).catch((err) => {
-        console.error("Discount eligibility lookup failed during checkout:", err);
-        // Fail closed: if eligibility can't be read, exclude everything
-        // rather than risk discounting something that isn't ours.
-        return new Set(input.lines.map((l) => l.productId));
-      })
-    : new Set<string>();
+  // Ambassador and store promo discounts apply to WHOA's own goods
+  // only. Which those are is read from each item's Square description
+  // at charge time (see lib/discountEligibility.ts), never trusting
+  // whatever the client's cart line objects happen to carry.
+  //
+  // Only one discount goes on the order: whichever is worth more. The
+  // ambassador is credited either way, further down, which is the
+  // whole reason this is resolved separately from `ambassador` above.
+  const { decision, excludedProductIds } = await resolveDiscount({
+    lines: input.lines,
+    ambassadorCode: ambassador?.code,
+    promo,
+    where: "charging checkout",
+  });
 
   // Worked out once, here, because two things need it: the order Square
   // charges, and the commission below, which must not pay an ambassador
@@ -413,11 +578,7 @@ export async function checkoutAction(input: {
   const shippingCents = shipping
     ? shippingRateCents(
         shipping.country,
-        discountedMerchandiseCents({
-          lines: input.lines,
-          ambassadorCode: ambassador?.code,
-          excludedProductIds,
-        }),
+        discountedMerchandiseCents({ lines: input.lines, discount: decision.applied }),
       )
     : 0;
 
@@ -436,7 +597,7 @@ export async function checkoutAction(input: {
         customerId: squareCustomerId,
         ...buildOrderPricing({
           lines: input.lines,
-          ambassadorCode: ambassador?.code,
+          discount: decision.applied,
           excludedProductIds,
           // Recomputed server-side from the address on the order, by the
           // same function the quote used. Nothing about the postage
@@ -590,6 +751,27 @@ export async function checkoutAction(input: {
     });
   }
 
+  // Counted after the money is in, never before: a code should not be
+  // used up by a card that declined. Best effort, like the commission
+  // row below, because a counter is not worth failing a paid order
+  // over.
+  if (decision.applied?.source === "promo") {
+    await recordStorePromoUse(decision.applied.code);
+  }
+
+  // THE POINT OF ALL OF THIS.
+  //
+  // Unchanged, and deliberately so. The ambassador is credited with
+  // the sale and earns their commission whenever there is a referral,
+  // whether or not their 15% is the discount that got applied. A
+  // customer who came in through Jane's link and then used a better
+  // store code was still brought here by Jane.
+  //
+  // The commission is worked out from what the customer actually paid
+  // (totalMoney, net of whichever discount won), which is the rule
+  // already documented in lib/tiers.ts. So a bigger store promo does
+  // slightly reduce the commission on that order, because it reduced
+  // the sale.
   if (ambassador) {
     const { saleAmount, commission } = commissionForOrder({
       totalCents: Number(totalMoney.amount),
