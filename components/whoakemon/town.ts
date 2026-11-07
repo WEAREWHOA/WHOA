@@ -20,34 +20,43 @@
  */
 
 /**
- *   T tree      . grass     , path      W water     f flowers
- *   ^ roof      B lab roof  # wall     L lamp post
+ *   T tree      t a tree you can walk through (see WAYS_IN 6)
+ *   . grass     , path      W water     f flowers    F fence
+ *   ^ roof      B lab roof  # wall      L lamp post
  *   1-9 a way in, see WAYS_IN below
+ *
+ * The paths wind. The first version was a cross, two straight lines
+ * meeting in the middle, which is a street plan rather than a town:
+ * the reference's paths bend round things, and bending round things
+ * is what makes somewhere feel walked rather than drawn. White picket
+ * fences enclose the yard round the first house, with one gap in the
+ * bottom edge for a gate, because a fence with no way through is a
+ * wall and a fence all the way round with no gate is a mistake.
  */
 export const MAP = [
   "TTTTTTTTTTTTTTTTTTTT",
-  "T........,.........T",
-  "T.^^^^...,...^^^^..T",
-  "T.####...,...####..T",
-  "T.##1#...,...#2##..T",
-  "T.9......,.........T",
-  "T,,,,,,,,,,,,,,,,,,T",
-  "T...f..L.,.L..f....T",
-  "T.^^^^...,...^^^^..T",
-  "T.####...,...####..T",
-  "T.##3#...,...#4##..T",
-  "T,,,,,,,,,,,,,,,,,,T",
-  "T...BBBBBBBBBBB....T",
-  "T...#####5#####....T",
-  "T.7.,,,,,,,,,,,,.8.T",
-  "TWWWWWWWWWWWWWWWWWWT",
+  "T......T6T.....TT..T",
+  "T.FFFF.TtT.....^^^.T",
+  "T.F^^^.TtT.....###.T",
+  "T.F###.,,,,,,,,#2#.T",
+  "T.F#1#.,......,....T",
+  "T.F9..,,......,....T",
+  "T.FFF.,...WWW.,....T",
+  "T.....,...WWW.,,,,,T",
+  "T.^^^.,...WWW.^^^.,T",
+  "T.###.,.......###.,T",
+  "T.#3#.,,,,,,,,#4#.,T",
+  "T.....BBBBBBBBB...,T",
+  "T.....####5####...,T",
+  "T..,,,,,,,,,,7..8,,T",
+  "TTTTTTTTTTTTTTTTTTTT",
 ] as const;
 
 export const COLS = MAP[0].length;
 export const ROWS = MAP.length;
 
 /** Tiles you can stand on. Everything else stops you. */
-const WALKABLE = new Set([".", ",", "f"]);
+const WALKABLE = new Set([".", ",", "f", "t"]);
 
 export type WayKind = "door" | "sign";
 
@@ -118,6 +127,13 @@ export const WAYS_IN: Record<string, WayIn> = {
     name: "WHOA LAB",
     says: "WHOA LAB. Come in. I have something for you.",
   },
+  "6": {
+    key: "6",
+    kind: "sign",
+    href: "/spin",
+    name: "Hidden clearing",
+    says: "Nobody comes back here. There is a wheel. Spin it?",
+  },
   "7": {
     key: "7",
     kind: "sign",
@@ -152,9 +168,21 @@ export function canStandOn(x: number, y: number): boolean {
   return WALKABLE.has(t) || WAYS_IN[t]?.kind === "door";
 }
 
-/** Where you come out of your house. Below the shop door, facing down,
- *  which is the first thing that happens in every one of these games. */
-export const START = { x: 4, y: 5, facing: "down" as const };
+/**
+ * Where you come out of your house: in the fenced yard, beside the
+ * door rather than under it.
+ *
+ * Under it is where these games actually put you, and it was wrong
+ * here for two reasons. Up is the first key anybody presses, and two
+ * taps of it threw you into /shop before you had seen the town. It
+ * also made the Konami code unenterable from the start square, since
+ * the code opens with two ups.
+ *
+ * One square right, and the tile above is the house wall, so the
+ * same two taps now say "A building. Try the door." which is the
+ * hint rather than the trapdoor.
+ */
+export const START = { x: 5, y: 6, facing: "down" as const };
 
 export type Facing = "up" | "down" | "left" | "right";
 
