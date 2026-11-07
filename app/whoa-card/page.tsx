@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { redeemClaimAction } from "./actions";
+import CardFace from "@/components/whoaCard/CardFace";
 import { getSessionAmbassadorCode } from "@/lib/auth";
 import { walletForAccount } from "@/lib/wallet";
 import { formatCents } from "@/lib/money";
@@ -71,13 +72,20 @@ export default async function WhoaCardPage(props: PageProps<"/whoa-card">) {
       <h1 className="font-display mt-2 text-4xl tracking-wide sm:text-5xl">
         WHOA <span className="text-flame">Card</span>
       </h1>
-      <p className="mt-4 max-w-xl text-sm leading-relaxed text-muted">
-        A metal card, sold over the counter at the WHOADEGA for{" "}
-        <strong className="text-foreground">{formatCents(CARD_PRICE_CENTS)}</strong> while they
-        last. The {formatCents(CARD_PRICE_CENTS)} goes straight onto your balance, so the card
-        pays for itself, and the perks come with it. The credit lives on your account rather than
-        on the card, so it cannot be lost with it.
-      </p>
+      <div className="mt-6 flex flex-col gap-8 sm:flex-row sm:items-start">
+        <p className="max-w-xl flex-1 text-sm leading-relaxed text-muted">
+          A metal card, sold over the counter at the WHOADEGA for{" "}
+          <strong className="text-foreground">{formatCents(CARD_PRICE_CENTS)}</strong> while they
+          last. The {formatCents(CARD_PRICE_CENTS)} goes straight onto your balance, so the card
+          pays for itself, and the perks come with it. The credit lives on your account rather
+          than on the card, so it cannot be lost with it.
+        </p>
+        <CardFace
+          code={card?.creditCode}
+          member={Boolean(card?.memberSince)}
+          className="w-full shrink-0 sm:w-64"
+        />
+      </div>
 
       {/* ───── What they have, if anything ───── */}
       {card && (

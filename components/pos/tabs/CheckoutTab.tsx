@@ -25,6 +25,14 @@ export default function CheckoutTab({ products }: { products: Product[] }) {
   // server has confirmed it belongs to somebody. Null until then, so an
   // unrecognised code can never quietly reach the charge.
   const [promo, setPromo] = useState<{ code: string; name: string } | null>(null);
+  // A store sale code, separate from the ambassador's, because a
+  // ticket can carry one of each: the customer's BA code off their
+  // phone and whatever sale the shop is running that week. The
+  // customer gets the better of the two; the ambassador is credited
+  // with the sale either way.
+  const [storePromo, setStorePromo] = useState<
+    { code: string; name: string; percent: number } | null
+  >(null);
   // What Square says this ticket costs with the code on it.
   //
   // The till's own running total is a plain sum of the lines, which is
@@ -43,6 +51,7 @@ export default function CheckoutTab({ products }: { products: Product[] }) {
     subtotalCents: number;
     discountCents: number;
     totalCents: number;
+    discountLabel?: string | null;
   } | null>(null);
 
   const filtered = useMemo(() => {
@@ -54,9 +63,12 @@ export default function CheckoutTab({ products }: { products: Product[] }) {
   const lineTotalCents = ticket.reduce((sum, line) => sum + line.priceCents * line.quantity, 0);
   const itemCount = ticket.reduce((sum, line) => sum + line.quantity, 0);
 
-  const quoteKey = promo
-    ? `${promo.code}|${ticket.map((l) => `${l.variationId}x${l.quantity}`).join(",")}`
-    : "";
+  const quoteKey =
+    promo || storePromo
+      ? `${promo?.code ?? ""}+${storePromo?.code ?? ""}|${ticket
+          .map((l) => `${l.variationId}x${l.quantity}`)
+          .join(",")}`
+      : "";
   const current = quote && quote.key === quoteKey ? quote : null;
   const discounted = current && !current.failed ? current : null;
   // Told apart so the panel can say "still working it out" and "could not
@@ -67,7 +79,7 @@ export default function CheckoutTab({ products }: { products: Product[] }) {
   useEffect(() => {
     if (!quoteKey) return;
     let live = true;
-    void quoteCheckoutAction(ticket, undefined, "pickup", promo?.code ?? null)
+    void quoteCheckoutAction(ticket, undefined, "pickup", promo?.code ?? null, storePromo?.code ?? null)
       .then((q) => {
         if (!live) return;
         setQuote(
@@ -77,6 +89,11 @@ export default function CheckoutTab({ products }: { products: Product[] }) {
                 subtotalCents: q.subtotalCents,
                 discountCents: q.discountCents,
                 totalCents: q.totalCents,
+                discountLabel: q.discount
+                  ? q.discount.source === "ambassador"
+                    ? `Ambassador discount (${q.discount.percent}%)`
+                    : `${q.discount.label || q.discount.code} (${q.discount.percent}%)`
+                  : null,
               }
             // Null means Square could not be reached. Recorded as a
             // failure against this exact basket rather than left to look
@@ -92,7 +109,7 @@ export default function CheckoutTab({ products }: { products: Product[] }) {
     return () => {
       live = false;
     };
-  }, [quoteKey, ticket, promo]);
+  }, [quoteKey, ticket, promo, storePromo]);
 
   // What the buttons say and what gets charged: Square's figure whenever
   // there is one, the line sum otherwise.
@@ -144,6 +161,7 @@ export default function CheckoutTab({ products }: { products: Product[] }) {
     setStep("shop");
     // The next customer in the queue is not on the last one's code.
     setPromo(null);
+    setStorePromo(null);
     setQuote(null);
   }
 
@@ -241,7 +259,9 @@ export default function CheckoutTab({ products }: { products: Product[] }) {
             pricing={pricing}
             itemCount={itemCount}
             promo={promo}
+            storePromo={storePromo}
             onApplyPromo={setPromo}
+            onApplyStorePromo={setStorePromo}
             setQuantity={setQuantity}
             onCharge={() => setStep("pay")}
           />
@@ -252,6 +272,7 @@ export default function CheckoutTab({ products }: { products: Product[] }) {
             ticket={ticket}
             totalCents={totalCents}
             promoCode={promo?.code ?? null}
+            storePromoCode={storePromo?.code ?? null}
             onBack={() => setStep("shop")}
             onComplete={() => setStep("done")}
           />
@@ -271,18 +292,29 @@ function TicketPanel({
   pricing,
   itemCount,
   promo,
+  storePromo,
   onApplyPromo,
+  onApplyStorePromo,
   setQuantity,
   onCharge,
 }: {
   ticket: CartLine[];
   lineTotalCents: number;
   totalCents: number;
-  discounted: { subtotalCents: number; discountCents: number; totalCents: number } | null;
+  discounted: {
+    subtotalCents: number;
+    discountCents: number;
+    totalCents: number;
+    discountLabel?: string | null;
+  } | null;
   pricing: boolean;
   itemCount: number;
   promo: { code: string; name: string } | null;
+  storePromo: { code: string; name: string; percent: number } | null;
   onApplyPromo: (promo: { code: string; name: string } | null) => void;
+  onApplyStorePromo: (
+    promo: { code: string; name: string; percent: number } | null,
+  ) => void;
   setQuantity: (variationId: string, quantity: number) => void;
   onCharge: () => void;
 }) {
@@ -304,7 +336,15 @@ function TicketPanel({
       setRejected(typed.toUpperCase());
       return;
     }
-    onApplyPromo({ code: result.code, name: result.name });
+    // Routed by what the server says it is. An ambassador's code
+    // attributes the sale; a store code only discounts it. Putting one
+    // in the other's slot would either pay commission on a sale nobody
+    // referred, or quietly drop a real referral.
+    if (result.kind === "ambassador") {
+      onApplyPromo({ code: result.code, name: result.name });
+    } else {
+      onApplyStorePromo({ code: result.code, name: result.name, percent: result.percent });
+    }
     setEntry("");
   }
 
@@ -349,12 +389,17 @@ function TicketPanel({
       )}
 
       <div className="mt-6 border-t border-border pt-4">
-        {promo ? (
-          <div className="mb-4 rounded-lg border border-flame-2/40 bg-flame-2/10 px-3 py-2">
+        {/* A chip each. Both can be on one ticket: the ambassador's
+            code, which decides who is credited, and a store sale code,
+            which only decides the price. Only the better discount is
+            actually charged, and Square's quote below is what says
+            which. */}
+        {promo && (
+          <div className="mb-2 rounded-lg border border-flame-2/40 bg-flame-2/10 px-3 py-2">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
                 <p className="font-mono-code truncate text-sm text-flame">{promo.code}</p>
-                <p className="truncate text-xs text-muted">{promo.name}</p>
+                <p className="truncate text-xs text-muted">{promo.name} · earns commission</p>
               </div>
               <button
                 type="button"
@@ -364,22 +409,57 @@ function TicketPanel({
                 Remove
               </button>
             </div>
+          </div>
+        )}
+
+        {storePromo && (
+          <div className="mb-2 rounded-lg border border-flame-3/40 bg-flame-3/10 px-3 py-2">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-mono-code truncate text-sm text-flame-3">{storePromo.code}</p>
+                <p className="truncate text-xs text-muted">
+                  {storePromo.name} · {storePromo.percent}% off
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onApplyStorePromo(null)}
+                className="shrink-0 text-xs font-medium text-muted underline underline-offset-2 hover:text-flame-1"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        )}
+
+        {(promo || storePromo) && (
+          <div className="mb-4">
             {/* A code is on the sale but Square would not price it, so the
                 till has no discounted figure to show. Say so rather than
                 print the full total under an applied code, which reads as
                 the discount having been refused. */}
-            {pricing && <p className="mt-1 text-xs text-muted">Working out the total…</p>}
+            {pricing && <p className="text-xs text-muted">Working out the total…</p>}
             {!pricing && !discounted && (
-              <p className="mt-1 text-xs text-flame-3">
-                Couldn&apos;t reach Square to price this. The discount still
-                applies when you charge.
+              <p className="text-xs text-flame-3">
+                Couldn&apos;t reach Square to price this. The discount still applies when you
+                charge.
+              </p>
+            )}
+            {promo && storePromo && discounted && (
+              <p className="text-xs text-muted">
+                Whichever is worth more is the one charged. {promo.code} is credited with the sale
+                either way.
               </p>
             )}
           </div>
-        ) : (
+        )}
+
+        {/* Always offered, so a second code can go on a ticket that
+            already has one. */}
+        {(!promo || !storePromo) && (
           <div className="mb-4">
             <label htmlFor="pos-promo" className="text-xs text-muted">
-              Ambassador code
+              {promo ? "Sale code" : storePromo ? "Ambassador code" : "Ambassador or sale code"}
             </label>
             <div className="mt-1.5 flex gap-2">
               <input
@@ -422,7 +502,10 @@ function TicketPanel({
         </div>
         {discounted && discounted.discountCents > 0 && (
           <div className="mt-1 flex justify-between text-sm text-flame-3">
-            <span>Ambassador discount</span>
+            {/* Named from the quote, because with two codes on the
+                ticket "Ambassador discount" is a coin toss and staff
+                read this line out to the customer. */}
+            <span>{discounted.discountLabel ?? "Discount"}</span>
             <span>−{formatCents(discounted.discountCents)}</span>
           </div>
         )}
@@ -448,6 +531,7 @@ function PaymentPanel({
   ticket,
   totalCents,
   promoCode,
+  storePromoCode,
   onBack,
   onComplete,
 }: {
@@ -456,6 +540,7 @@ function PaymentPanel({
   /** Null, not undefined, when there is no code: see resolveReferral. A
    *  till sale must never pick up a referral cookie left on the device. */
   promoCode: string | null;
+  storePromoCode: string | null;
   onBack: () => void;
   onComplete: () => void;
 }) {
@@ -519,6 +604,7 @@ function PaymentPanel({
       // Resolved again on the server, so this is a lookup key and not a
       // claim about what the sale is worth. Always sent, null included.
       promoCode,
+      storePromoCode,
     });
 
     if (!outcome.ok) {
