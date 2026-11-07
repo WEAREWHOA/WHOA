@@ -39,6 +39,22 @@ import {
  * a navigation page.
  */
 
+/**
+ * How much of the town is on screen at once.
+ *
+ * Fewer squares than the map has, so each square is bigger: 16 of 20
+ * columns makes every tile a quarter larger, which is the difference
+ * between a map you squint at and one you can read. The rest of the
+ * town is still there, and the camera follows you onto it, which is
+ * what these games have always done.
+ *
+ * The slack is small on purpose, four columns and three rows. The
+ * town is tiny and most of it should stay in view; this is a nudge,
+ * not an expedition.
+ */
+const VIEW_COLS = 16;
+const VIEW_ROWS = 13;
+
 /** ↑ ↑ ↓ ↓ ← → ← → B A. */
 const KONAMI = [
   "ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown",
@@ -75,6 +91,12 @@ export default function Town() {
 
   const seaTries = useRef(0);
   const konami = useRef<string[]>([]);
+
+  // Centre on the player, then stop at the edges of the map rather
+  // than scrolling past them into nothing.
+  const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+  const camX = clamp(pos.x + 0.5 - VIEW_COLS / 2, 0, COLS - VIEW_COLS);
+  const camY = clamp(pos.y + 0.5 - VIEW_ROWS / 2, 0, ROWS - VIEW_ROWS);
 
   const move = useCallback(
     (dir: Facing) => {
@@ -269,9 +291,19 @@ export default function Town() {
             onTouchEnd={onTouchEnd}
           >
             <div
-              className="whoa-pkmn-field"
-              style={{ "--cols": COLS, "--rows": ROWS } as React.CSSProperties}
+              className="whoa-pkmn-view"
+              style={
+                {
+                  "--cols": COLS,
+                  "--rows": ROWS,
+                  "--view-cols": VIEW_COLS,
+                  "--view-rows": VIEW_ROWS,
+                  "--cam-x": camX,
+                  "--cam-y": camY,
+                } as React.CSSProperties
+              }
             >
+              <div className="whoa-pkmn-field">
               {MAP.map((row, y) =>
                 [...row].map((t, x) => {
                   const way = WAYS_IN[t];
@@ -311,6 +343,8 @@ export default function Town() {
               >
                 <Trainer facing={facing} step={step} />
               </span>
+
+              </div>
 
               {menu && (
                 <div className="whoa-gb-menu">

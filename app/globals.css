@@ -3345,18 +3345,45 @@ body {
 /* One square tile per cell. The board scales with the container, so
    the town is never cut off and never scrolls: on a map this small
    you want all of it at once. */
-.whoa-pkmn-field {
+/* The window onto the town.
+ *
+ * Shows fewer squares than the map has, so each square is bigger.
+ * The field itself is still the whole 20 by 16; this crops it and
+ * slides it under the player. Tiles stay square because the window's
+ * aspect ratio and the field's oversize are the same two numbers. */
+.whoa-pkmn-view {
   position: relative;
-  display: grid;
-  grid-template-columns: repeat(var(--cols), 1fr);
-  grid-template-rows: repeat(var(--rows), 1fr);
-  aspect-ratio: var(--cols) / var(--rows);
   width: 100%;
-  max-width: 720px;
-  border: 4px solid var(--pk-ink);
+  aspect-ratio: var(--view-cols) / var(--view-rows);
+  overflow: hidden;
   background: var(--pk-grass);
   image-rendering: pixelated;
   touch-action: manipulation;
+}
+
+.whoa-pkmn-field {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  grid-template-rows: repeat(var(--rows), 1fr);
+  width: calc(100% * var(--cols) / var(--view-cols));
+  height: calc(100% * var(--rows) / var(--view-rows));
+  background: var(--pk-grass);
+  /* The percentages are of the field's own size, so one tile is
+     100%/cols across and 100%/rows down, and the camera can be
+     carried in plain tile units. */
+  transform: translate(
+    calc(var(--cam-x) * -100% / var(--cols)),
+    calc(var(--cam-y) * -100% / var(--rows))
+  );
+  transition: transform 90ms steps(2);
+}
+@media (prefers-reduced-motion: reduce) {
+  .whoa-pkmn-field {
+    transition: none;
+  }
 }
 .whoa-pkmn-field:focus-visible {
   outline: 3px solid var(--flame-2);
@@ -3601,7 +3628,7 @@ body {
   background: rgb(26 32 18 / 0.78);
   color: #fcfcfc;
   font-family: var(--font-mono);
-  font-size: clamp(6px, 1.3vw, 10px);
+  font-size: clamp(9px, calc(var(--gb) * 0.016), 18px);
   font-weight: 700;
   letter-spacing: 0.04em;
   white-space: nowrap;
@@ -3779,9 +3806,7 @@ body {
 }
 
 /* The field loses its own border here: the bezel is the border now. */
-.whoa-gb-screen .whoa-pkmn-field {
-  border: 0;
-  max-width: none;
+.whoa-gb-screen .whoa-pkmn-view {
   flex: 0 0 auto;
 }
 
