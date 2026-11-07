@@ -3646,11 +3646,14 @@ body {
    The shape is the homage; the name on it is ours. */
 
 .whoa-gb {
+  /* Full bleed on a phone. Every pixel of side margin is a pixel the
+     screen does not get, and on a handheld the screen is the point. */
+  --pad: 0px;
   position: fixed;
   inset: 0;
   display: grid;
   place-items: center;
-  padding: 10px;
+  padding: var(--pad);
   background:
     radial-gradient(ellipse at 50% 0%, #1d1d22 0%, #0a0a0c 70%);
   /* No pinch, no pull-to-refresh, no rubber band. The viewport export
@@ -3667,17 +3670,58 @@ body {
   outline: none;
 }
 
-/* The body. Sized off the viewport height so the whole console is
-   always on screen: the one thing that must never happen here is the
-   buttons falling below the fold on a page that cannot scroll. */
+@media (min-width: 560px) {
+  .whoa-gb {
+    --pad: 14px;
+  }
+}
+
+/* The body.
+ *
+ * Its height is declared, not left to the sum of its parts, and its
+ * width follows from that height, so the console is exactly as tall
+ * as the space allows and can never run off either edge. The first
+ * version only declared an intended height and let the content decide
+ * the real one, which on a phone came out width-bound and left a
+ * strip of dead space under the buttons.
+ *
+ * dvh, not vh. On a phone vh is the height with the URL bar hidden,
+ * which is not the height you have when the page loads, so a console
+ * sized in vh is a console with its buttons under the chrome until
+ * you scroll, on a page built not to scroll.
+ */
 .whoa-gb-body {
-  --gb: min(calc(100vh - 20px), calc((100vw - 20px) * 1.52));
-  width: calc(var(--gb) / 1.52);
-  max-width: 480px;
+  --avail-h: calc(100vh - var(--pad) * 2);
+  --avail-w: calc(100vw - var(--pad) * 2);
+  --avail-h: calc(100dvh - var(--pad) * 2);
+
+  /* Height first: take all of it, unless that would stretch the
+     console past 1.95 tall for its width, which stops a very long
+     phone turning it into a ruler. */
+  --h: min(var(--avail-h), calc(var(--avail-w) * 1.95), 900px);
+  /* Then width: take all of it, unless that would make the console
+     squatter than 1.5, which stops a tablet turning it into a brick. */
+  --w: min(var(--avail-w), calc(var(--h) / 1.5));
+
+  /* Two mins and no division, because CSS cannot divide one length by
+     another to get a ratio, and this needs no ratio to be computed. */
+  height: var(--h);
+  width: var(--w);
+
+  /* The unit every inside measurement is in. Keyed to the WIDTH, not
+     the height, because width is what bounds the screen: on a long
+     phone the body gains height the game cannot use, and paddings
+     that grew with it would eat the screen to fill space. */
+  --gb: calc(var(--w) * 1.62);
+
   display: flex;
   flex-direction: column;
-  gap: calc(var(--gb) * 0.014);
-  padding: calc(var(--gb) * 0.022);
+  /* Whatever height is left over after the parts have their natural
+     size spreads between them, rather than being dumped into
+     whichever one happens to be set to grow. */
+  justify-content: space-between;
+  gap: calc(var(--gb) * 0.008);
+  padding: calc(var(--gb) * 0.013);
   background: linear-gradient(170deg, #cfcabf 0%, #b9b4a9 60%, #a9a49a 100%);
   border-radius: 14px 14px 46px 14px;
   box-shadow:
@@ -3689,17 +3733,26 @@ body {
 /* The dark surround the screen sits in, deeper than the shell. */
 .whoa-gb-bezel {
   position: relative;
-  padding: calc(var(--gb) * 0.028) calc(var(--gb) * 0.022) calc(var(--gb) * 0.02);
+  /* Trimmed hard from the first version. Four paddings and an
+     off-centre margin were eating a fifth of the width before the
+     game got any, which on a 390px phone is the difference between
+     a readable map and a stamp. */
+  padding: calc(var(--gb) * 0.03) calc(var(--gb) * 0.014) calc(var(--gb) * 0.014);
   background: #5c5d66;
   border-radius: 10px 10px 26px 10px;
   box-shadow: inset 0 2px 6px rgb(0 0 0 / 0.5);
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
 }
 
 /* The power light, which every one of these had. */
+/* Above the screen now rather than beside it: the margin it used to
+   sit in is width the game has instead. */
 .whoa-gb-led {
   position: absolute;
-  top: calc(var(--gb) * 0.055);
-  left: calc(var(--gb) * 0.03);
+  top: calc(var(--gb) * 0.009);
+  left: calc(var(--gb) * 0.022);
   width: 7px;
   height: 7px;
   border-radius: 50%;
@@ -3709,11 +3762,13 @@ body {
 
 .whoa-gb-screen {
   position: relative;
-  margin-left: calc(var(--gb) * 0.03);
   background: #0d1208;
   border: 2px solid #3a3b42;
   overflow: hidden;
   touch-action: none;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Konami. The green is the point of the joke, so it is a filter over
@@ -3727,6 +3782,7 @@ body {
 .whoa-gb-screen .whoa-pkmn-field {
   border: 0;
   max-width: none;
+  flex: 0 0 auto;
 }
 
 /* The dialogue box, on the screen as it is in the games: a pale panel
@@ -3736,6 +3792,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  flex: 0 0 auto;
   min-height: calc(var(--gb) * 0.1);
   margin: 3px;
   padding: calc(var(--gb) * 0.018) calc(var(--gb) * 0.022);
@@ -3811,9 +3868,9 @@ body {
 
 .whoa-gb-brand {
   margin: 0;
-  padding-left: calc(var(--gb) * 0.03);
+  padding-left: calc(var(--gb) * 0.02);
   font-family: var(--font-display);
-  font-size: calc(var(--gb) * 0.042);
+  font-size: calc(var(--gb) * 0.034);
   letter-spacing: 0.06em;
   line-height: 1;
   color: #46474f;
@@ -3885,11 +3942,19 @@ body {
   box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.22);
 }
 
+/* START and SELECT sit at an angle, which means their painted box is
+   taller than their layout box: a pill rotated 16 degrees sticks out
+   above and below by roughly half its own width times the sine of
+   that angle. The layout does not know this, so without clearance of
+   its own the bottom of each pill was being cut off by the edge of
+   the screen on shorter phones. Measured at 6px over on an iPhone 13
+   before this. */
 .whoa-gb-startsel {
   display: flex;
   justify-content: center;
   gap: calc(var(--gb) * 0.05);
-  padding-top: calc(var(--gb) * 0.016);
+  padding-top: calc(var(--gb) * 0.012);
+  padding-bottom: calc(var(--gb) * 0.028);
 }
 .whoa-gb-startsel button {
   padding: calc(var(--gb) * 0.009) calc(var(--gb) * 0.026);
@@ -3903,7 +3968,7 @@ body {
   letter-spacing: 0.1em;
   cursor: pointer;
   touch-action: manipulation;
-  transform: rotate(-22deg);
+  transform: rotate(-16deg);
   box-shadow: 0 2px 0 rgb(0 0 0 / 0.28);
 }
 .whoa-gb-startsel button:active {
