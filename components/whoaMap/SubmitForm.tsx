@@ -25,7 +25,7 @@ export default function SubmitForm() {
     <form action={submitPinAction} className="mt-6 flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5 text-sm">
-          <span className="font-semibold">What did you spot?</span>
+          <span className="font-semibold">How are you repping?</span>
           <select
             name="kind"
             required
