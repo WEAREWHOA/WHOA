@@ -2876,3 +2876,379 @@ body {
     transform: translateY(-2px);
   }
 }
+
+/* The planet at the end of the smoke trail, now a door.
+
+   It had no hover state when it was a dead end. It needs one now, and
+   a quiet one: the whole point of the thing is that it does not
+   announce itself, so this is a lift and a glow rather than a colour
+   change that would read as a button. */
+.whoa-planet-link {
+  text-decoration: none;
+  transition: transform 300ms ease;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .whoa-planet-link:hover,
+  .whoa-planet-link:focus-visible {
+    transform: translateY(-6px);
+  }
+}
+.whoa-planet-link:hover .whoa-coming-soon,
+.whoa-planet-link:focus-visible .whoa-coming-soon {
+  box-shadow:
+    inset -8px -10px 22px rgb(0 0 0 / 0.55),
+    0 0 48px rgb(255 122 0 / 0.35);
+}
+/* The three marks drift apart on hover, which is the only hint that
+   the planet is waiting for something. */
+.whoa-planet-link #whoa-next {
+  transition: letter-spacing 300ms ease, color 300ms ease;
+}
+.whoa-planet-link:hover #whoa-next,
+.whoa-planet-link:focus-visible #whoa-next {
+  letter-spacing: 0.6em;
+  color: var(--flame-3);
+}
+.whoa-planet-link:focus-visible {
+  outline: 2px solid var(--flame-2);
+  outline-offset: 8px;
+  border-radius: 8px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   THE MYSTERY MAP
+   ─────────────────────────────────────────────────────────────────────
+
+   Super Mario Bros. 3's World 1, rebuilt in CSS.
+
+   Colours are sampled off the reference rather than invented, because
+   this only works if it is recognised in the first half second, and
+   the palette is the thing that does that. It is a deliberate break
+   from the rest of the site, which is near-black and flame: a hidden
+   page that looked like every other page would not be worth hiding.
+
+   Everything is drawn with box-shadows and solid colour, no images.
+   Pixel art is flat colour and hard edges, which is exactly what CSS
+   is good at, and it means the map stays sharp at any zoom and costs
+   no requests. */
+
+:root {
+  --smb-sand: #f8d878;
+  --smb-road: #f8b8a0;
+  --smb-dot: #f87800;
+  --smb-ink: #000000;
+  --smb-leaf: #58d854;
+  --smb-leaf-dark: #00a800;
+  --smb-rock: #fca044;
+  --smb-rock-dark: #e45c10;
+}
+
+.whoa-smb-wrap {
+  --smb-edge: 4px;
+  width: 100%;
+}
+
+/* On a phone the map pans rather than reflowing. A world map that
+   rearranges itself into a column is a list with grass behind it. */
+.whoa-smb-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.whoa-smb-scroll:focus-visible {
+  outline: 3px solid var(--flame-2);
+  outline-offset: 4px;
+}
+
+/* The double border the reference has: black outside, salmon inside. */
+.whoa-smb-frame {
+  min-width: 760px;
+  padding: 10px;
+  background: var(--smb-road);
+  border: var(--smb-edge) solid var(--smb-ink);
+}
+
+.whoa-smb-field {
+  position: relative;
+  aspect-ratio: 16 / 11;
+  background: var(--smb-sand);
+  border: var(--smb-edge) solid var(--smb-ink);
+}
+
+/* ───── Roads ───── */
+
+.whoa-smb-road-h,
+.whoa-smb-road-v {
+  position: absolute;
+  background: var(--smb-road);
+  /* The black keyline on both long sides, which is what makes a road
+     a road rather than a stripe. Drawn with a shadow rather than a
+     border so the road's own length stays exactly what the grid
+     worked out. */
+  display: grid;
+  place-items: center;
+}
+.whoa-smb-road-h {
+  height: 14px;
+  transform: translateY(-50%);
+  box-shadow: 0 -3px 0 var(--smb-ink), 0 3px 0 var(--smb-ink);
+}
+.whoa-smb-road-v {
+  width: 14px;
+  transform: translateX(-50%);
+  box-shadow: -3px 0 0 var(--smb-ink), 3px 0 0 var(--smb-ink);
+}
+
+.whoa-smb-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--smb-dot);
+  box-shadow: 0 0 0 2px var(--smb-ink);
+}
+
+/* ───── Scenery ───── */
+
+.whoa-smb-prop {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+/* The sprite itself is drawn in components/mystery/Prop.tsx, where a
+   two-pass stroke gives the cluster one outline instead of three.
+   All this does is size it. */
+.whoa-smb-sprite {
+  display: block;
+  width: 42px;
+  height: 28px;
+}
+
+/* ───── The marker ───── */
+
+.whoa-smb-player {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  margin-top: -26px;
+  transform: translate(-50%, -50%);
+  background: var(--flame-1);
+  box-shadow: 0 0 0 3px var(--smb-ink);
+  opacity: 0;
+  transition: left 140ms steps(4), top 140ms steps(4), opacity 120ms linear;
+  pointer-events: none;
+  z-index: 3;
+}
+.whoa-smb-player[data-on="yes"] {
+  opacity: 1;
+}
+/* Steps, not a smooth ease. Mario moves between tiles a frame at a
+   time and a 60fps glide would be the one thing on this page that
+   gave away what century it was made in. */
+@media (prefers-reduced-motion: reduce) {
+  .whoa-smb-player {
+    transition: opacity 120ms linear;
+  }
+}
+
+/* ───── The stops ───── */
+
+.whoa-smb-stop {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  text-decoration: none;
+  z-index: 2;
+}
+.whoa-smb-stop:focus-visible {
+  outline: 3px solid var(--flame-1);
+  outline-offset: 5px;
+}
+
+/* The level panel: black square, white rule, big white number, and
+   the little wedge in the top-left corner. */
+.whoa-smb-panel {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  background: var(--smb-ink);
+  box-shadow:
+    inset 0 0 0 3px #fcfcfc,
+    0 0 0 3px var(--smb-ink);
+  transition: transform 90ms steps(2);
+}
+.whoa-smb-stop:hover .whoa-smb-panel,
+.whoa-smb-stop:focus-visible .whoa-smb-panel {
+  transform: translateY(-4px);
+}
+.whoa-smb-wedge {
+  position: absolute;
+  top: 7px;
+  left: 7px;
+  width: 9px;
+  height: 13px;
+  background: #fcfcfc;
+  clip-path: polygon(0 0, 100% 22%, 55% 50%, 100% 78%, 0 100%);
+}
+.whoa-smb-num {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fcfcfc;
+  padding-left: 12px;
+}
+
+/* The Toad House: a mushroom cap with a door in it. Without the door
+   it was just an orange dome, which on a map covered in orange domes
+   is a rock somebody can click. */
+.whoa-smb-house {
+  position: relative;
+  display: block;
+  width: 46px;
+  height: 36px;
+  background: var(--smb-rock);
+  border-radius: 21px 21px 3px 3px;
+  box-shadow:
+    0 0 0 3px var(--smb-ink),
+    inset 0 -11px 0 var(--smb-rock-dark);
+  transition: transform 90ms steps(2);
+}
+.whoa-smb-house::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 16px;
+  background: #3a1a06;
+  border-radius: 7px 7px 0 0;
+  box-shadow: 0 0 0 3px var(--smb-ink);
+}
+.whoa-smb-stop:hover .whoa-smb-house,
+.whoa-smb-stop:focus-visible .whoa-smb-house {
+  transform: translateY(-4px);
+}
+
+/* The castle: a white block with battlements and a flag. */
+.whoa-smb-castle {
+  position: relative;
+  display: block;
+  width: 58px;
+  height: 48px;
+  background: #fcfcfc;
+  box-shadow: 0 0 0 3px var(--smb-ink);
+  transition: transform 90ms steps(2);
+}
+.whoa-smb-castle::before {
+  /* Battlements, as three teeth bitten out of the top edge. */
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 9px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--smb-sand) 0 6px,
+    transparent 6px 14px
+  );
+}
+.whoa-smb-castle::after {
+  /* The doorway. */
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 15px;
+  height: 17px;
+  background: var(--flame-1);
+  border-radius: 7px 7px 0 0;
+  box-shadow: 0 0 0 3px var(--smb-ink);
+}
+.whoa-smb-stop:hover .whoa-smb-castle,
+.whoa-smb-stop:focus-visible .whoa-smb-castle {
+  transform: translateY(-4px);
+}
+
+/* The START sign: white plate, red rule, black letters. */
+.whoa-smb-start {
+  display: block;
+  padding: 4px 8px;
+  background: #fcfcfc;
+  color: var(--smb-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  box-shadow:
+    inset 0 0 0 3px #d82800,
+    0 0 0 3px var(--smb-ink);
+  transition: transform 90ms steps(2);
+}
+.whoa-smb-stop:hover .whoa-smb-start,
+.whoa-smb-stop:focus-visible .whoa-smb-start {
+  transform: translateY(-4px);
+}
+
+/* The real page name under every stop. Dark on sand, with a light
+   halo, because sand is a light background and the site's own white
+   would vanish into it. */
+.whoa-smb-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #1a1206;
+  text-shadow:
+    0 1px 0 rgb(255 255 255 / 0.65),
+    0 -1px 0 rgb(255 255 255 / 0.65),
+    1px 0 0 rgb(255 255 255 / 0.65),
+    -1px 0 0 rgb(255 255 255 / 0.65);
+}
+.whoa-smb-stop:hover .whoa-smb-label,
+.whoa-smb-stop:focus-visible .whoa-smb-label {
+  color: #7a2a00;
+}
+
+/* ───── The status bar ───── */
+
+.whoa-smb-hud {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: var(--smb-ink);
+  border: var(--smb-edge) solid var(--smb-road);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #fcfcfc;
+}
+.whoa-smb-hud-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+.whoa-smb-hud-cell b {
+  color: var(--smb-dot);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+}
+.whoa-smb-hud-say {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #d8d8d8;
+}
