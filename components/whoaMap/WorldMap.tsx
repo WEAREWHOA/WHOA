@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 
 import type { Map as LeafletMap } from "leaflet";
 import { PIN_KIND_LABELS, placeLabel, type MapPin } from "@/lib/whoaMap";
+import { TILE_ATTRIBUTION, TILE_MAX_ZOOM, TILE_URL } from "@/lib/mapTiles";
 
 /**
  * The pins, on a real map.
@@ -51,10 +52,9 @@ export default function WorldMap({ pins }: { pins: MapPin[] }) {
         attributionControl: true,
       });
 
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        maxZoom: 19,
+      L.tileLayer(TILE_URL, {
+        attribution: TILE_ATTRIBUTION,
+        maxZoom: TILE_MAX_ZOOM,
       }).addTo(instance);
 
       for (const pin of pins) {
@@ -112,7 +112,7 @@ export default function WorldMap({ pins }: { pins: MapPin[] }) {
   return (
     <div
       ref={holder}
-      className="h-[420px] w-full overflow-hidden rounded-2xl border border-border sm:h-[560px]"
+      className="whoa-map-dark h-[420px] w-full overflow-hidden rounded-2xl border border-border sm:h-[560px]"
       // Leaflet measures its container, and a container with no height
       // yet renders a map one pixel tall. The class above gives it one
       // before Leaflet ever looks.
