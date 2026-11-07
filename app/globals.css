@@ -3275,3 +3275,402 @@ body {
 .whoa-smb-stop:focus-visible .whoa-smb-bonus {
   transform: translateY(-4px);
 }
+
+/* ─────────────────────────────────────────────────────────────────────
+   WHOAKÉMON: WHOA TOWN
+   ─────────────────────────────────────────────────────────────────────
+
+   Pallet Town, in tiles, matched to the reference rather than to my
+   memory of it. The first pass got the palette wrong in a way that
+   mattered more than any of the shapes: red roofs on a saturated
+   mid-green, when the real thing is teal and blue roofs on a soft
+   yellow-green, with one blue roof on the lab. Colour is what makes
+   somebody recognise a place, so that was the whole miss.
+
+   Three things carry it:
+
+     The grass is light and yellow, not green-green, with quiet
+     patches in it so a field is not a flat rectangle.
+
+     Trees are lumpy canopies, several circles per tile in three
+     greens, so a run of them joins into one mass of forest rather
+     than a row of lollipops. That is why the ring round the town
+     reads as woods you cannot get through.
+
+     Roofs are teal, walls are tan wood with pale blue windows, and
+     the lab is the one blue roof. Everything is low saturation.
+
+   Still drawn in CSS, no sprite sheets: flat colour and hard edges
+   are what CSS is good at, and it stays sharp at any zoom. */
+
+:root {
+  /* Ground */
+  --pk-grass: #a4dc78;
+  --pk-grass-2: #abe081;
+  --pk-grass-3: #9bd46d;
+  --pk-path: #e8d8a4;
+  --pk-path-2: #dfcd97;
+
+  /* Woods: dark base, mid lobes, light tops. */
+  --pk-tree-dark: #2a7340;
+  --pk-tree: #3f9a52;
+  --pk-tree-light: #63b96c;
+
+  /* Buildings */
+  --pk-roof: #4fa899;
+  --pk-roof-2: #317f74;
+  --pk-roof-3: #6cc4b2;
+  --pk-lab: #5090cc;
+  --pk-lab-2: #336c9f;
+  --pk-lab-3: #74b0e0;
+  --pk-wall: #d8a868;
+  --pk-wall-2: #b0824a;
+  --pk-window: #8fc9e8;
+  --pk-door: #8c4f22;
+
+  --pk-water: #5aa8d8;
+  --pk-water-2: #3d86b8;
+  --pk-stone: #a89880;
+  --pk-sign: #c08f50;
+  --pk-ink: #243018;
+}
+
+.whoa-pkmn {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+/* One square tile per cell. The board scales with the container, so
+   the town is never cut off and never scrolls: on a map this small
+   you want all of it at once. */
+.whoa-pkmn-field {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  grid-template-rows: repeat(var(--rows), 1fr);
+  aspect-ratio: var(--cols) / var(--rows);
+  width: 100%;
+  max-width: 720px;
+  border: 4px solid var(--pk-ink);
+  background: var(--pk-grass);
+  image-rendering: pixelated;
+  touch-action: manipulation;
+}
+.whoa-pkmn-field:focus-visible {
+  outline: 3px solid var(--flame-2);
+  outline-offset: 4px;
+}
+
+.whoa-pkmn-tile {
+  position: relative;
+}
+
+/* ───── Ground ───── */
+
+/* Grass, with two quiet patches. Lighter than the base rather than
+   darker: the reference's variation reads as sun on the grass, and
+   darker blobs read as mud. */
+.whoa-pkmn-tile[data-tile="."],
+.whoa-pkmn-tile[data-tile="f"],
+.whoa-pkmn-tile[data-tile="T"],
+.whoa-pkmn-tile[data-tile="L"],
+.whoa-pkmn-tile[data-tile="sign"] {
+  background-color: var(--pk-grass);
+  background-image:
+    radial-gradient(circle at 24% 32%, var(--pk-grass-2) 0 15%, transparent 16%),
+    radial-gradient(circle at 72% 68%, var(--pk-grass-2) 0 12%, transparent 13%),
+    radial-gradient(circle at 58% 18%, var(--pk-grass-3) 0 8%, transparent 9%);
+}
+
+/* THE REPEAT IS THE TELL.
+   
+   Every grass tile carrying the same three blobs in the same places
+   turns a field into polka dots, which is the one thing that gave
+   away that this was CSS rather than a tileset. Three variants on
+   co-prime cycles never line up with the 20-wide grid, so the
+   pattern stops reading as a pattern. Cheap, and it is the single
+   biggest difference between this and the reference. */
+.whoa-pkmn-tile[data-tile="."]:nth-child(3n),
+.whoa-pkmn-tile[data-tile="f"]:nth-child(3n) {
+  background-image:
+    radial-gradient(circle at 68% 24%, var(--pk-grass-2) 0 13%, transparent 14%),
+    radial-gradient(circle at 30% 74%, var(--pk-grass-3) 0 10%, transparent 11%);
+}
+.whoa-pkmn-tile[data-tile="."]:nth-child(7n),
+.whoa-pkmn-tile[data-tile="f"]:nth-child(7n) {
+  background-image:
+    radial-gradient(circle at 44% 58%, var(--pk-grass-2) 0 16%, transparent 17%),
+    radial-gradient(circle at 82% 80%, var(--pk-grass-3) 0 7%, transparent 8%);
+}
+.whoa-pkmn-tile[data-tile="."]:nth-child(11n) {
+  background-image: none;
+}
+
+.whoa-pkmn-tile[data-tile=","] {
+  background-color: var(--pk-path);
+  background-image: radial-gradient(circle at 30% 60%, var(--pk-path-2) 0 9%, transparent 10%);
+}
+.whoa-pkmn-tile[data-tile=","]:nth-child(4n) {
+  background-image: radial-gradient(circle at 72% 34%, var(--pk-path-2) 0 7%, transparent 8%);
+}
+.whoa-pkmn-tile[data-tile=","]:nth-child(5n) {
+  background-image: none;
+}
+
+/* Flowers: small, white and pink, scattered. In the reference they
+   are specks, not blooms. */
+.whoa-pkmn-tile[data-tile="f"]::after {
+  content: "";
+  position: absolute;
+  inset: 40% 46% 44% 38%;
+  background: #fcfcfc;
+  border-radius: 50%;
+  box-shadow:
+    -0.34em 0.22em 0 -0.01em #f890b0,
+    0.36em -0.1em 0 -0.01em #fcfcfc,
+    0.1em 0.4em 0 -0.02em #f8e07a;
+}
+
+/* ───── Woods ─────
+
+   Four circles a tile, in three greens, with the lightest towards
+   the top left as if everything is lit from there. Adjacent tiles
+   overlap into one canopy, which is what makes a line of these read
+   as a forest edge rather than a hedge. */
+.whoa-pkmn-tile[data-tile="T"] {
+  background-color: var(--pk-tree-dark);
+  background-image:
+    radial-gradient(circle at 28% 30%, var(--pk-tree-light) 0 22%, transparent 23%),
+    radial-gradient(circle at 70% 26%, var(--pk-tree) 0 28%, transparent 29%),
+    radial-gradient(circle at 22% 74%, var(--pk-tree) 0 26%, transparent 27%),
+    radial-gradient(circle at 74% 72%, var(--pk-tree-light) 0 20%, transparent 21%),
+    radial-gradient(circle at 50% 50%, var(--pk-tree) 0 34%, transparent 35%);
+}
+.whoa-pkmn-tile[data-tile="T"]:nth-child(2n) {
+  background-image:
+    radial-gradient(circle at 66% 34%, var(--pk-tree-light) 0 20%, transparent 21%),
+    radial-gradient(circle at 26% 24%, var(--pk-tree) 0 30%, transparent 31%),
+    radial-gradient(circle at 76% 76%, var(--pk-tree) 0 24%, transparent 25%),
+    radial-gradient(circle at 30% 70%, var(--pk-tree-light) 0 18%, transparent 19%),
+    radial-gradient(circle at 48% 54%, var(--pk-tree) 0 32%, transparent 33%);
+}
+.whoa-pkmn-tile[data-tile="T"]:nth-child(3n) {
+  background-image:
+    radial-gradient(circle at 38% 22%, var(--pk-tree-light) 0 24%, transparent 25%),
+    radial-gradient(circle at 78% 42%, var(--pk-tree) 0 26%, transparent 27%),
+    radial-gradient(circle at 18% 62%, var(--pk-tree) 0 28%, transparent 29%),
+    radial-gradient(circle at 60% 80%, var(--pk-tree-light) 0 17%, transparent 18%),
+    radial-gradient(circle at 52% 46%, var(--pk-tree) 0 33%, transparent 34%);
+}
+
+/* ───── Water ───── */
+
+.whoa-pkmn-tile[data-tile="W"] {
+  background-color: var(--pk-water);
+  background-image:
+    radial-gradient(circle at 34% 56%, var(--pk-water-2) 0 13%, transparent 14%),
+    radial-gradient(circle at 76% 34%, var(--pk-water-2) 0 10%, transparent 11%);
+}
+/* The stony lip the reference puts round every pool, drawn on the
+   top edge only, which is the edge you can see from above. */
+.whoa-pkmn-tile[data-tile="W"]::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 82% 0;
+  background: var(--pk-stone);
+  box-shadow: inset 0 -2px 0 #8a7a62;
+}
+
+/* ───── Buildings ─────
+
+   A roof is a slab with a ridge highlight along the top and a dark
+   eave along the bottom, which is the whole of how a gable reads
+   from directly above. */
+.whoa-pkmn-tile[data-tile="^"] {
+  background: var(--pk-roof);
+  box-shadow:
+    inset 0 22% 0 -14% var(--pk-roof-3),
+    inset 0 -26% 0 var(--pk-roof-2);
+}
+.whoa-pkmn-tile[data-tile="B"] {
+  background: var(--pk-lab);
+  box-shadow:
+    inset 0 22% 0 -14% var(--pk-lab-3),
+    inset 0 -26% 0 var(--pk-lab-2);
+}
+
+.whoa-pkmn-tile[data-tile="#"] {
+  background: var(--pk-wall);
+  box-shadow: inset 0 0 0 1px var(--pk-wall-2);
+}
+.whoa-pkmn-tile[data-tile="#"]::after {
+  content: "";
+  position: absolute;
+  inset: 24% 26%;
+  background: var(--pk-window);
+  box-shadow:
+    0 0 0 2px var(--pk-wall-2),
+    inset 0 40% 0 -22% #c8e6f4;
+}
+
+.whoa-pkmn-tile[data-tile="door"] {
+  background: var(--pk-wall);
+  box-shadow: inset 0 0 0 1px var(--pk-wall-2);
+}
+.whoa-pkmn-tile[data-tile="door"]::after {
+  content: "";
+  position: absolute;
+  inset: 16% 20% 0 20%;
+  background: var(--pk-door);
+  box-shadow:
+    0 0 0 2px var(--pk-wall-2),
+    inset -26% 0 0 -16% #6b3a18;
+}
+
+/* ───── Street furniture ───── */
+
+.whoa-pkmn-tile[data-tile="sign"]::before {
+  content: "";
+  position: absolute;
+  inset: 56% 44% 12% 44%;
+  background: #7a5428;
+}
+.whoa-pkmn-tile[data-tile="sign"]::after {
+  content: "";
+  position: absolute;
+  inset: 16% 10% 50% 10%;
+  background: var(--pk-sign);
+  box-shadow: inset 0 -42% 0 -26% #d8ad74;
+}
+
+/* The lamp posts along the path, which the reference has at every
+   bend and which do more for the look of a town than their size
+   suggests. */
+.whoa-pkmn-tile[data-tile="L"]::before {
+  content: "";
+  position: absolute;
+  inset: 34% 46% 8% 46%;
+  background: #3c3c44;
+}
+.whoa-pkmn-tile[data-tile="L"]::after {
+  content: "";
+  position: absolute;
+  inset: 12% 32% 62% 32%;
+  background: #f4e8a8;
+  box-shadow: 0 0 0 2px #3c3c44;
+}
+
+/* ───── Labels, player, dialogue, pad ───── */
+
+/* Names over the doors. Positioned on the grid rather than inside
+   the tile, so a long one can overhang its neighbours. */
+.whoa-pkmn-doorname {
+  position: absolute;
+  left: calc((var(--x) + 0.5) / var(--cols) * 100%);
+  top: calc((var(--y) + 0.5) / var(--rows) * 100%);
+  transform: translate(-50%, -50%);
+  padding: 1px 4px;
+  background: rgb(26 32 18 / 0.78);
+  color: #fcfcfc;
+  font-family: var(--font-mono);
+  font-size: clamp(6px, 1.3vw, 10px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* The player moves in steps between squares, because these games
+   move a tile at a time and a smooth glide would be the wrong
+   century again. */
+.whoa-pkmn-player {
+  position: absolute;
+  left: calc(var(--x) / var(--cols) * 100%);
+  top: calc(var(--y) / var(--rows) * 100%);
+  width: calc(100% / var(--cols));
+  height: calc(100% / var(--rows));
+  display: grid;
+  place-items: end center;
+  pointer-events: none;
+  transition: left 90ms steps(2), top 90ms steps(2);
+  z-index: 2;
+}
+@media (prefers-reduced-motion: reduce) {
+  .whoa-pkmn-player {
+    transition: none;
+  }
+}
+.whoa-pkmn-trainer {
+  width: 92%;
+  height: auto;
+  filter: drop-shadow(0 1px 0 rgb(0 0 0 / 0.4));
+}
+
+/* The dialogue box: a pale panel with a fat double border and the
+   text flush left, as these games have always had. */
+.whoa-pkmn-say {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 720px;
+  min-height: 62px;
+  padding: 12px 14px;
+  background: #f8f8f0;
+  color: var(--pk-ink);
+  border: 4px solid var(--pk-ink);
+  box-shadow: inset 0 0 0 3px #b0b8a0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.whoa-pkmn-say p {
+  margin: 0;
+}
+.whoa-pkmn-say-go {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  background: var(--pk-ink);
+  color: #fcfcfc;
+  font-weight: 700;
+  text-decoration: none;
+}
+.whoa-pkmn-say-go:hover,
+.whoa-pkmn-say-go:focus-visible {
+  background: var(--flame-1);
+}
+
+/* The pad. Shown on every screen, not only touch: it is what tells
+   somebody the thing can be driven before they try a key. */
+.whoa-pkmn-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 44px);
+  grid-template-rows: repeat(2, 44px);
+  gap: 4px;
+  justify-content: start;
+}
+.whoa-pkmn-pad button {
+  display: grid;
+  place-items: center;
+  background: var(--surface-raised);
+  border: 2px solid var(--border-strong);
+  border-radius: 6px;
+  color: var(--foreground);
+  font-size: 15px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+.whoa-pkmn-pad button:active {
+  background: var(--flame-2);
+  color: #16140f;
+}
+.whoa-pkmn-pad button[data-d="up"] { grid-area: 1 / 2; }
+.whoa-pkmn-pad button[data-d="left"] { grid-area: 2 / 1; }
+.whoa-pkmn-pad button[data-d="down"] { grid-area: 2 / 2; }
+.whoa-pkmn-pad button[data-d="right"] { grid-area: 2 / 3; }
