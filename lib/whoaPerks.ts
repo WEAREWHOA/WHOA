@@ -31,6 +31,10 @@ export const MEMBER_PERKS: Perk[] = [
     detail: "Nights we only open to WHOA card holders.",
   },
   {
+    title: "Seasonal giveaways & freebies",
+    detail: "Drops, prizes and things we just hand out, card holders first.",
+  },
+  {
     title: "More to come",
     detail: "This list grows. Buying in now keeps whatever gets added later.",
   },
