@@ -31,12 +31,18 @@ export async function requirePortal(): Promise<PortalAccess> {
   const admin = account.isSuperAdmin;
   const showVendor = p.vendor && Boolean(account.vendorSlug);
 
+
+
   return {
     account,
     showVendor,
     can: {
       customer: true,
       events: true,
+      // Everybody has a wallet, so it is always there. It is the
+      // membership inside it that not everybody has, and the tab says
+      // so rather than hiding.
+      wallet: true,
       settings: true,
       ambassador: p.ambassador,
       vendor: showVendor,

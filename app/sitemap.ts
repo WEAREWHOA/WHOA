@@ -57,6 +57,7 @@ const STATIC_ROUTES = [
   // Grows a pin at a time from what people send in, so it earns its
   // own crawl rather than being discovered through the footer alone.
   "/whoa-map",
+  "/whoa-card",
   "/partnerships",
   "/custom-design",
   "/same-same-but-whoa",

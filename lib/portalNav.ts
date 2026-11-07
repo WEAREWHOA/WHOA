@@ -10,7 +10,7 @@
 export type PortalTabId =
   | "customer" | "events" | "ambassador" | "vendor" | "art" | "music"
   | "ssbd" | "analytics" | "ba-admin" | "customer-admin" | "newsletter" | "reviews" | "events-admin" | "rsvp-admin"
-  | "rolodex" | "event-sales" | "art-admin" | "music-admin" | "links" | "blog" | "inventory" | "whoa-map" | "settings";
+  | "rolodex" | "event-sales" | "art-admin" | "music-admin" | "links" | "blog" | "inventory" | "whoa-map" | "wallet" | "settings";
 
 export interface PortalTab {
   id: PortalTabId;
@@ -23,6 +23,7 @@ export interface PortalTab {
 
 export const PORTAL_TABS: PortalTab[] = [
   { id: "customer", slug: "", label: "CUSTOMER", always: true },
+  { id: "wallet", slug: "wallet", label: "WALLET" },
   { id: "events", slug: "events", label: "EVENTS", always: true },
   { id: "ambassador", slug: "ambassador", label: "BRAND AMBASSADORS" },
   { id: "vendor", slug: "vendor", label: "ARTIST/VENDOR" },
