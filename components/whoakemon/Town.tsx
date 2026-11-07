@@ -18,60 +18,73 @@ import {
 } from "./town";
 
 /**
- * WHOA Town, which you walk around.
+ * WHOA Town, in a handheld.
  *
  * Tile movement, not free movement: one square per press, the way
- * these games do it. Free movement would need collision boxes and
- * would feel like a different genre.
- *
- * A press when you are not already facing that way turns you on the
- * spot instead of moving. That is the behaviour from the games and it
- * is not a quirk: it is what lets you read a sign you are standing
+ * these games do it. A press when you are not already facing that way
+ * turns you on the spot instead of moving, which is not a quirk of
+ * the original: it is what lets you read a sign you are standing
  * beside without stepping past it.
  *
- * ARROW KEYS AND THE PAGE. The key handler is on the map, which takes
- * focus, rather than on the window. Stealing the arrow keys from the
- * whole document would break scrolling for anybody who never wanted
- * to play, and this is a page with a footer under it.
+ * THE PAGE IS THE DEVICE. This route gets no site chrome and the body
+ * does not scroll while it is open, because a console that scrolls is
+ * a picture of a console. The shell takes focus on mount, which is
+ * normally rude, but here the whole page is one control surface and
+ * there is nothing else on it to take focus from.
  *
- * NOT EVERYONE CAN PLAY THIS. The same eight destinations are listed
- * as ordinary links underneath, and that list is not a fallback that
- * appears when something fails, it is just there. A navigation page
- * that can only be used with four arrow keys and a working pointer
- * is not a navigation page.
+ * NOT EVERYONE CAN PLAY THIS. START opens a menu listing every
+ * destination as an ordinary link, and the same list is in the page
+ * under the device for anyone who never finds START. A navigation
+ * page usable only with four arrow keys and a working pointer is not
+ * a navigation page.
  */
 
-const TURN_FIRST = true;
+/** ↑ ↑ ↓ ↓ ← → ← → B A. */
+const KONAMI = [
+  "ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown",
+  "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "b", "a",
+];
+
+/** How many times somebody has to try the sea before it gives in. */
+const SEA_PATIENCE = 5;
+
+const SEA_LINES = [
+  "The sea. You are not swimming today.",
+  "Still the sea. Still not swimming.",
+  "You don't have SURF.",
+  "You really are going to keep trying this.",
+];
+
+type Said = { text: string; href?: string; name?: string };
 
 export default function Town() {
   const router = useRouter();
-  const field = useRef<HTMLDivElement>(null);
+  const shell = useRef<HTMLDivElement>(null);
 
   const [pos, setPos] = useState({ x: START.x, y: START.y });
   const [facing, setFacing] = useState<Facing>(START.facing);
   const [step, setStep] = useState<0 | 1>(0);
-  const [says, setSays] = useState<{ text: string; href?: string; name?: string }>({
-    text: "WHOA TOWN. Arrow keys or the pad below. Doors take you in.",
+  const [menu, setMenu] = useState(false);
+  const [dmg, setDmg] = useState(false);
+  const [says, setSays] = useState<Said>({
+    text: "WHOA TOWN. Arrows or the pad. Doors take you in. START for the menu.",
   });
-  // Entering a door navigates, which takes a moment. Without this the
-  // player can keep walking on a page that is on its way out.
+  // Navigating away takes a moment; without this you can keep walking
+  // on a page that is already leaving.
   const [leaving, setLeaving] = useState(false);
+
+  const seaTries = useRef(0);
+  const konami = useRef<string[]>([]);
 
   const move = useCallback(
     (dir: Facing) => {
-      if (leaving) return;
+      if (leaving || menu) return;
 
-      // Turn first, step second.
-      if (TURN_FIRST && facing !== dir) {
+      if (facing !== dir) {
         setFacing(dir);
         const { dx, dy } = STEPS[dir];
-        const ahead = tileAt(pos.x + dx, pos.y + dy);
-        const way = WAYS_IN[ahead];
-        // Turning towards a sign reads it, which is how you read one
-        // without walking into it twice.
-        if (way?.kind === "sign") {
-          setSays({ text: way.says, href: way.href, name: way.name });
-        }
+        const way = WAYS_IN[tileAt(pos.x + dx, pos.y + dy)];
+        if (way?.kind === "sign") setSays({ text: way.says, href: way.href, name: way.name });
         return;
       }
 
@@ -87,7 +100,20 @@ export default function Town() {
       }
 
       if (!canStandOn(nx, ny)) {
-        // Bumping into something is not silent in these games.
+        if (target === "W") {
+          // Persistence is rewarded, eventually.
+          seaTries.current += 1;
+          setSays(
+            seaTries.current >= SEA_PATIENCE
+              ? {
+                  text: "Fine. There is water elsewhere.",
+                  href: "/water",
+                  name: "the water",
+                }
+              : { text: SEA_LINES[Math.min(seaTries.current - 1, SEA_LINES.length - 1)] },
+          );
+          return;
+        }
         setSays({ text: blockedBy(target) });
         return;
       }
@@ -104,53 +130,111 @@ export default function Town() {
 
       setSays({ text: whereYouAre(target) });
     },
-    [facing, leaving, pos.x, pos.y, router],
+    [facing, leaving, menu, pos.x, pos.y, router],
   );
 
-  // Keyboard, scoped to the map.
+  const press = useCallback(
+    (button: "a" | "b" | "start" | "select") => {
+      if (leaving) return;
+      if (button === "start") {
+        setMenu((m) => !m);
+        return;
+      }
+      if (button === "select") {
+        // True to the hardware.
+        setSays({ text: "SELECT does nothing. It never did." });
+        return;
+      }
+      if (button === "b") {
+        if (menu) setMenu(false);
+        else setSays({ text: "…" });
+        return;
+      }
+      if (says.href) {
+        setLeaving(true);
+        router.push(says.href);
+      }
+    },
+    [leaving, menu, router, says.href],
+  );
+
+  // The body does not scroll while the console is on screen.
   useEffect(() => {
-    const el = field.current;
+    const body = document.body;
+    const prevOverflow = body.style.overflow;
+    const prevOverscroll = body.style.overscrollBehavior;
+    body.style.overflow = "hidden";
+    body.style.overscrollBehavior = "none";
+    return () => {
+      body.style.overflow = prevOverflow;
+      body.style.overscrollBehavior = prevOverscroll;
+    };
+  }, []);
+
+  useEffect(() => {
+    shell.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    const el = shell.current;
     if (!el) return;
 
-    const KEYS: Record<string, Facing> = {
-      ArrowUp: "up",
-      ArrowDown: "down",
-      ArrowLeft: "left",
-      ArrowRight: "right",
-      w: "up",
-      s: "down",
-      a: "left",
-      d: "right",
-      W: "up",
-      S: "down",
-      A: "left",
-      D: "right",
+    const DIRS: Record<string, Facing> = {
+      ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right",
+      w: "up", s: "down", a: "left", d: "right",
+      W: "up", S: "down", A: "left", D: "right",
     };
 
     const onKey = (e: KeyboardEvent) => {
-      // A or Enter follows whatever the dialogue box is offering, so
-      // a sign can be acted on without reaching for the mouse.
-      if (e.key === "Enter" || e.key === " ") {
-        if (says.href) {
-          e.preventDefault();
-          setLeaving(true);
-          router.push(says.href);
-        }
+      // The code is read off the raw keys before anything else claims
+      // them, so A and B count both as the buttons and as the code.
+      konami.current = [...konami.current, e.key].slice(-KONAMI.length);
+      if (konami.current.join(",").toLowerCase() === KONAMI.join(",").toLowerCase()) {
+        konami.current = [];
+        setDmg((on) => !on);
+        setSays({ text: "The screen goes green. Just like that." });
+        e.preventDefault();
         return;
       }
-      const dir = KEYS[e.key];
-      if (!dir) return;
-      // Only swallow the arrow keys while the map has focus, so the
-      // page still scrolls for everybody else.
-      e.preventDefault();
-      move(dir);
+
+      if (e.key === "Enter") {
+        e.preventDefault();
+        press("a");
+        return;
+      }
+      if (e.key === "Backspace" || e.key === "Escape") {
+        e.preventDefault();
+        press("b");
+        return;
+      }
+      if (e.key === "Shift") {
+        e.preventDefault();
+        press("select");
+        return;
+      }
+
+      const dir = DIRS[e.key];
+      if (dir) {
+        // Swallowed only while the console has focus, which on this
+        // route is all the time, because there is nothing else here.
+        e.preventDefault();
+        move(dir);
+        return;
+      }
+
+      // Space is START, because on a page that does not scroll it has
+      // nothing better to do.
+      if (e.key === " ") {
+        e.preventDefault();
+        press("start");
+      }
     };
 
     el.addEventListener("keydown", onKey);
     return () => el.removeEventListener("keydown", onKey);
-  }, [move, router, says.href]);
+  }, [move, press]);
 
-  // Swipe, as well as the pad. One or the other is somebody's habit.
+  // Swipe on the screen itself, for anybody whose habit that is.
   const touch = useRef<{ x: number; y: number } | null>(null);
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
@@ -163,82 +247,134 @@ export default function Town() {
     const t = e.changedTouches[0];
     const dx = t.clientX - from.x;
     const dy = t.clientY - from.y;
-    // Below this it is a tap, not a swipe, and treating a tap as a
-    // swipe in whichever direction the thumb drifted is maddening.
     if (Math.abs(dx) < 24 && Math.abs(dy) < 24) return;
     move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : dy > 0 ? "down" : "up");
   };
 
   return (
-    <div className="whoa-pkmn">
-      <div
-        ref={field}
-        tabIndex={0}
-        role="application"
-        aria-label="WHOA Town. Use the arrow keys to walk. Every destination is also listed as a link below the map."
-        className="whoa-pkmn-field"
-        style={{ "--cols": COLS, "--rows": ROWS } as React.CSSProperties}
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
-      >
-        {MAP.map((row, y) =>
-          [...row].map((t, x) => {
-            const way = WAYS_IN[t];
-            return (
-              <span
-                key={`${x},${y}`}
-                aria-hidden
-                className="whoa-pkmn-tile"
-                data-tile={way ? way.kind : t}
-              />
-            );
-          }),
-        )}
+    <div
+      ref={shell}
+      tabIndex={0}
+      role="application"
+      aria-label="WHOA Town, a handheld game. Arrow keys to walk, Enter to confirm, Space for the menu. Every destination is also listed as a link below."
+      className="whoa-gb"
+      data-dmg={dmg ? "on" : "off"}
+    >
+      <div className="whoa-gb-body">
+        <div className="whoa-gb-bezel">
+          <span className="whoa-gb-led" aria-hidden />
+          <div
+            className="whoa-gb-screen"
+            onTouchStart={onTouchStart}
+            onTouchEnd={onTouchEnd}
+          >
+            <div
+              className="whoa-pkmn-field"
+              style={{ "--cols": COLS, "--rows": ROWS } as React.CSSProperties}
+            >
+              {MAP.map((row, y) =>
+                [...row].map((t, x) => {
+                  const way = WAYS_IN[t];
+                  return (
+                    <span
+                      key={`${x},${y}`}
+                      aria-hidden
+                      className="whoa-pkmn-tile"
+                      // A tree you can walk through has to look exactly
+                      // like one you cannot, or it is not hidden.
+                      data-tile={way ? way.kind : t === "t" ? "T" : t}
+                    />
+                  );
+                }),
+              )}
 
-        {/* Names over the doors, so the town can be read without
-            walking every inch of it. */}
-        {MAP.map((row, y) =>
-          [...row].map((t, x) => {
-            const way = WAYS_IN[t];
-            if (!way || way.kind !== "door") return null;
-            return (
+              {MAP.map((row, y) =>
+                [...row].map((t, x) => {
+                  const way = WAYS_IN[t];
+                  if (!way || way.kind !== "door") return null;
+                  return (
+                    <span
+                      key={`n${x},${y}`}
+                      aria-hidden
+                      className="whoa-pkmn-doorname"
+                      style={{ "--x": x, "--y": way.labelRow ?? y } as React.CSSProperties}
+                    >
+                      {way.name}
+                    </span>
+                  );
+                }),
+              )}
+
               <span
-                key={`n${x},${y}`}
-                aria-hidden
-                className="whoa-pkmn-doorname"
-                style={{ "--x": x, "--y": way.labelRow ?? y } as React.CSSProperties}
+                className="whoa-pkmn-player"
+                style={{ "--x": pos.x, "--y": pos.y } as React.CSSProperties}
               >
-                {way.name}
+                <Trainer facing={facing} step={step} />
               </span>
-            );
-          }),
-        )}
 
-        <span
-          className="whoa-pkmn-player"
-          style={{ "--x": pos.x, "--y": pos.y } as React.CSSProperties}
-        >
-          <Trainer facing={facing} step={step} />
-        </span>
-      </div>
+              {menu && (
+                <div className="whoa-gb-menu">
+                  <p className="whoa-gb-menu-head">WHERE TO?</p>
+                  <ul>
+                    {Object.values(WAYS_IN).map((w) => (
+                      <li key={w.href}>
+                        <Link href={w.href}>{w.name}</Link>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="whoa-gb-menu-foot">START or B to close</p>
+                </div>
+              )}
+            </div>
 
-      {/* The dialogue box. */}
-      <div className="whoa-pkmn-say" role="status" aria-live="polite">
-        <p>{says.text}</p>
-        {says.href && (
-          <Link href={says.href} className="whoa-pkmn-say-go">
-            {says.name ? `Go to ${says.name}` : "Go"} ▸
-          </Link>
-        )}
-      </div>
+            {/* The dialogue box lives on the screen, as it does in the
+                games, rather than under the device. */}
+            <div className="whoa-gb-say" role="status" aria-live="polite">
+              <p>{says.text}</p>
+              {says.href && (
+                <Link href={says.href} className="whoa-gb-say-go">
+                  {says.name ? `Go to ${says.name}` : "Go"} ▸
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
 
-      {/* The pad. Visible on every screen, not just touch: it says
-          the thing is drivable before anybody has pressed a key. */}
-      <div className="whoa-pkmn-pad" aria-hidden>
-        <button type="button" data-d="up" onClick={() => move("up")}>▲</button>
-        <button type="button" data-d="left" onClick={() => move("left")}>◀</button>
-        <button type="button" data-d="right" onClick={() => move("right")}>▶</button>
-        <button type="button" data-d="down" onClick={() => move("down")}>▼</button>
+        <p className="whoa-gb-brand" aria-hidden>
+          WHOA <span>BOY</span>
+        </p>
+
+        <div className="whoa-gb-controls">
+          <div className="whoa-gb-dpad" aria-hidden>
+            <button type="button" data-d="up" onClick={() => move("up")}>
+              <span className="sr-only">Up</span>
+            </button>
+            <button type="button" data-d="left" onClick={() => move("left")}>
+              <span className="sr-only">Left</span>
+            </button>
+            <span className="whoa-gb-dpad-hub" />
+            <button type="button" data-d="right" onClick={() => move("right")}>
+              <span className="sr-only">Right</span>
+            </button>
+            <button type="button" data-d="down" onClick={() => move("down")}>
+              <span className="sr-only">Down</span>
+            </button>
+          </div>
+
+          <div className="whoa-gb-ab" aria-hidden>
+            <button type="button" className="whoa-gb-round" onClick={() => press("b")}>
+              B
+            </button>
+            <button type="button" className="whoa-gb-round" onClick={() => press("a")}>
+              A
+            </button>
+          </div>
+        </div>
+
+        <div className="whoa-gb-startsel" aria-hidden>
+          <button type="button" onClick={() => press("select")}>SELECT</button>
+          <button type="button" onClick={() => press("start")}>START</button>
+        </div>
       </div>
     </div>
   );
@@ -247,12 +383,13 @@ export default function Town() {
 function whereYouAre(tile: string): string {
   if (tile === ",") return "A dirt path, worn down by everybody who came before.";
   if (tile === "f") return "Flowers. Somebody planted these.";
+  if (tile === "t") return "…you walked straight through that tree.";
   return "Grass, mostly.";
 }
 
 function blockedBy(tile: string): string {
   if (tile === "T") return "A wall of trees. Nothing through there.";
-  if (tile === "W") return "The sea. You are not swimming today.";
+  if (tile === "F") return "A picket fence. There is a gate round the bottom.";
   if (tile === "L") return "A lamp post. It comes on at dusk.";
   if (tile === "^" || tile === "#" || tile === "B") return "A building. Try the door.";
   return "You cannot get through.";

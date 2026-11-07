@@ -25,7 +25,10 @@ export default function SiteChrome({ children }: { children: ReactNode }) {
     // /box is the same shape: the card inside a WHOA Gift Box is the
     // only way to it, so it keeps its own warm palette and its own
     // three ways into the site rather than a navbar around a thank you.
-    pathname?.startsWith("/box");
+    pathname?.startsWith("/box") ||
+    // /whoakemon is a handheld that fills the screen and does not
+    // scroll. A navbar above a console is a picture of a console.
+    pathname?.startsWith("/whoakemon");
 
   if (isImmersive) {
     return <main className="flex flex-1 flex-col">{children}</main>;
