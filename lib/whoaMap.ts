@@ -38,6 +38,8 @@ export interface MapPin {
   photoUrl: string;
   status: PinStatus;
   submittedAt: string;
+  /** How it got its position, for the screen that reviews it. */
+  locatedBy: LocatedBy | null;
 }
 
 /** What the pin's label reads, with the parts we actually have. */
@@ -65,6 +67,8 @@ function clean(value: unknown, max: number): string {
 
 const LIMITS = { city: 80, region: 80, country: 80, uploadedBy: 60 };
 
+export type LocatedBy = "pin" | "device" | "geocode";
+
 export interface PinSubmission {
   kind: string;
   city: string;
@@ -72,6 +76,42 @@ export interface PinSubmission {
   country: string;
   uploadedBy: string;
   photo: File;
+  /** Dropped on the map or taken from the device. Optional. */
+  latitude?: string | number | null;
+  longitude?: string | number | null;
+}
+
+/**
+ * A coordinate pair, or nothing.
+ *
+ * Both or neither: half a pair is a pin in the Atlantic. Range checked
+ * as well as parsed, because these arrive from a form and a number that
+ * is merely finite can still be nowhere.
+ */
+export function parsePoint(
+  latitude: unknown,
+  longitude: unknown,
+): { latitude: number; longitude: number } | null {
+  const rawLat = String(latitude ?? "").trim();
+  const rawLng = String(longitude ?? "").trim();
+
+  // Emptiness is checked before the numbers are, because Number("") is
+  // 0 rather than NaN. Without this, a latitude with no longitude
+  // beside it parses as a real pair and drops the pin off the coast of
+  // Africa, which is a wrong answer that looks like a right one.
+  if (!rawLat || !rawLng) return null;
+
+  const lat = Number(rawLat);
+  const lng = Number(rawLng);
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  // Exactly zero in both is the null island, which is what an empty
+  // form field becomes if it slips through as a number. Nobody has
+  // ever stuck a sticker there.
+  if (lat === 0 && lng === 0) return null;
+
+  return { latitude: lat, longitude: lng };
 }
 
 /**
@@ -101,6 +141,11 @@ export async function submitPin(input: PinSubmission): Promise<void> {
     throw new MediaError("Use a name or a handle rather than an email address.");
   }
 
+  // Where they said, if they said. A submission that arrives with its
+  // own point keeps it through approval rather than being geocoded
+  // over the top of.
+  const point = parsePoint(input.latitude, input.longitude);
+
   const { buffer, contentType, extension } = await prepareImage(input.photo);
   await ensureMediaBucket();
 
@@ -124,6 +169,9 @@ export async function submitPin(input: PinSubmission): Promise<void> {
     uploaded_by: uploadedBy,
     photo_url: urlData.publicUrl,
     photo_path: storagePath,
+    latitude: point?.latitude ?? null,
+    longitude: point?.longitude ?? null,
+    located_by: point ? "pin" : null,
     status: "pending",
   });
 
@@ -145,6 +193,7 @@ interface Row {
   photo_url: string;
   status: PinStatus;
   submitted_at: string;
+  located_by: LocatedBy | null;
 }
 
 function toPin(row: Row): MapPin {
@@ -160,11 +209,12 @@ function toPin(row: Row): MapPin {
     photoUrl: row.photo_url,
     status: row.status,
     submittedAt: row.submitted_at,
+    locatedBy: row.located_by,
   };
 }
 
 const COLUMNS =
-  "id, kind, city, region, country, latitude, longitude, uploaded_by, photo_url, status, submitted_at";
+  "id, kind, city, region, country, latitude, longitude, uploaded_by, photo_url, status, submitted_at, located_by";
 
 /**
  * What goes on the public map: approved and placed.
@@ -268,18 +318,36 @@ export async function approvePin(id: string, reviewer: string): Promise<{ placed
 
   const { data, error } = await supabase
     .from("whoa_map_pins")
-    .select("city, region, country")
+    .select("city, region, country, latitude, longitude, located_by")
     .eq("id", id)
     .single();
   if (error) throw new Error(`Couldn't find that pin: ${error.message}`);
 
-  const place = data as { city: string; region: string | null; country: string };
+  const place = data as {
+    city: string;
+    region: string | null;
+    country: string;
+    latitude: number | null;
+    longitude: number | null;
+    located_by: LocatedBy | null;
+  };
 
-  let point: { latitude: number; longitude: number } | null = null;
-  try {
-    point = await geocode(place.city, place.region, place.country);
-  } catch (err) {
-    console.error(`Couldn't geocode pin ${id}:`, err);
+  // Somebody who dropped a pin knows better than a geocoder does.
+  // Geocoding over the top of it would move a sticker on a named
+  // corner back to the middle of the city, which is the whole thing
+  // this was built to stop.
+  const already = parsePoint(place.latitude, place.longitude);
+
+  let point = already;
+  let locatedBy: LocatedBy | null = already ? (place.located_by ?? "pin") : null;
+
+  if (!point) {
+    try {
+      point = await geocode(place.city, place.region, place.country);
+      if (point) locatedBy = "geocode";
+    } catch (err) {
+      console.error(`Couldn't geocode pin ${id}:`, err);
+    }
   }
 
   const { error: updateError } = await supabase
@@ -288,6 +356,7 @@ export async function approvePin(id: string, reviewer: string): Promise<{ placed
       status: "approved",
       latitude: point?.latitude ?? null,
       longitude: point?.longitude ?? null,
+      located_by: locatedBy,
       reviewed_at: new Date().toISOString(),
       reviewed_by: reviewer,
     })
@@ -348,7 +417,7 @@ export async function replacePin(id: string): Promise<{ placed: boolean }> {
 
   const { error: updateError } = await supabase
     .from("whoa_map_pins")
-    .update({ latitude: point.latitude, longitude: point.longitude })
+    .update({ latitude: point.latitude, longitude: point.longitude, located_by: "geocode" })
     .eq("id", id);
   if (updateError) throw new Error(`Couldn't place that pin: ${updateError.message}`);
 

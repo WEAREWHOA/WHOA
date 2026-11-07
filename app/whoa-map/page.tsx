@@ -87,18 +87,25 @@ export default async function WhoaMapPage(props: PageProps<"/whoa-map">) {
         </ul>
       )}
 
+      {/* The map is drawn even with nothing on it, and that is the
+          fix for the first thing anybody said about this page: an
+          empty state that REPLACED the map made the page look broken
+          rather than new. An empty map is obviously a map. */}
       <div className="mt-8">
         {failed ? (
           <p className="an-empty">
             The map is having a moment. The form below still works, so send yours in anyway.
           </p>
-        ) : pins.length === 0 ? (
-          <p className="an-empty">
-            Nothing on the map yet. Be the first: send in a photo below and it will be the pin
-            everybody else is chasing.
-          </p>
         ) : (
-          <WorldMap pins={pins} />
+          <>
+            <WorldMap pins={pins} />
+            {pins.length === 0 && (
+              <p className="mt-4 text-center text-sm text-muted">
+                No pins on it yet. Send the first one in below and it lands here once we have
+                looked at it.
+              </p>
+            )}
+          </>
         )}
       </div>
 
@@ -110,9 +117,13 @@ export default async function WhoaMapPage(props: PageProps<"/whoa-map">) {
         </p>
 
         {sent && (
-          <p className="border-flame-2/40 bg-flame-2/10 text-flame-3 mt-5 rounded-lg border px-4 py-3 text-sm">
-            Got it. We look at every one before it goes up, so give it a day or two and then come
-            back and find your pin.
+          // Says where it went, not just that it went. The first
+          // person to use this submitted successfully and then looked
+          // at an empty map, which reads exactly like a failure.
+          <p className="border-flame-2/40 bg-flame-2/10 text-flame-3 mt-5 rounded-lg border px-4 py-3 text-sm leading-relaxed">
+            <strong className="font-semibold">Got it.</strong> It is waiting to be looked at, so it
+            is not on the map yet. Everything sent in is reviewed before it goes up, which is why
+            the map is not instant.
           </p>
         )}
         {error && (
