@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { LockIcon } from "@/components/LockedBadge";
+import Link from "next/link";
 
 /**
  * Follow the smoke.
@@ -10,7 +10,7 @@ import { LockIcon } from "@/components/LockedBadge";
  * as you scroll, so the smoke is always a little ahead of where you are
  * and there is always more of it below: that is the whole mechanism,
  * and it is what makes somebody keep going. At the bottom it arrives at
- * the rocket, parked beside a planet that is not open yet.
+ * the rocket, parked beside a planet that goes somewhere.
  *
  * The scroll position drives a stroke-dashoffset rather than a class
  * being toggled at a threshold. A threshold makes the trail appear;
@@ -184,10 +184,19 @@ export default function RocketTrail() {
           <Rocket />
         </div>
 
-        {/* A planet, and pointedly not a link. */}
-        <div
-          aria-disabled="true"
-          className="absolute right-0 bottom-6 flex select-none flex-col items-center text-center sm:bottom-10"
+        {/* The planet, now a way in rather than a locked door.
+
+            It carries no name on purpose. Somebody who follows the
+            smoke all the way down has earned a thing that does not
+            explain itself, and a planet labelled with its destination
+            is just a nav link with a sphere on it. The accessible
+            name has to say more than "???" though, because a screen
+            reader user gets no payoff from a mystery they cannot
+            see the shape of. */}
+        <Link
+          href="/mystery"
+          aria-label="Open the mystery world map"
+          className="whoa-planet-link absolute right-0 bottom-6 flex flex-col items-center text-center sm:bottom-10"
         >
           <span
             className="whoa-sphere whoa-coming-soon relative block rounded-full"
@@ -195,17 +204,14 @@ export default function RocketTrail() {
           >
             <span className="whoa-sphere-shade absolute inset-0 rounded-full" aria-hidden />
           </span>
-          {/* Said once. The shared badge says the same words, and a
-              planet labelled "Coming soon" with "Coming Soon!" under it
-              is a stutter, not emphasis. */}
           <span
             id="whoa-next"
-            className="font-display mt-3 inline-flex items-center gap-1.5 text-sm tracking-wide text-white sm:text-base"
+            aria-hidden
+            className="font-display mt-3 inline-flex items-center gap-1.5 text-sm tracking-[0.3em] text-white sm:text-base"
           >
-            <LockIcon className="h-3.5 w-3.5 text-white/60" />
-            Coming soon
+            ???
           </span>
-        </div>
+        </Link>
       </div>
     </section>
   );
