@@ -33,6 +33,9 @@ export default function Footer() {
           <Link href="/whoa-card" className="transition-colors hover:text-foreground">
             WHOA Card
           </Link>
+          <Link href="/whoakemon" className="transition-colors hover:text-foreground">
+            WHOAkémon
+          </Link>
           {/* The blog lives here rather than in the main nav.
               Architecturally it is the only placement that works: the
               footer is on every page, so /blog is one click from
