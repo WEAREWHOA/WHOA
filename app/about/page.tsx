@@ -23,7 +23,7 @@ export default function AboutPage() {
         About <span className="text-flame">WHOA</span>
       </h1>
 
-      {/* Six tiles, two columns, three clean rows.
+      {/* Eight tiles, two columns, four clean rows.
           
           Two of these used to span both columns, from back when there were
           five and a fifth tile would have left an orphan on the bottom
@@ -37,22 +37,25 @@ export default function AboutPage() {
                  and /about/history is the page that answers the
                  informational searches ("when was WHOA founded"), so it
                  sits as high as the link equity on this page can put it.
-            3-4  the two that ask for something back. Retail Locations is
-                 the highest-intent tile on the page, the one somebody
-                 reads right before getting in a car, and its street
+            3-4  the two about going somewhere. The WHOADEGA is the
+                 highest-intent tile on the page, the one somebody reads
+                 right before getting in a car; Retail Locations is the
+                 same question answered more widely, and its street
                  names and neighbourhoods are the words people search
-                 for, so they stay written into the link rather than
-                 hidden behind "click here". Partnerships is the trust
-                 that makes the first one worth acting on.
-            5-6  the long tail. The podcast for anybody still reading,
+                 for, so they stay written into the tile rather than
+                 hidden behind "click here".
+            5-6  the two about the world around it. The map is made of
+                 what people send in, and Partnerships is the trust that
+                 makes any of it worth acting on.
+            7-8  the long tail. The podcast for anybody still reading,
                  then Contact, which sits directly above the FAQ and
                  policy links below it so the whole practical cluster
                  ends the page together. */}
-      {/* auto-rows-fr so all three rows are the height of the tallest
-          tile, not just the tiles within each row. A grid already
-          equalises its items row by row, which left the last row shorter
-          than the two above it: six boxes that are nearly the same size
-          read worse than six that obviously are. */}
+      {/* auto-rows-fr so every row is the height of the tallest tile,
+          not just the tiles within each row. A grid already equalises
+          its items row by row, which left the last row shorter than
+          the ones above it: boxes that are nearly the same size read
+          worse than boxes that obviously are. */}
       <div className="mt-10 grid auto-rows-fr gap-6 sm:grid-cols-2">
         <AboutCard href="/about/story" title="Our Mission" cta="Read our story">
           &ldquo;WHOA&rdquo; is the word you say when you&apos;re too impressed to find any other
@@ -66,8 +69,22 @@ export default function AboutPage() {
 
         <AboutCard href="/whoadega" title="The WHOADEGA" cta="See the shop">
           Our shop on Newport Ave in Ocean Beach: part shop, part gallery, part event space, with
-          WHOA Wednesday every week. <Link href="/stores" className="text-flame hover:underline">All
-          our locations</Link> are listed separately.
+          WHOA Wednesday every week.
+        </AboutCard>
+
+        {/* Its own tile again rather than a link inside the one above.
+            AboutCard wraps its children in a link, so a second link in
+            that paragraph was an anchor inside an anchor: invalid HTML
+            that browsers unpick in their own way, and the locator
+            deserved the room anyway. */}
+        <AboutCard href="/stores" title="Retail Locations" cta="Find us in person">
+          Every place to buy WHOA in person: the shop, our own section inside Pangaea Outpost in
+          Pacific Beach, and a stall wherever we&apos;re running an event.
+        </AboutCard>
+
+        <AboutCard href="/whoa-map" title="WHOA Map" cta="See the map">
+          Every sticker on a lamppost and every piece worn out in the world, sent in by whoever
+          found it. Spotted one? Put it on the map.
         </AboutCard>
 
         <AboutCard href="/partnerships" title="Partnerships" cta="See who we support">
