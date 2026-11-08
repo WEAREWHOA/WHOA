@@ -4,18 +4,23 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import GameShop from "./GameShop";
 import Trainer from "./Trainer";
+import type { GameCatalogue } from "./shopData";
 import {
-  COLS,
-  MAP,
-  ROWS,
+  DOORS,
+  INTERIOR_ENTRY,
+  SIGNS,
   START,
   STEPS,
-  WAYS_IN,
   canStandOn,
+  colsOf,
+  rowsOf,
+  sceneAt,
   tileAt,
   type Facing,
-} from "./town";
+  type NpcAction,
+} from "./scenes";
 
 /**
  * WHOA Town, in a handheld.
@@ -71,12 +76,20 @@ const SEA_LINES = [
   "You really are going to keep trying this.",
 ];
 
-type Said = { text: string; href?: string; name?: string };
+type Said = {
+  text: string;
+  href?: string;
+  name?: string;
+  /** Set when an attendant is waiting on an answer. */
+  act?: NpcAction;
+};
 
-export default function Town() {
+export default function Town({ catalogue }: { catalogue: GameCatalogue }) {
   const router = useRouter();
   const shell = useRef<HTMLDivElement>(null);
 
+  const [sceneId, setSceneId] = useState(START.scene);
+  const [shopOpen, setShopOpen] = useState(false);
   const [pos, setPos] = useState({ x: START.x, y: START.y });
   const [facing, setFacing] = useState<Facing>(START.facing);
   const [step, setStep] = useState<0 | 1>(0);
@@ -92,46 +105,77 @@ export default function Town() {
   const seaTries = useRef(0);
   const konami = useRef<string[]>([]);
 
+  const scene = sceneAt(sceneId);
+  const cols = colsOf(scene);
+  const rows = rowsOf(scene);
+  const npc = scene.npc;
+
   // Centre on the player, then stop at the edges of the map rather
   // than scrolling past them into nothing.
   const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
-  const camX = clamp(pos.x + 0.5 - VIEW_COLS / 2, 0, COLS - VIEW_COLS);
-  const camY = clamp(pos.y + 0.5 - VIEW_ROWS / 2, 0, ROWS - VIEW_ROWS);
+  // Indoors the room is exactly the size of the window, so both of
+  // these clamp to zero and the camera has nothing to do.
+  const camX = clamp(pos.x + 0.5 - VIEW_COLS / 2, 0, Math.max(0, cols - VIEW_COLS));
+  const camY = clamp(pos.y + 0.5 - VIEW_ROWS / 2, 0, Math.max(0, rows - VIEW_ROWS));
+
+  /** Whoever is standing where you are looking, counter included. */
+  const facingNpc = useCallback(
+    (dir: Facing) => {
+      if (!npc) return null;
+      const { dx, dy } = STEPS[dir];
+      const ax = pos.x + dx;
+      const ay = pos.y + dy;
+      if (npc.x === ax && npc.y === ay) return npc;
+      // Across a counter, which is how you are served in every one of
+      // these games: the person is behind it, not in front.
+      if (tileAt(scene, ax, ay) === "=" && npc.x === ax + dx && npc.y === ay + dy) return npc;
+      return null;
+    },
+    [npc, pos.x, pos.y, scene],
+  );
 
   const move = useCallback(
     (dir: Facing) => {
-      if (leaving || menu) return;
+      if (leaving || menu || shopOpen) return;
 
       if (facing !== dir) {
         setFacing(dir);
         const { dx, dy } = STEPS[dir];
-        const way = WAYS_IN[tileAt(pos.x + dx, pos.y + dy)];
-        if (way?.kind === "sign") setSays({ text: way.says, href: way.href, name: way.name });
+        const ahead = tileAt(scene, pos.x + dx, pos.y + dy);
+        const sign = SIGNS[ahead];
+        if (sign) {
+          setSays({ text: sign.says, href: sign.href, name: sign.name });
+          return;
+        }
+        const who = facingNpc(dir);
+        if (who) setSays({ text: who.says, act: who.does });
         return;
       }
 
       const { dx, dy } = STEPS[dir];
       const nx = pos.x + dx;
       const ny = pos.y + dy;
-      const target = tileAt(nx, ny);
-      const way = WAYS_IN[target];
+      const target = tileAt(scene, nx, ny);
 
-      if (way?.kind === "sign") {
-        setSays({ text: way.says, href: way.href, name: way.name });
+      const sign = SIGNS[target];
+      if (sign) {
+        setSays({ text: sign.says, href: sign.href, name: sign.name });
         return;
       }
 
-      if (!canStandOn(nx, ny)) {
+      const who = facingNpc(dir);
+      if (who) {
+        setSays({ text: who.says, act: who.does });
+        return;
+      }
+
+      if (!canStandOn(scene, nx, ny)) {
         if (target === "W") {
           // Persistence is rewarded, eventually.
           seaTries.current += 1;
           setSays(
             seaTries.current >= SEA_PATIENCE
-              ? {
-                  text: "Fine. There is water elsewhere.",
-                  href: "/water",
-                  name: "the water",
-                }
+              ? { text: "Fine. There is water elsewhere.", href: "/water", name: "the water" }
               : { text: SEA_LINES[Math.min(seaTries.current - 1, SEA_LINES.length - 1)] },
           );
           return;
@@ -141,19 +185,43 @@ export default function Town() {
       }
 
       setPos({ x: nx, y: ny });
-      setStep((s) => (s === 0 ? 1 : 0));
+      setStep((st) => (st === 0 ? 1 : 0));
 
-      if (way?.kind === "door") {
-        setLeaving(true);
-        setSays({ text: `Entering ${way.name}…`, href: way.href, name: way.name });
-        router.push(way.href);
+      // A door is a doorway now, not a link: the screen becomes the
+      // room rather than the page becoming a different page.
+      const door = DOORS[target];
+      if (door) {
+        setSceneId(door.to);
+        setPos({ x: INTERIOR_ENTRY.x, y: INTERIOR_ENTRY.y });
+        setFacing(INTERIOR_ENTRY.facing);
+        setSays({ text: `${door.says} Walk up to the counter.` });
         return;
       }
 
-      setSays({ text: whereYouAre(target) });
+      // And the mat is the way back out.
+      if (target === "M" && scene.exit) {
+        const back = scene.exit;
+        setSceneId(back.scene);
+        setPos({ x: back.x, y: back.y });
+        setFacing(back.facing);
+        setSays({ text: "Back outside." });
+        return;
+      }
+
+      setSays({ text: whereYouAre(target, scene.kind) });
     },
-    [facing, leaving, menu, pos.x, pos.y, router],
+    [facing, facingNpc, leaving, menu, pos.x, pos.y, scene, shopOpen],
   );
+
+  /** Step straight into a room, for the menu and for anybody who
+   *  cannot drive a D-pad across a map to get there. */
+  const goTo = useCallback((to: string) => {
+    setMenu(false);
+    setSceneId(to);
+    setPos({ x: INTERIOR_ENTRY.x, y: INTERIOR_ENTRY.y });
+    setFacing(INTERIOR_ENTRY.facing);
+    setSays({ text: "Walk up to the counter." });
+  }, []);
 
   const press = useCallback(
     (button: "a" | "b" | "start" | "select") => {
@@ -168,8 +236,20 @@ export default function Town() {
         return;
       }
       if (button === "b") {
-        if (menu) setMenu(false);
+        if (shopOpen) setShopOpen(false);
+        else if (menu) setMenu(false);
         else setSays({ text: "…" });
+        return;
+      }
+      // A is whatever the dialogue box is currently offering: open
+      // the shop, or follow the link.
+      if (says.act?.kind === "shop") {
+        setShopOpen(true);
+        return;
+      }
+      if (says.act?.kind === "link") {
+        setLeaving(true);
+        router.push(says.act.href);
         return;
       }
       if (says.href) {
@@ -177,7 +257,7 @@ export default function Town() {
         router.push(says.href);
       }
     },
-    [leaving, menu, router, says.href],
+    [leaving, menu, router, says.act, says.href, shopOpen],
   );
 
   // The body does not scroll while the console is on screen.
@@ -292,10 +372,11 @@ export default function Town() {
           >
             <div
               className="whoa-pkmn-view"
+              data-kind={scene.kind}
               style={
                 {
-                  "--cols": COLS,
-                  "--rows": ROWS,
+                  "--cols": cols,
+                  "--rows": rows,
                   "--view-cols": VIEW_COLS,
                   "--view-rows": VIEW_ROWS,
                   "--cam-x": camX,
@@ -304,60 +385,85 @@ export default function Town() {
               }
             >
               <div className="whoa-pkmn-field">
-              {MAP.map((row, y) =>
-                [...row].map((t, x) => {
-                  const way = WAYS_IN[t];
-                  return (
+                {scene.map.map((row, y) =>
+                  [...row].map((t, x) => (
                     <span
                       key={`${x},${y}`}
                       aria-hidden
                       className="whoa-pkmn-tile"
-                      // A tree you can walk through has to look exactly
-                      // like one you cannot, or it is not hidden.
-                      data-tile={way ? way.kind : t === "t" ? "T" : t}
+                      // A door and a sign get their own look; a tree
+                      // you can walk through has to look exactly like
+                      // one you cannot, or it is not hidden.
+                      data-tile={
+                        DOORS[t] ? "door" : SIGNS[t] ? "sign" : t === "t" ? "T" : t
+                      }
                     />
-                  );
-                }),
-              )}
+                  )),
+                )}
 
-              {MAP.map((row, y) =>
-                [...row].map((t, x) => {
-                  const way = WAYS_IN[t];
-                  if (!way || way.kind !== "door") return null;
-                  return (
-                    <span
-                      key={`n${x},${y}`}
-                      aria-hidden
-                      className="whoa-pkmn-doorname"
-                      style={{ "--x": x, "--y": way.labelRow ?? y } as React.CSSProperties}
-                    >
-                      {way.name}
-                    </span>
-                  );
-                }),
-              )}
+                {scene.kind === "outdoor" &&
+                  scene.map.map((row, y) =>
+                    [...row].map((t, x) => {
+                      const door = DOORS[t];
+                      if (!door) return null;
+                      return (
+                        <span
+                          key={`n${x},${y}`}
+                          aria-hidden
+                          className="whoa-pkmn-doorname"
+                          style={{ "--x": x, "--y": door.labelRow } as React.CSSProperties}
+                        >
+                          {door.name}
+                        </span>
+                      );
+                    }),
+                  )}
 
-              <span
-                className="whoa-pkmn-player"
-                style={{ "--x": pos.x, "--y": pos.y } as React.CSSProperties}
-              >
-                <Trainer facing={facing} step={step} />
-              </span>
+                {npc && (
+                  <span
+                    className="whoa-pkmn-player whoa-pkmn-npc"
+                    style={{ "--x": npc.x, "--y": npc.y } as React.CSSProperties}
+                  >
+                    <Trainer facing={npc.facing} step={0} />
+                  </span>
+                )}
 
+                <span
+                  className="whoa-pkmn-player"
+                  style={{ "--x": pos.x, "--y": pos.y } as React.CSSProperties}
+                >
+                  <Trainer facing={facing} step={step} />
+                </span>
               </div>
 
               {menu && (
                 <div className="whoa-gb-menu">
                   <p className="whoa-gb-menu-head">WHERE TO?</p>
                   <ul>
-                    {Object.values(WAYS_IN).map((w) => (
-                      <li key={w.href}>
-                        <Link href={w.href}>{w.name}</Link>
+                    {Object.values(DOORS).map((d) => (
+                      <li key={d.to}>
+                        <button type="button" onClick={() => goTo(d.to)}>
+                          {d.name}
+                        </button>
+                      </li>
+                    ))}
+                    {Object.values(SIGNS).map((g) => (
+                      <li key={g.href}>
+                        <Link href={g.href}>{g.name}</Link>
                       </li>
                     ))}
                   </ul>
                   <p className="whoa-gb-menu-foot">START or B to close</p>
                 </div>
+              )}
+
+              {shopOpen && (
+                <GameShop
+                  catalogue={catalogue}
+                  shopName={scene.npc?.name ?? "Shop"}
+                  onClose={() => setShopOpen(false)}
+                  onSay={(line) => setSays({ text: line })}
+                />
               )}
             </div>
 
@@ -414,7 +520,8 @@ export default function Town() {
   );
 }
 
-function whereYouAre(tile: string): string {
+function whereYouAre(tile: string, kind: "outdoor" | "indoor"): string {
+  if (kind === "indoor") return "Inside. The counter is at the top, the mat is the way out.";
   if (tile === ",") return "A dirt path, worn down by everybody who came before.";
   if (tile === "f") return "Flowers. Somebody planted these.";
   if (tile === "t") return "…you walked straight through that tree.";
@@ -422,6 +529,10 @@ function whereYouAre(tile: string): string {
 }
 
 function blockedBy(tile: string): string {
+  if (tile === "|") return "A wall.";
+  if (tile === "=") return "The counter. Somebody should be behind it.";
+  if (tile === "S") return "Shelves, stacked.";
+  if (tile === "P") return "A plant. Thriving, considering.";
   if (tile === "T") return "A wall of trees. Nothing through there.";
   if (tile === "F") return "A picket fence. There is a gate round the bottom.";
   if (tile === "L") return "A lamp post. It comes on at dusk.";

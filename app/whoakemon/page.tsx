@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 
 import Town from "@/components/whoakemon/Town";
+import { loadCatalogue } from "@/components/whoakemon/shopData";
 
 const TITLE = "WHOAkémon";
 
@@ -38,6 +39,18 @@ export const viewport: Viewport = {
   themeColor: "#0a0a0c",
 };
 
-export default function WhoakemonPage() {
-  return <Town />;
+/**
+ * The catalogue is read here, on the server, and handed to the game.
+ *
+ * Revalidated rather than fetched per request: it is the same Square
+ * catalogue the shop page reads, and a minute-old price in a game is
+ * fine where a slow page load is not. The cart the attendant adds to
+ * is the site's own, so nothing about the actual purchase depends on
+ * this being fresh to the second.
+ */
+export const revalidate = 60;
+
+export default async function WhoakemonPage() {
+  const catalogue = await loadCatalogue();
+  return <Town catalogue={catalogue} />;
 }
