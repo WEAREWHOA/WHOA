@@ -1,4 +1,4 @@
-import type { Facing } from "./town";
+import type { Facing } from "./scenes";
 
 /**
  * The character you move.

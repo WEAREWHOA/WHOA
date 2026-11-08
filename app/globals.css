@@ -4000,3 +4000,349 @@ body {
   background: var(--flame-1);
   color: #16140f;
 }
+
+/* ─────────────────────────────────────────────────────────────────────
+   INSIDE THE BUILDINGS
+   ─────────────────────────────────────────────────────────────────────
+
+   A room in these games is read almost entirely from its floor: a
+   tiled grid says shop, bare boards say house. So the floor carries
+   the work here and everything else is a silhouette on top of it. */
+
+:root {
+  --pk-floor: #e8e0d0;
+  --pk-floor-2: #d4c8b4;
+  --pk-indoor-wall: #7a6a58;
+  --pk-indoor-wall-2: #5c4e40;
+  --pk-counter: #c08f50;
+  --pk-counter-2: #96682f;
+  --pk-shelf: #8a6a4a;
+  --pk-mat: #d84a3a;
+}
+
+.whoa-pkmn-view[data-kind="indoor"] {
+  background: var(--pk-floor);
+}
+
+/* Floor: a checker, because that is what every shop floor in these
+   games is, and it is also what makes the grid legible so you can
+   see how far the counter is without counting. */
+.whoa-pkmn-tile[data-tile="_"],
+.whoa-pkmn-tile[data-tile="M"] {
+  background: var(--pk-floor);
+}
+.whoa-pkmn-tile[data-tile="_"]:nth-child(2n) {
+  background: var(--pk-floor-2);
+}
+
+.whoa-pkmn-tile[data-tile="|"] {
+  background: var(--pk-indoor-wall);
+  box-shadow: inset 0 -26% 0 var(--pk-indoor-wall-2);
+}
+
+.whoa-pkmn-tile[data-tile="="] {
+  background: var(--pk-counter);
+  box-shadow:
+    inset 0 30% 0 -18% #dcb07a,
+    inset 0 -24% 0 var(--pk-counter-2);
+}
+
+.whoa-pkmn-tile[data-tile="S"] {
+  background: var(--pk-shelf);
+  box-shadow:
+    inset 0 0 0 2px #5e4530,
+    inset 0 34% 0 -30% #a88664,
+    inset 0 -34% 0 -30% #a88664;
+}
+
+.whoa-pkmn-tile[data-tile="P"] {
+  background: var(--pk-floor);
+}
+.whoa-pkmn-tile[data-tile="P"]::after {
+  content: "";
+  position: absolute;
+  inset: 16% 22% 14% 22%;
+  background: var(--pk-tree);
+  border-radius: 50% 50% 18% 18%;
+  box-shadow:
+    0 0 0 2px #2a3a22,
+    inset 0 -34% 0 -16% #8a5a2a;
+}
+
+/* The mat. Step on it and you are outside, which is why it is the
+   one thing on the floor with a colour. */
+.whoa-pkmn-tile[data-tile="M"]::after {
+  content: "";
+  position: absolute;
+  inset: 12% 4%;
+  background: var(--pk-mat);
+  box-shadow: inset 0 0 0 2px #9c2f22;
+}
+
+/* Whoever is behind the counter stands a little lower in their tile
+   than you do, so the counter reads as being in front of them. */
+.whoa-pkmn-npc {
+  z-index: 1;
+}
+
+/* ─────────────────────────────────────────────────────────────────────
+   THE SHOP, OVER THE SCREEN
+   ─────────────────────────────────────────────────────────────────────
+
+   Real buttons in a scrolling panel, not a cursor stepped down a
+   list with the D-pad. A list of products is a list, and making
+   somebody arrow through thirty items to buy a hoodie is worse than
+   a scrollbar however much more authentic it would be. B still
+   closes it, so the console's own control still works. */
+
+.whoa-gs {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  background: #f8f8f0;
+  color: var(--pk-ink);
+  font-family: var(--font-mono);
+  border: 3px solid var(--pk-ink);
+}
+
+.whoa-gs-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 5px 7px;
+  background: var(--pk-ink);
+  color: #f8f8f0;
+  font-size: clamp(9px, calc(var(--gb) * 0.016), 14px);
+  font-weight: 700;
+}
+.whoa-gs-bar button {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.whoa-gs-bar button:hover,
+.whoa-gs-bar button:focus-visible {
+  background: var(--flame-1);
+}
+.whoa-gs-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  letter-spacing: 0.06em;
+}
+
+.whoa-gs-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  /* The page behind cannot scroll, so this one has to own its own
+     overscroll or a flick at the end of the list pulls the console. */
+  overscroll-behavior: contain;
+  padding: 7px;
+}
+
+.whoa-gs-empty {
+  margin: 14px 8px;
+  font-size: clamp(9px, calc(var(--gb) * 0.016), 14px);
+  opacity: 0.7;
+}
+
+/* Categories */
+.whoa-gs-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.whoa-gs-list button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 9px;
+  border: 2px solid var(--pk-ink);
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  font-size: clamp(10px, calc(var(--gb) * 0.018), 15px);
+  text-align: left;
+  cursor: pointer;
+}
+.whoa-gs-list button:hover,
+.whoa-gs-list button:focus-visible {
+  background: var(--flame-3);
+}
+.whoa-gs-count {
+  flex-shrink: 0;
+  opacity: 0.6;
+  font-size: 0.85em;
+}
+
+/* Items */
+.whoa-gs-grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+.whoa-gs-grid button {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  height: 100%;
+  padding: 5px;
+  border: 2px solid var(--pk-ink);
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.whoa-gs-grid button:hover,
+.whoa-gs-grid button:focus-visible {
+  background: var(--flame-3);
+}
+.whoa-gs-thumb {
+  display: block;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: #e8e4d8;
+}
+.whoa-gs-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.whoa-gs-nothumb {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(45deg, #e0dccf 0 6px, #d4d0c2 6px 12px);
+}
+.whoa-gs-name {
+  font-size: clamp(8px, calc(var(--gb) * 0.014), 12px);
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.whoa-gs-price {
+  font-size: clamp(9px, calc(var(--gb) * 0.016), 13px);
+  font-weight: 700;
+}
+
+/* One item */
+/* Two columns, not a stack.
+ *
+ * Stacked, the photo and the blurb alone were taller than the panel
+ * and pushed Add to cart off the bottom on every phone. The screen
+ * is short and wide; the layout should be too. Photo on the left,
+ * price and description beside it, then the things you press across
+ * the full width underneath. */
+.whoa-gs-detail {
+  display: grid;
+  grid-template-columns: 38% 1fr;
+  grid-template-areas:
+    "shot price"
+    "shot blurb"
+    "sizes sizes"
+    "add add"
+    "full full";
+  align-content: start;
+  gap: 6px 8px;
+}
+.whoa-gs-shot { grid-area: shot; }
+.whoa-gs-detail-price { grid-area: price; align-self: end; }
+.whoa-gs-blurb { grid-area: blurb; align-self: start; }
+.whoa-gs-sizes { grid-area: sizes; }
+.whoa-gs-add { grid-area: add; }
+.whoa-gs-full { grid-area: full; }
+/* Capped in real units, not as a percentage of a scrolling box with
+   no definite height, which is what it was and which did nothing:
+   a square photo took the whole panel and pushed the price, the
+   sizes and the Add button below the fold. The button you came to
+   press has to be on screen when you arrive. */
+.whoa-gs-shot {
+  width: 100%;
+  aspect-ratio: 1;
+  max-height: clamp(84px, calc(var(--gb) * 0.19), 180px);
+  overflow: hidden;
+  border: 2px solid var(--pk-ink);
+  background: #e8e4d8;
+}
+.whoa-gs-shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.whoa-gs-detail-price {
+  margin: 0;
+  font-size: clamp(14px, calc(var(--gb) * 0.028), 22px);
+  font-weight: 700;
+}
+.whoa-gs-blurb {
+  margin: 0;
+  font-size: clamp(9px, calc(var(--gb) * 0.016), 13px);
+  line-height: 1.4;
+  opacity: 0.8;
+}
+.whoa-gs-sizes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.whoa-gs-sizes button {
+  padding: 5px 9px;
+  border: 2px solid var(--pk-ink);
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  font-size: clamp(9px, calc(var(--gb) * 0.015), 13px);
+  cursor: pointer;
+}
+.whoa-gs-sizes button[data-on="yes"] {
+  background: var(--pk-ink);
+  color: #f8f8f0;
+}
+.whoa-gs-add {
+  padding: 10px;
+  border: 0;
+  background: var(--flame-1);
+  color: #fff;
+  font: inherit;
+  font-size: clamp(11px, calc(var(--gb) * 0.02), 16px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.whoa-gs-add:hover,
+.whoa-gs-add:focus-visible {
+  background: var(--flame-2);
+  color: var(--pk-ink);
+}
+.whoa-gs-full {
+  font-size: clamp(9px, calc(var(--gb) * 0.015), 13px);
+  color: inherit;
+  opacity: 0.7;
+}
