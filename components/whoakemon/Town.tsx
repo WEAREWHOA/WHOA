@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import GameShop from "./GameShop";
+import GamePanel from "./GamePanel";
 import Trainer from "./Trainer";
-import type { GameCatalogue } from "./shopData";
+import type { GamePanels } from "./panelData";
 import {
   DOORS,
   INTERIOR_ENTRY,
@@ -20,6 +20,7 @@ import {
   tileAt,
   type Facing,
   type NpcAction,
+  type PanelId,
 } from "./scenes";
 
 /**
@@ -84,12 +85,12 @@ type Said = {
   act?: NpcAction;
 };
 
-export default function Town({ catalogue }: { catalogue: GameCatalogue }) {
+export default function Town({ panels }: { panels: GamePanels }) {
   const router = useRouter();
   const shell = useRef<HTMLDivElement>(null);
 
   const [sceneId, setSceneId] = useState(START.scene);
-  const [shopOpen, setShopOpen] = useState(false);
+  const [panel, setPanel] = useState<PanelId | null>(null);
   const [pos, setPos] = useState({ x: START.x, y: START.y });
   const [facing, setFacing] = useState<Facing>(START.facing);
   const [step, setStep] = useState<0 | 1>(0);
@@ -136,7 +137,7 @@ export default function Town({ catalogue }: { catalogue: GameCatalogue }) {
 
   const move = useCallback(
     (dir: Facing) => {
-      if (leaving || menu || shopOpen) return;
+      if (leaving || menu || panel) return;
 
       if (facing !== dir) {
         setFacing(dir);
@@ -210,8 +211,21 @@ export default function Town({ catalogue }: { catalogue: GameCatalogue }) {
 
       setSays({ text: whereYouAre(target, scene.kind) });
     },
-    [facing, facingNpc, leaving, menu, pos.x, pos.y, scene, shopOpen],
+    [facing, facingNpc, leaving, menu, panel, pos.x, pos.y, scene],
   );
+
+  /**
+   * Put the keys back where they work.
+   *
+   * The key handler lives on the shell, so anything that moves focus
+   * onto a button inside it, the menu and the panel both, leaves the
+   * player unable to walk until they click the screen. Which is what
+   * happened: entering a building from the menu left the arrow keys
+   * dead.
+   */
+  const refocus = useCallback(() => {
+    shell.current?.focus();
+  }, []);
 
   /** Step straight into a room, for the menu and for anybody who
    *  cannot drive a D-pad across a map to get there. */
@@ -221,13 +235,17 @@ export default function Town({ catalogue }: { catalogue: GameCatalogue }) {
     setPos({ x: INTERIOR_ENTRY.x, y: INTERIOR_ENTRY.y });
     setFacing(INTERIOR_ENTRY.facing);
     setSays({ text: "Walk up to the counter." });
-  }, []);
+    refocus();
+  }, [refocus]);
 
   const press = useCallback(
     (button: "a" | "b" | "start" | "select") => {
       if (leaving) return;
       if (button === "start") {
-        setMenu((m) => !m);
+        setMenu((m) => {
+          if (m) refocus();
+          return !m;
+        });
         return;
       }
       if (button === "select") {
@@ -236,20 +254,19 @@ export default function Town({ catalogue }: { catalogue: GameCatalogue }) {
         return;
       }
       if (button === "b") {
-        if (shopOpen) setShopOpen(false);
-        else if (menu) setMenu(false);
-        else setSays({ text: "…" });
+        if (panel) {
+          setPanel(null);
+          refocus();
+        } else if (menu) {
+          setMenu(false);
+          refocus();
+        } else setSays({ text: "…" });
         return;
       }
-      // A is whatever the dialogue box is currently offering: open
-      // the shop, or follow the link.
-      if (says.act?.kind === "shop") {
-        setShopOpen(true);
-        return;
-      }
-      if (says.act?.kind === "link") {
-        setLeaving(true);
-        router.push(says.act.href);
+      // A is whatever the dialogue box is offering: open the counter's
+      // panel, or follow a sign's link.
+      if (says.act?.kind === "panel") {
+        setPanel(says.act.panel);
         return;
       }
       if (says.href) {
@@ -257,7 +274,7 @@ export default function Town({ catalogue }: { catalogue: GameCatalogue }) {
         router.push(says.href);
       }
     },
-    [leaving, menu, router, says.act, says.href, shopOpen],
+    [leaving, menu, panel, refocus, router, says.act, says.href],
   );
 
   // The body does not scroll while the console is on screen.
@@ -457,11 +474,15 @@ export default function Town({ catalogue }: { catalogue: GameCatalogue }) {
                 </div>
               )}
 
-              {shopOpen && (
-                <GameShop
-                  catalogue={catalogue}
-                  shopName={scene.npc?.name ?? "Shop"}
-                  onClose={() => setShopOpen(false)}
+              {panel && (
+                <GamePanel
+                  panel={panel}
+                  panels={panels}
+                  title={scene.npc?.name ?? "Counter"}
+                  onClose={() => {
+                    setPanel(null);
+                    refocus();
+                  }}
                   onSay={(line) => setSays({ text: line })}
                 />
               )}

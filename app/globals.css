@@ -4469,3 +4469,80 @@ body {
   color: inherit;
   opacity: 0.7;
 }
+
+/* The three counters that are reading rather than shopping: the
+   crew's tiers, the card's perks, an event's details. Same chrome
+   as the shop, different body. */
+
+.whoa-gs-read {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* The second line on a list row: a date and a venue under an event's
+   name, where a category row has nothing under it. */
+.whoa-gs-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.78em;
+  font-weight: 400;
+  opacity: 0.65;
+}
+
+.whoa-gs-tier {
+  border: 2px solid var(--pk-ink);
+  background: #fff;
+  padding: 6px 8px;
+}
+.whoa-gs-tier-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  font-size: clamp(10px, calc(var(--gb) * 0.018), 15px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.whoa-gs-tier-head span {
+  color: var(--pk-ink);
+  opacity: 0.55;
+  font-size: 0.78em;
+  font-weight: 400;
+}
+.whoa-gs-tier ul {
+  margin: 4px 0 0;
+  padding-left: 14px;
+  font-size: clamp(9px, calc(var(--gb) * 0.015), 13px);
+  line-height: 1.45;
+}
+
+.whoa-gs-perks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.whoa-gs-perks li {
+  border-left: 3px solid var(--flame-1);
+  padding-left: 7px;
+  font-size: clamp(9px, calc(var(--gb) * 0.016), 13px);
+  line-height: 1.35;
+}
+.whoa-gs-perks strong {
+  display: block;
+}
+.whoa-gs-perks span {
+  opacity: 0.7;
+}
+
+/* The primary action is a link on three of the four panels and a
+   button on the shop, so it has to look the same either way. */
+a.whoa-gs-add {
+  display: block;
+  text-align: center;
+  text-decoration: none;
+}

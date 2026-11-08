@@ -26,10 +26,16 @@ export const STEPS: Record<Facing, { dx: number; dy: number }> = {
   right: { dx: 1, dy: 0 },
 };
 
-/** What pressing A on somebody does. */
-export type NpcAction =
-  | { kind: "shop" }
-  | { kind: "link"; href: string; label: string };
+/**
+ * What pressing A on somebody does.
+ *
+ * Every counter opens a panel now. A link was the stopgap for the
+ * three buildings whose contents I had not wired up yet, and a
+ * person who answers "go and read the website" is not somebody you
+ * walked into a building to see.
+ */
+export type PanelId = "shop" | "events" | "crew" | "card";
+export type NpcAction = { kind: "panel"; panel: PanelId };
 
 export interface Npc {
   x: number;
@@ -237,7 +243,7 @@ export const SCENES: Record<string, Scene> = {
     {
       name: "Shop staff",
       says: "Welcome to WHOA. Want to see what we have?",
-      does: { kind: "shop" },
+      does: { kind: "panel", panel: "shop" },
     },
     { x: 4, y: 6 },
   ),
@@ -250,8 +256,8 @@ export const SCENES: Record<string, Scene> = {
     PLAIN_ROOM,
     {
       name: "Door staff",
-      says: "Something is on most weeks. Want the dates?",
-      does: { kind: "link", href: "/events", label: "the events page" },
+      says: "Something is on most weeks. Want to see what is coming up?",
+      does: { kind: "panel", panel: "events" },
     },
     { x: 16, y: 5 },
   ),
@@ -262,8 +268,8 @@ export const SCENES: Record<string, Scene> = {
     PLAIN_ROOM,
     {
       name: "Crew lead",
-      says: "Rep WHOA, earn on every sale. Want in?",
-      does: { kind: "link", href: "/join", label: "joining the crew" },
+      says: "Rep WHOA, earn on every sale. Want to see how it works?",
+      does: { kind: "panel", panel: "crew" },
     },
     { x: 3, y: 12 },
   ),
@@ -275,7 +281,7 @@ export const SCENES: Record<string, Scene> = {
     {
       name: "WHOADEGA staff",
       says: "Everything on the shelves is real. Have a look?",
-      does: { kind: "shop" },
+      does: { kind: "panel", panel: "shop" },
     },
     { x: 15, y: 12 },
   ),
@@ -286,8 +292,8 @@ export const SCENES: Record<string, Scene> = {
     PLAIN_ROOM,
     {
       name: "The professor",
-      says: "Ah, there you are. I have a card with your name on it.",
-      does: { kind: "link", href: "/whoa-card", label: "the WHOA card" },
+      says: "Ah, there you are. Shall I show you the card?",
+      does: { kind: "panel", panel: "card" },
     },
     { x: 10, y: 14 },
   ),
