@@ -154,8 +154,18 @@ export const SIGNS: Record<string, Sign> = {
    INSIDE
    ─────────────────────────────────────────────────────────────────
 
-   | wall      _ floor     = counter    S shelf
-   P plant     M the mat you leave by   N whoever is in
+   | wall       C chamfer, left     D chamfer, right
+   _ floor      = counter           H healing machine
+   R wall screens                   P plant
+   o seat       u table             M the mat you leave by
+   N whoever is in
+
+   Rebuilt against the reference, which corrected four things I had
+   guessed at: the counter is RED and runs most of the way across,
+   the two top corners are cut at an angle rather than square, there
+   is a big faint ball emblem on the floor, and the sides are seating
+   round tables, not shelves. The room reads almost entirely from its
+   floor and its counter, so those were the two to get right.
 
    Every interior is 16 by 13, which is exactly the size of the
    window onto the world, so indoors the camera has nothing to do and
@@ -163,32 +173,32 @@ export const SIGNS: Record<string, Sign> = {
    in the games and it is also why they feel small and complete.   */
 
 const SHOP_ROOM = [
-  "||||||||||||||||",
-  "|______________|",
-  "|_P__________P_|",
+  "C||||||||||||||D",
+  "|_HH_RRRR_PP___|",
   "|______N_______|",
   "|___========___|",
   "|______________|",
-  "|_SS________SS_|",
-  "|_SS________SS_|",
+  "|_ou________uo_|",
+  "|_ou________uo_|",
   "|______________|",
-  "|_SS________SS_|",
+  "|_ou________uo_|",
+  "|_ou________uo_|",
   "|______________|",
   "|______MM______|",
   "||||||||||||||||",
 ] as const;
 
 const PLAIN_ROOM = [
-  "||||||||||||||||",
-  "|______________|",
-  "|_P__________P_|",
+  "C||||||||||||||D",
+  "|_P__RRRR____P_|",
   "|______N_______|",
   "|___========___|",
   "|______________|",
+  "|_ou________uo_|",
+  "|_ou________uo_|",
+  "|______________|",
   "|______________|",
   "|_P__________P_|",
-  "|______________|",
-  "|______________|",
   "|______________|",
   "|______MM______|",
   "||||||||||||||||",
@@ -212,7 +222,7 @@ function room(
     map: layout,
     // Behind the counter, facing the room, which is where somebody
     // serving stands.
-    npc: { x: 7, y: 3, facing: "down", ...npc },
+    npc: { x: 7, y: 2, facing: "down", ...npc },
     exit: { scene: "town", x: exit.x, y: exit.y, facing: "down" },
   };
 }
