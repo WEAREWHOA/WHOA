@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 
 import Town from "@/components/whoakemon/Town";
-import { loadCatalogue } from "@/components/whoakemon/shopData";
+import { loadPanels } from "@/components/whoakemon/panelData";
 
 const TITLE = "WHOAkémon";
 
@@ -40,7 +40,8 @@ export const viewport: Viewport = {
 };
 
 /**
- * The catalogue is read here, on the server, and handed to the game.
+ * Everything behind the counters is read here, on the server, and
+ * handed to the game: the catalogue and the calendar.
  *
  * Revalidated rather than fetched per request: it is the same Square
  * catalogue the shop page reads, and a minute-old price in a game is
@@ -51,6 +52,6 @@ export const viewport: Viewport = {
 export const revalidate = 60;
 
 export default async function WhoakemonPage() {
-  const catalogue = await loadCatalogue();
-  return <Town catalogue={catalogue} />;
+  const panels = await loadPanels();
+  return <Town panels={panels} />;
 }
