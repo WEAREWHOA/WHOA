@@ -471,7 +471,7 @@ export default function Town({ panels }: { panels: GamePanels }) {
                     {npc.look === "chest" ? (
                       <Chest open={chestOpen} />
                     ) : (
-                      <Trainer facing={npc.facing} step={0} />
+                      <Trainer facing={npc.facing} step={0} hat="none" />
                     )}
                   </span>
                 )}
