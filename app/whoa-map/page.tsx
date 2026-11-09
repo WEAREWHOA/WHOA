@@ -2,7 +2,16 @@ import type { Metadata } from "next";
 
 import SubmitForm from "@/components/whoaMap/SubmitForm";
 import WorldMap from "@/components/whoaMap/WorldMap";
-import { approvedPins, PIN_KIND_LABELS, placeLabel, type MapPin } from "@/lib/whoaMap";
+import {
+  approvedPins,
+  mapTotals,
+  topTaggers,
+  PIN_KIND_LABELS,
+  placeLabel,
+  type MapPin,
+  type MapTotals,
+  type Tagger,
+} from "@/lib/whoaMap";
 import { SITE_URL } from "@/lib/site";
 
 const TITLE = "WHOA Map";
@@ -52,6 +61,20 @@ export default async function WhoaMapPage(props: PageProps<"/whoa-map">) {
     failed = true;
   }
 
+  // Counted in the database, not off the array above, because that
+  // array stops at 500 pins. Each is allowed to fail on its own: a
+  // leaderboard that will not load should not take the map with it.
+  const [totals, leaders] = await Promise.all([
+    mapTotals().catch((err): MapTotals | null => {
+      console.error("Couldn't count the WHOA map:", err);
+      return null;
+    }),
+    topTaggers(10).catch((err): Tagger[] => {
+      console.error("Couldn't read the WHOA map leaderboard:", err);
+      return [];
+    }),
+  ]);
+
   const stickers = pins.filter((p) => p.kind === "sticker").length;
   const apparel = pins.length - stickers;
   const countries = new Set(pins.map((p) => p.country.toLowerCase())).size;
@@ -68,6 +91,32 @@ export default async function WhoaMapPage(props: PageProps<"/whoa-map">) {
         Every sticker on a lamppost and every piece worn out in the world, sent in by whoever found
         it. If you spot one, put it on the map.
       </p>
+
+      {/* THE TWO NUMBERS. Above the map, big, because they are the
+          answer to "is this thing going anywhere" and that is the
+          first question anybody has about a map of pins. Pins and
+          cities rather than pins alone: five stickers in Lisbon is
+          a good day for Lisbon, not five places. */}
+      {totals && totals.pins > 0 && (
+        <dl className="mt-8 flex flex-wrap gap-x-10 gap-y-4">
+          <div>
+            <dt className="text-xs font-semibold tracking-[0.18em] text-muted uppercase">
+              Pins posted
+            </dt>
+            <dd className="font-display mt-1 text-4xl sm:text-5xl">
+              {totals.pins.toLocaleString()}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold tracking-[0.18em] text-muted uppercase">
+              {totals.cities === 1 ? "City" : "Cities"}
+            </dt>
+            <dd className="font-display text-flame mt-1 text-4xl sm:text-5xl">
+              {totals.cities.toLocaleString()}
+            </dd>
+          </div>
+        </dl>
+      )}
 
       {pins.length > 0 && (
         <ul className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm">
@@ -108,6 +157,43 @@ export default async function WhoaMapPage(props: PageProps<"/whoa-map">) {
           </>
         )}
       </div>
+
+      {/* ───── Who has put the most on it ───── */}
+      {leaders.length > 0 && (
+        <div className="mt-14 max-w-2xl">
+          <h2 className="font-display text-2xl tracking-wide sm:text-3xl">Most pins</h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted">
+            Whoever has put the most on the map. Counted off the name on each submission, so sign
+            them the same way and they all count together.
+          </p>
+
+          <ol className="mt-5 flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border">
+            {leaders.map((tagger, i) => (
+              <li key={`${tagger.name}-${i}`} className="flex items-center gap-4 px-4 py-3">
+                {/* The top three are worth looking different. Below
+                    that a number is plenty. */}
+                <span
+                  className={`font-display w-7 shrink-0 text-center text-lg ${
+                    i === 0
+                      ? "text-flame-3"
+                      : i === 1
+                        ? "text-flame-2"
+                        : i === 2
+                          ? "text-flame-1"
+                          : "text-muted"
+                  }`}
+                >
+                  {i + 1}
+                </span>
+                <span className="min-w-0 flex-1 truncate font-medium">{tagger.name}</span>
+                <span className="shrink-0 text-sm text-muted">
+                  {tagger.pins.toLocaleString()} {tagger.pins === 1 ? "pin" : "pins"}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
 
       {/* ───── Sending one in ───── */}
       <div id="send" className="mt-14 max-w-3xl scroll-mt-20">
