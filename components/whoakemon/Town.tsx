@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import Chest from "./Chest";
 import GamePanel from "./GamePanel";
 import Trainer from "./Trainer";
+import { claimWandAction, type WandPrize } from "@/app/whoakemon/actions";
 import type { GamePanels } from "./panelData";
 import {
   DOORS,
@@ -91,6 +93,8 @@ export default function Town({ panels }: { panels: GamePanels }) {
 
   const [sceneId, setSceneId] = useState(START.scene);
   const [panel, setPanel] = useState<PanelId | null>(null);
+  const [chestOpen, setChestOpen] = useState(false);
+  const [prize, setPrize] = useState<WandPrize | "claiming" | null>(null);
   const [pos, setPos] = useState({ x: START.x, y: START.y });
   const [facing, setFacing] = useState<Facing>(START.facing);
   const [step, setStep] = useState<0 | 1>(0);
@@ -137,7 +141,7 @@ export default function Town({ panels }: { panels: GamePanels }) {
 
   const move = useCallback(
     (dir: Facing) => {
-      if (leaving || menu || panel) return;
+      if (leaving || menu || panel || prize) return;
 
       if (facing !== dir) {
         setFacing(dir);
@@ -192,10 +196,14 @@ export default function Town({ panels }: { panels: GamePanels }) {
       // room rather than the page becoming a different page.
       const door = DOORS[target];
       if (door) {
+        // Rooms all share one mat; the hedges say where they drop you.
+        const where = door.entry ?? INTERIOR_ENTRY;
         setSceneId(door.to);
-        setPos({ x: INTERIOR_ENTRY.x, y: INTERIOR_ENTRY.y });
-        setFacing(INTERIOR_ENTRY.facing);
-        setSays({ text: `${door.says} Walk up to the counter.` });
+        setPos({ x: where.x, y: where.y });
+        setFacing(where.facing);
+        setSays({
+          text: door.entry ? door.says : `${door.says} Walk up to the counter.`,
+        });
         return;
       }
 
@@ -211,7 +219,7 @@ export default function Town({ panels }: { panels: GamePanels }) {
 
       setSays({ text: whereYouAre(target, scene.kind) });
     },
-    [facing, facingNpc, leaving, menu, panel, pos.x, pos.y, scene],
+    [facing, facingNpc, leaving, menu, panel, pos.x, pos.y, prize, scene],
   );
 
   /**
@@ -269,12 +277,25 @@ export default function Town({ panels }: { panels: GamePanels }) {
         setPanel(says.act.panel);
         return;
       }
+      if (says.act?.kind === "prize") {
+        if (chestOpen) return;
+        setChestOpen(true);
+        setPrize("claiming");
+        setSays({ text: "You found the WAND OF WHOA!" });
+        void claimWandAction()
+          .then(setPrize)
+          .catch((err) => {
+            console.error("Couldn't claim the Wand of WHOA:", err);
+            setPrize({ ok: false, reason: "The code would not mint. Get in touch and we will sort it." });
+          });
+        return;
+      }
       if (says.href) {
         setLeaving(true);
         router.push(says.href);
       }
     },
-    [leaving, menu, panel, refocus, router, says.act, says.href],
+    [chestOpen, leaving, menu, panel, refocus, router, says.act, says.href],
   );
 
   // The body does not scroll while the console is on screen.
@@ -412,7 +433,13 @@ export default function Town({ panels }: { panels: GamePanels }) {
                       // you can walk through has to look exactly like
                       // one you cannot, or it is not hidden.
                       data-tile={
-                        DOORS[t] ? "door" : SIGNS[t] ? "sign" : t === "t" ? "T" : t
+                        DOORS[t]
+                          ? (DOORS[t].look ?? "door")
+                          : SIGNS[t]
+                            ? "sign"
+                            : t === "t"
+                              ? "T"
+                              : t
                       }
                     />
                   )),
@@ -441,7 +468,11 @@ export default function Town({ panels }: { panels: GamePanels }) {
                     className="whoa-pkmn-player whoa-pkmn-npc"
                     style={{ "--x": npc.x, "--y": npc.y } as React.CSSProperties}
                   >
-                    <Trainer facing={npc.facing} step={0} />
+                    {npc.look === "chest" ? (
+                      <Chest open={chestOpen} />
+                    ) : (
+                      <Trainer facing={npc.facing} step={0} />
+                    )}
                   </span>
                 )}
 
@@ -471,6 +502,58 @@ export default function Town({ panels }: { panels: GamePanels }) {
                     ))}
                   </ul>
                   <p className="whoa-gb-menu-foot">START or B to close</p>
+                </div>
+              )}
+
+              {/* THE WAND.
+
+                  The screen whitens first and the words arrive after,
+                  because the flash is the moment and reading starts
+                  once it has passed. Over the whole screen, not in
+                  the dialogue box: finding the chest is the end of
+                  something and should not look like bumping a sign. */}
+              {prize && (
+                <div className="whoa-win" role="status" aria-live="polite">
+                  <div className="whoa-win-flash" aria-hidden />
+                  <div className="whoa-win-say">
+                    <p className="whoa-win-found">You found the</p>
+                    <p className="whoa-win-item">WAND OF WHOA</p>
+                    <p className="whoa-win-won">YOU WON</p>
+
+                    {prize === "claiming" && <p className="whoa-win-note">Cutting you a code…</p>}
+
+                    {prize !== "claiming" && prize.ok && (
+                      <>
+                        <p className="whoa-win-note">
+                          {prize.percent}% off your next WHOA order. Enter this at checkout:
+                        </p>
+                        <p className="whoa-win-code">{prize.code}</p>
+                        <p className="whoa-win-small">
+                          {prize.already ? "The one you already won." : "Yours alone."} One use, 30
+                          days.
+                        </p>
+                        <Link href="/shop" className="whoa-win-go">
+                          Spend it ▸
+                        </Link>
+                      </>
+                    )}
+
+                    {prize !== "claiming" && !prize.ok && (
+                      <p className="whoa-win-note">{prize.reason}</p>
+                    )}
+
+                    <button
+                      type="button"
+                      className="whoa-win-close"
+                      onClick={() => {
+                        setPrize(null);
+                        setSays({ text: "The wand is yours. Mind the hedges on the way out." });
+                        refocus();
+                      }}
+                    >
+                      Back to the hedges
+                    </button>
+                  </div>
                 </div>
               )}
 
