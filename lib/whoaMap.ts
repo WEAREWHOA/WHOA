@@ -236,6 +236,51 @@ export async function approvedPins(limit = 500): Promise<MapPin[]> {
   return ((data ?? []) as Row[]).map(toPin);
 }
 
+/**
+ * How much is on the map, and who put it there.
+ *
+ * Both counted in the database rather than off the array the map
+ * draws from, because that array stops at 500 pins. Counting it
+ * gives the right answer today and quietly stops being true at pin
+ * 501, with nothing anywhere saying so.
+ *
+ * Both match what the map shows: approved, and placed. An approved
+ * pin with no coordinates is real and somebody sent it, but it is
+ * not on the map, and a headline saying twelve over a map with ten
+ * pins on it is a headline nobody trusts.
+ */
+
+export interface MapTotals {
+  pins: number;
+  /** Deduplicated. Five stickers in Lisbon is five pins, one city. */
+  cities: number;
+}
+
+export async function mapTotals(): Promise<MapTotals> {
+  const { data, error } = await getSupabase()
+    .rpc("whoa_map_totals")
+    .maybeSingle<{ pins: number; cities: number }>();
+
+  if (error) throw new Error(`Couldn't count the map: ${error.message}`);
+  return { pins: data?.pins ?? 0, cities: data?.cities ?? 0 };
+}
+
+export interface Tagger {
+  /** Their own most recent spelling of their name. */
+  name: string;
+  pins: number;
+}
+
+export async function topTaggers(limit = 10): Promise<Tagger[]> {
+  const { data, error } = await getSupabase().rpc("whoa_map_top_taggers", { p_limit: limit });
+
+  if (error) throw new Error(`Couldn't read the leaderboard: ${error.message}`);
+  return ((data ?? []) as { name: string; pins: number }[]).map((r) => ({
+    name: r.name,
+    pins: r.pins,
+  }));
+}
+
 /** The queue, oldest first, because the person who waited longest goes first. */
 export async function pendingPins(limit = 100): Promise<MapPin[]> {
   const { data, error } = await getSupabase()
