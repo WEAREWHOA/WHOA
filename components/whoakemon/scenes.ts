@@ -35,12 +35,14 @@ export const STEPS: Record<Facing, { dx: number; dy: number }> = {
  * walked into a building to see.
  */
 export type PanelId = "shop" | "events" | "crew" | "card";
-export type NpcAction = { kind: "panel"; panel: PanelId };
+export type NpcAction = { kind: "panel"; panel: PanelId } | { kind: "prize" };
 
 export interface Npc {
   x: number;
   y: number;
   name: string;
+  /** Drawn as a person unless it is a box. */
+  look?: "person" | "chest";
   /** What they say when you face them. */
   says: string;
   does: NpcAction;
@@ -67,7 +69,7 @@ export interface Scene {
    1-5 a door, 6-9 a sign                                        */
 
 export const TOWN_MAP = [
-  "TTTTTTTTTTTTTTTTTTTT",
+  "TTTTTTTTTTTT0TTTTTTT",
   "T......T6T.....TT..T",
   "T.FFFF.TtT.....^^^.T",
   "T.F^^^.TtT.....###.T",
@@ -106,6 +108,11 @@ export interface Door {
   to: string;
   name: string;
   says: string;
+  /** Where you arrive. Rooms all share one mat, so they leave this
+   *  off; the maze does not, so it says. */
+  entry?: { x: number; y: number; facing: Facing };
+  /** A door in a wall, or a gap in the trees. */
+  look?: "door" | "gate";
   /** Which row the name sits on. Explicit, because the houses have a
    *  one-row roof over two rows of wall and the lab has its roof
    *  directly above its door, so one offset puts half the labels
@@ -114,6 +121,15 @@ export interface Door {
 }
 
 export const DOORS: Record<string, Door> = {
+  "0": {
+    key: "0",
+    to: "maze",
+    name: "The hedges",
+    says: "A gap in the trees, and a path going in.",
+    labelRow: 1,
+    entry: { x: 11, y: 15, facing: "up" },
+    look: "gate",
+  },
   "1": { key: "1", to: "shop", name: "WHOA Shop", says: "WHOA SHOP.", labelRow: 2 },
   "2": { key: "2", to: "events", name: "Events Hall", says: "EVENTS HALL.", labelRow: 2 },
   "3": { key: "3", to: "crew", name: "Crew House", says: "CREW HOUSE.", labelRow: 8 },
@@ -233,8 +249,63 @@ function room(
   };
 }
 
+/**
+ * THE HEDGES.
+ *
+ * Generated, not drawn. A recursive backtracker produces a perfect
+ * maze: exactly one route between any two squares, which means one
+ * right path to the chest and a great many wrong ones, with eight
+ * dead ends to find. Hand-drawing that and getting it right is the
+ * sort of work a seeded generator does better, and the solver in
+ * the scratchpad checks the chest is 108 steps from the gate and
+ * sitting at the end of a dead end rather than beside the path in.
+ *
+ * Trees and dirt, the same two tiles as the town, so it reads as
+ * the woods closing in rather than a new tileset.
+ *
+ * It is 21 by 17, bigger than the window, so the camera follows you
+ * and you cannot see the answer from the entrance. That is the
+ * whole point of a maze.
+ */
+const MAZE_MAP = [
+  "TTTTTTTTTTTTTTTTTTTTT",
+  "T,,,,,,,TX,,,,,,,,,,T",
+  "T,TTT,T,TTTTTTTTTTT,T",
+  "T,,,T,T,,,,,,,,,,,T,T",
+  "TTTTT,TTTTTTTTTTT,T,T",
+  "T,,,,,T,,,,,,,,,,,T,T",
+  "T,TTTTTTTTTTTTT,TTT,T",
+  "T,,,,,T,,,,,,,T,,,T,T",
+  "T,TTT,T,TTTTT,TTT,T,T",
+  "T,T,,,T,T,,,,,T,T,,,T",
+  "TTT,TTT,T,TTTTT,TTT,T",
+  "T,,,T,,,T,,,T,,,,,T,T",
+  "T,TTT,TTTTT,TTT,TTT,T",
+  "T,T,,,T,,,T,,,T,,,,,T",
+  "T,T,TTT,T,TTT,T,TTTTT",
+  "T,,,,,,,T,T,,,T,,,,,T",
+  "TTTTTTTTTTTMTTTTTTTTT",
+] as const;
+
 export const SCENES: Record<string, Scene> = {
   town: { id: "town", kind: "outdoor", map: TOWN_MAP },
+
+  maze: {
+    id: "maze",
+    kind: "outdoor",
+    map: MAZE_MAP,
+    npc: {
+      x: 9,
+      y: 1,
+      look: "chest",
+      facing: "down",
+      name: "A chest",
+      says: "A chest, right at the back. Open it?",
+      does: { kind: "prize" },
+    },
+    // Out the way you came, onto the grass below the gap.
+    exit: { scene: "town", x: 12, y: 1, facing: "down" },
+  },
 
   // The door is at (4,5); you come back out below it.
   shop: room(
@@ -301,7 +372,7 @@ export const SCENES: Record<string, Scene> = {
 
 /* ───── Reading a map ───── */
 
-const WALKABLE_OUT = new Set([".", ",", "f", "t"]);
+const WALKABLE_OUT = new Set([".", ",", "f", "t", "M"]);
 const WALKABLE_IN = new Set(["_", "M"]);
 
 export function sceneAt(sceneId: string): Scene {
