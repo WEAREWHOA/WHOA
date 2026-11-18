@@ -73,7 +73,7 @@ export default function WalletTab({
             <Link href="/whoa-card" className="text-flame hover:underline">
               Add credit
             </Link>{" "}
-            with a code from the shop.
+            with a code from the shop, for any amount you like.
           </p>
         )}
 
@@ -125,8 +125,8 @@ export default function WalletTab({
           </p>
           <p className="mt-2 text-sm leading-relaxed text-muted">
             The metal WHOA card is {formatCents(CARD_PRICE_CENTS)} over the counter at the
-            WHOADEGA, while they last. It puts the {formatCents(CARD_PRICE_CENTS)} straight onto
-            this balance and adds the perks.
+            WHOADEGA, while they last. That buys the card and the perks. The balance above is
+            separate: load it with whatever you want, whenever you want.
           </p>
           <Link
             href="/whoa-card"

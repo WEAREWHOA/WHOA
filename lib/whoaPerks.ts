@@ -1,5 +1,10 @@
 /**
- * What a WHOA card is worth beyond the credit on it.
+ * What a WHOA card is worth.
+ *
+ * All of it. The ten dollars buys the card and this list, not a
+ * balance: a new card starts empty and is loaded with whatever its
+ * owner wants. So these perks are the whole of what the money buys,
+ * which is worth knowing before wording any of them.
  *
  * In one file because these show up in three places that are nowhere
  * near each other: the landing page selling the card, the wallet of
@@ -40,5 +45,14 @@ export const MEMBER_PERKS: Perk[] = [
   },
 ];
 
-/** What the metal card costs over the counter, in cents. */
+/**
+ * What the metal card costs over the counter, in cents.
+ *
+ * The price of the card and the membership, and nothing else. It is
+ * NOT credit and it does not land on the balance: a card bought today
+ * starts at zero and is loaded separately, for any amount. It used to
+ * be handed straight back as ten dollars of credit, which made the
+ * card free and the perks the only real product, and that was a
+ * mistake about what is being sold.
+ */
 export const CARD_PRICE_CENTS = 1000;

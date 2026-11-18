@@ -11,8 +11,8 @@ import { CARD_PRICE_CENTS, MEMBER_PERKS } from "@/lib/whoaPerks";
 
 const TITLE = "WHOA Card";
 const DESCRIPTION =
-  "The WHOA card: store credit you can spend in the shop and at the register, topped up whenever " +
-  "you like. Sold over the counter at the WHOADEGA.";
+  "The WHOA card: a metal membership card sold over the counter at the WHOADEGA for $10, with " +
+  "store credit you load yourself and spend in the shop and at the register.";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/whoa-card" },
@@ -53,7 +53,18 @@ export default async function WhoaCardPage(props: PageProps<"/whoa-card">) {
 
   const accountCode = await getSessionAmbassadorCode();
   const credited = Number(first("credited") ?? "");
+  const becameMember = first("member") === "1";
   const error = first("cardError");
+
+  // A redemption can have done either job or both, so the one sentence
+  // below is worked out here rather than as three nested ternaries in
+  // the markup.
+  const added = Number.isFinite(credited) && credited > 0 ? credited : 0;
+  const redeemedMessage = becameMember
+    ? added > 0
+      ? `You're a WHOA card holder, and ${formatCents(added)} is on your balance.`
+      : "You're a WHOA card holder. Your balance is empty and ready for whatever you put on it."
+    : `${formatCents(added)} added. It is on your card now.`;
 
   // Read, never created, on a page load. A card is opened by an action
   // somebody took, not by a crawler fetching the page.
@@ -67,7 +78,7 @@ export default async function WhoaCardPage(props: PageProps<"/whoa-card">) {
   return (
     <section className="mx-auto w-full max-w-3xl flex-1 px-6 py-16">
       <span className="text-xs font-semibold tracking-[0.2em] text-muted uppercase">
-        Store credit, held by us
+        Membership, and store credit held by us
       </span>
       <h1 className="font-display mt-2 text-4xl tracking-wide sm:text-5xl">
         WHOA <span className="text-flame">Card</span>
@@ -76,9 +87,9 @@ export default async function WhoaCardPage(props: PageProps<"/whoa-card">) {
         <p className="max-w-xl flex-1 text-sm leading-relaxed text-muted">
           A metal card, sold over the counter at the WHOADEGA for{" "}
           <strong className="text-foreground">{formatCents(CARD_PRICE_CENTS)}</strong> while they
-          last. The {formatCents(CARD_PRICE_CENTS)} goes straight onto your balance, so the card
-          pays for itself, and the perks come with it. The credit lives on your account rather
-          than on the card, so it cannot be lost with it.
+          last. That buys the card and every perk below. It starts empty: put whatever you like
+          on it, whenever you like, for any amount. The credit lives on your account rather than
+          on the card, so it cannot be lost with it.
         </p>
         <CardFace
           code={card?.creditCode}
@@ -114,14 +125,14 @@ export default async function WhoaCardPage(props: PageProps<"/whoa-card">) {
           {card ? "Add credit" : "Activate your card"}
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-muted">
-          When you buy a card we give you a code on your receipt. Enter it here and the credit lands
-          on your account.
+          When you buy a card we give you a code on your receipt. Enter it here and the card
+          becomes yours. Adding credit works the same way: say how much you want on it at the
+          counter, and the code we hand you is worth exactly that.
         </p>
 
-        {Number.isFinite(credited) && credited > 0 && (
+        {(becameMember || added > 0) && (
           <p className="border-flame-2/40 bg-flame-2/10 text-flame-3 mt-5 rounded-lg border px-4 py-3 text-sm">
-            <strong className="font-semibold">{formatCents(credited)} added.</strong> It is on your
-            card now.
+            <strong className="font-semibold">{redeemedMessage}</strong>
           </p>
         )}
         {error && (
@@ -191,14 +202,19 @@ export default async function WhoaCardPage(props: PageProps<"/whoa-card">) {
         <h2 className="font-display text-2xl tracking-wide">How it works</h2>
         <ol className="mt-4 flex flex-col gap-4">
           {[
-            ["Buy one in the shop", "Ten dollars over the counter at the WHOADEGA, while they last."],
             [
-              "Enter the code on your receipt",
-              "That is what puts the credit on your account. The card itself is just the way in.",
+              "Buy one in the shop",
+              "Ten dollars over the counter at the WHOADEGA, while they last. That is the card " +
+                "and the perks. It is not credit, and your balance starts at zero.",
             ],
             [
-              "Spend it, or top it up",
-              "Read your code out at the register. Add more whenever you like; it does not expire.",
+              "Enter the code on your receipt",
+              "That is what makes the card yours. The card itself is just the way in.",
+            ],
+            [
+              "Put what you want on it",
+              "Any amount, at the counter, as often as you like. Read your code out at the " +
+                "register to spend it. It does not expire.",
             ],
           ].map(([title, body], i) => (
             <li key={title} className="flex gap-4">
