@@ -341,8 +341,8 @@ function CardPanel() {
       <p className="whoa-gs-detail-price">{formatCents(CARD_PRICE_CENTS)}</p>
       <p className="whoa-gs-blurb">
         A metal card, over the counter at the WHOADEGA while they last. The{" "}
-        {formatCents(CARD_PRICE_CENTS)} goes straight onto your balance, so it pays for itself,
-        and the perks come with it.
+        {formatCents(CARD_PRICE_CENTS)} buys the card and the perks. It starts empty: put
+        whatever you like on it.
       </p>
       <ul className="whoa-gs-perks">
         {MEMBER_PERKS.map((perk) => (

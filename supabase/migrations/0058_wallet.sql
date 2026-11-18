@@ -10,6 +10,12 @@
 --   for ten dollars, which puts credit in the wallet AND marks the
 --   account as a member, which is what the perks hang off.
 --
+-- SUPERSEDED BY 0061, in the paragraph above and nowhere else: the ten
+-- dollars buys the card and is NOT handed back as credit. A card now
+-- starts at zero and is loaded separately, for any amount. Said here
+-- rather than only in 0061 because this is the file somebody reads to
+-- learn what the tables mean. Nothing executable in this file changed.
+--
 -- Every metal card carries the SAME QR, which lands on /whoa-card and
 -- nothing else. So the card proves nothing by itself: whoever sees a
 -- photograph of one reaches the same page. What connects "paid ten

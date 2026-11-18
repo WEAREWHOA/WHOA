@@ -11,8 +11,15 @@ import { getSupabase } from "./supabase";
  * without leaving a row explaining it.
  *
  * The metal card carries the same QR as every other, so the card
- * itself proves nothing. What connects "paid ten dollars at the till"
- * to an account is a claim code the till issues, redeemed here.
+ * itself proves nothing. What connects "paid at the till" to an
+ * account is a claim code the till issues, redeemed here.
+ *
+ * A claim code has two independent jobs, and either on its own is a
+ * whole code. It can grant membership, which is what the ten dollars
+ * over the counter buys and carries no money at all, and it can carry
+ * credit, which is any amount somebody hands over to load their card.
+ * One code can do both, for a card bought and loaded in the same
+ * breath, but the ten dollars is never credit.
  *
  * Nothing in this file decides who is allowed to do a thing. That is
  * the caller's job, and it is worth saying because a function here
@@ -76,6 +83,10 @@ export type WalletStatus = "active" | "frozen" | "closed";
 export type WalletReason = "card-purchase" | "topup" | "purchase" | "refund" | "adjustment";
 
 export const REASON_LABELS: Record<WalletReason, string> = {
+  // Only on rows written before 0061, when buying the card put ten
+  // dollars on the balance. Money arriving from a code is a top-up
+  // now, so nothing new is written with this reason, and the label
+  // stays so the old rows still read correctly.
   "card-purchase": "Card bought in store",
   topup: "Topped up",
   purchase: "Spent",
@@ -380,9 +391,15 @@ export interface IssuedClaim {
  * they exist outside somebody's hand: the database keeps only their
  * hashes, so a code not written down here is gone. Whoever calls this
  * is responsible for getting them onto a receipt and not into a log.
+ *
+ * Three shapes, from the two jobs above: a card code (no value,
+ * membership), a top-up code (a value, no membership), and both at
+ * once. What is refused is neither, because that is a code somebody
+ * will be handed in exchange for money and which does nothing.
  */
 export async function issueClaims(input: {
   count: number;
+  /** Zero for a card code: the price of the card is not credit. */
   valueCents: number;
   issuedBy: string;
   /** True for a metal card sold over the counter; false for plain credit. */
@@ -390,9 +407,13 @@ export async function issueClaims(input: {
   note?: string | null;
 }): Promise<IssuedClaim[]> {
   const count = Math.max(1, Math.min(Math.trunc(input.count), 200));
+  const grantsMembership = input.grantsMembership ?? false;
   const valueCents = Math.trunc(input.valueCents);
-  if (!Number.isFinite(valueCents) || valueCents <= 0) {
-    throw new Error("A claim code has to be worth something.");
+  if (!Number.isFinite(valueCents) || valueCents < 0) {
+    throw new Error("A claim code cannot be worth less than nothing.");
+  }
+  if (valueCents === 0 && !grantsMembership) {
+    throw new Error("A claim code has to carry credit, grant membership, or both.");
   }
 
   const codes = Array.from({ length: count }, generateClaimCode);
@@ -401,7 +422,7 @@ export async function issueClaims(input: {
       code_hash: hashClaimCode(code),
       last_four: lastFour(code),
       value_cents: valueCents,
-      grants_membership: input.grantsMembership ?? false,
+      grants_membership: grantsMembership,
       issued_by: input.issuedBy,
       note: input.note ?? null,
     })),

@@ -110,7 +110,7 @@ export const STOPS: Stop[] = [
     href: "/whoa-card",
     page: "WHOA Card",
     world: "Card House",
-    blurb: "Ten dollars of credit, and the perks.",
+    blurb: "Ten dollars for the card, and the perks.",
     col: 14,
     row: 5,
     kind: "house",

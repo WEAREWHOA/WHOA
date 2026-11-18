@@ -27,7 +27,13 @@ export async function redeemClaimAction(formData: FormData) {
 
     revalidatePath("/portal/wallet");
     if (result.outcome === "redeemed") {
-      redirect(`/whoa-card?credited=${result.valueCents}#redeem`);
+      // Both, because a code can have done either or both and the page
+      // has to say which. A card code credits nothing, so without the
+      // membership flag a successful redemption would have redirected
+      // with credited=0 and shown the buyer no confirmation at all.
+      const query = new URLSearchParams({ credited: String(result.valueCents) });
+      if (result.becameMember) query.set("member", "1");
+      redirect(`/whoa-card?${query.toString()}#redeem`);
     }
     redirect(`/whoa-card?cardError=${result.outcome}#redeem`);
   } catch (err) {
