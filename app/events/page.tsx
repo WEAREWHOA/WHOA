@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import PsychedelicBackground from "@/components/home/PsychedelicBackground";
 import EventsGrid from "@/components/events/EventsGrid";
+import EventsGridSkeleton from "@/components/events/EventsGridSkeleton";
 import EventsNewsletterBanner from "@/components/events/EventsNewsletterBanner";
 import { getAllEvents } from "@/lib/eventsStore";
 
@@ -49,7 +50,12 @@ export default async function EventsPage() {
 
       <EventsNewsletterBanner />
 
-      <Suspense>
+      {/* The fallback is the point. EventsGrid reads the query string,
+          so React skips it on the server and renders this instead;
+          with no fallback the page arrived one screen tall and grew by
+          25,000px on hydration, which threw away the reader's scroll
+          position. See EventsGridSkeleton. */}
+      <Suspense fallback={<EventsGridSkeleton count={events.length} />}>
         <EventsGrid events={events} />
       </Suspense>
     </section>

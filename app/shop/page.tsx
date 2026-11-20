@@ -6,6 +6,7 @@ import { listProducts } from "@/lib/catalog";
 import { getAllArtProfileNames } from "@/lib/artCollective";
 import { ARTISTS, EXTRA_ARTIST_CATEGORY_NAMES } from "@/lib/artists";
 import ShopGrid from "@/components/shop/ShopGrid";
+import ShopGridSkeleton from "@/components/shop/ShopGridSkeleton";
 import CollectionCarousel from "@/components/shop/CollectionCarousel";
 
 export const revalidate = 60;
@@ -99,7 +100,7 @@ export default async function ShopPage() {
       )}
 
       {!error && products.length > 0 && (
-        <Suspense>
+        <Suspense fallback={<ShopGridSkeleton count={products.length} />}>
           <ShopGrid products={products} artistNames={artistNames} />
         </Suspense>
       )}
